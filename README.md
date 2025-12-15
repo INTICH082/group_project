@@ -18,7 +18,7 @@
 |---|---|---|---|---|
 | **Инфраструктура и БД** | Docker, Git, CI/CD, PostgreSQL, MongoDB | Седова С. | 📝 **Планирование** | ![](https://geps.dev/progress/0?dangerColor=800000&warningColor=ff9900&successColor=006600) |
 | **Авторизация** | Go, JWT, OAuth2 | Кандауров М. | 📝 **Планирование** | ![](https://geps.dev/progress/0?dangerColor=800000&warningColor=ff9900&successColor=006600) |
-| **Веб-клиент** | React, TypeScript | Первых Д. | 🔄 **В разработке** | ![](https://geps.dev/progress/0?dangerColor=800000&warningColor=ff9900&successColor=006600) |
+| **Веб-клиент** | React, JavaScript | Первых Д. | 📝 **Планирование** | ![](https://geps.dev/progress/0?dangerColor=800000&warningColor=ff9900&successColor=006600) |
 | **Telegram бот** | Python, aiogram | Князев Р. | 🔄 **В разработке** | ![](https://geps.dev/progress/0?dangerColor=800000&warningColor=ff9900&successColor=006600) |
 | **C++ Модуль** | C++, алгоритмы, производительность | Липко О. | 🔄 **В разработке** | ![](https://geps.dev/progress/0?dangerColor=800000&warningColor=ff9900&successColor=006600) |
 
