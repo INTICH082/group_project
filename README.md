@@ -21,3 +21,6 @@
 | **Веб-клиент** | React, TypeScript | Первых Д. | 🔄 **В разработке** | ![](https://geps.dev/progress/0?dangerColor=800000&warningColor=ff9900&successColor=006600) |
 | **Telegram бот** | Python, aiogram | Князев Р. | 🔄 **В разработке** | ![](https://geps.dev/progress/0?dangerColor=800000&warningColor=ff9900&successColor=006600) |
 | **C++ Модуль** | C++, алгоритмы, производительность | Липко О. | 🔄 **В разработке** | ![](https://geps.dev/progress/0?dangerColor=800000&warningColor=ff9900&successColor=006600) |
+
+
+[Все задачи →](https://github.com/INTICH082/group_project/issues)
