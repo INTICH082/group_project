@@ -4,7 +4,7 @@ project(authorization)
 set(CMAKE_CXX_STANDARD 17)
 
 find_package(CURL REQUIRED)
-find_package(MySQLConnectorCPP REQUIRED)
+find_package(mysql-connector-cpp REQUIRED)
 
 include_directories(${CURL_INCLUDE_DIRS} jwt-cpp/include)
 
