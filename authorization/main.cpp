@@ -32,7 +32,6 @@ int main() {
     string githubClientId = clientId;
     string githubClientSecret = clientSecret;
 
-    // Начало OAuth
     CROW_ROUTE(app, "/auth/github")([githubClientId]() {
         string url = "https://github.com/login/oauth/authorize?client_id=" + githubClientId + "&scope=user";
         crow::response res;
@@ -41,7 +40,6 @@ int main() {
         return res;
     });
 
-    // Callback от GitHub
     CROW_ROUTE(app, "/auth/github/callback")([&](const crow::request& req) {
         auto code = req.url_params.get("code");
         if (!code) return crow::response(400, "Нет параметра code");
@@ -86,7 +84,6 @@ int main() {
         return crow::response(result);
     });
 
-    // Проверка токена
     CROW_ROUTE(app, "/validate")([&auth](const crow::request& req) {
         auto authHeader = req.get_header_value("Authorization");
         if (authHeader.empty() || authHeader.substr(0, 7) != "Bearer ")

@@ -10,7 +10,7 @@
 struct UserInfo {
     int id;
     string fullname;
-    string login;     // GitHub username
+    string login;
     string role;
     bool is_blocked;
 };

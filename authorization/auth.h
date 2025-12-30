@@ -1,8 +1,15 @@
 #pragma once
-#include "database.h"
 #include <string>
 #include <optional>
 #include <jwt-cpp/jwt.h>
+
+struct UserInfo {
+    int id;
+    string fullname;
+    string login;
+    string role;
+    bool is_blocked;
+};
 
 class AuthService {
 public:

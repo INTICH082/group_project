@@ -1,7 +1,6 @@
 #include "utils.h"
 #include <curl/curl.h>
 #include <iostream>
-#include <sstream>
 
 using namespace std;
 
@@ -14,7 +13,7 @@ string httpGet(const string& url, const map<string, string>& headers) {
     CURL* curl = curl_easy_init();
     if (!curl) return "";
 
-    std::string readBuffer;
+    string readBuffer;
     curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, writeCallback);
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, &readBuffer);
@@ -24,9 +23,7 @@ string httpGet(const string& url, const map<string, string>& headers) {
         string header = h.first + ": " + h.second;
         headerList = curl_slist_append(headerList, header.c_str());
     }
-    if (headerList) {
-        curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headerList);
-    }
+    if (headerList) curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headerList);
 
     CURLcode res = curl_easy_perform(curl);
 
@@ -40,7 +37,7 @@ string httpGet(const string& url, const map<string, string>& headers) {
     return readBuffer;
 }
 
-string httpPost(const std::string& url, const string& body, const map<string, string>& headers) {
+string httpPost(const string& url, const string& body, const map<string, string>& headers) {
     CURL* curl = curl_easy_init();
     if (!curl) return "";
 
