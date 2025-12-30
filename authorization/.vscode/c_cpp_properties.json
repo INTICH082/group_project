@@ -6,7 +6,8 @@
                 "${workspaceFolder}/**",
                 "${workspaceFolder}/jwt-cpp/include",
                 "C:/Users/KSK-SHOP/projects/group_project/group_project/vcpkg/installed/x64-windows/include",
-                "C:/Users/KSK-SHOP/projects/group_project/group_project/vcpkg/installed/x64-windows/include/openssl"
+                "C:/Users/KSK-SHOP/projects/group_project/group_project/vcpkg/installed/x64-windows/include/openssl",
+                "${workspaceFolder}"
             ],
             "defines": [],
             "compilerPath": "C:/msys64/ucrt64/bin/g++.exe",  

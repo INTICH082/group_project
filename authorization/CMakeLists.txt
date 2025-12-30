@@ -3,6 +3,7 @@ project(authorization)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_PREFIX_PATH "${CMAKE_PREFIX_PATH};C:/Users/KSK-SHOP/projects/group_project/group_project/vcpkg/installed/x64-windows")
 
 find_package(CURL REQUIRED)
 find_package(mysql-connector-cpp REQUIRED)
