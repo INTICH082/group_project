@@ -7,7 +7,7 @@ Database::Database() = default;
 
 bool Database::connect(const string& dbPassword) {
     try {
-        driver = sql::mysql::get_mysql_driver_instance();
+        driver.reset(sql::mysql::get_mysql_driver_instance());
         con.reset(driver->connect("tcp://127.0.0.1:3306", "root", dbPassword));
         con->setSchema("Project");
         return true;
