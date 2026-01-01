@@ -4,69 +4,172 @@
 
 using namespace std;
 
-Database::Database() = default;
-
-bool Database::connect(const string& host, const string& user, const string& password, const string& db) {
+Database::Database(const string& host, const string& user, const string& pass, const string& dbname) {
     conn = mysql_init(nullptr);
     if (!conn) {
-        cerr << "mysql_init failed" << endl;
-        return false;
+        throw runtime_error("mysql_init failed");
     }
 
-    if (!mysql_real_connect(conn, host.c_str(), user.c_str(), password.c_str(), db.c_str(), 3306, nullptr, 0)) {
-        cerr << "mysql_real_connect failed: " << mysql_error(conn) << endl;
+    if (!mysql_real_connect(conn, host.c_str(), user.c_str(), pass.c_str(),
+                            dbname.c_str(), 3306, nullptr, 0)) {
+        string err = mysql_error(conn);
         mysql_close(conn);
         conn = nullptr;
-        return false;
+        throw runtime_error("mysql_real_connect failed: " + err);
     }
 
-    // Устанавливаем кодировку UTF-8
     mysql_set_character_set(conn, "utf8mb4");
-    return true;
 }
 
 Database::~Database() {
-    if (conn) mysql_close(conn);
+    if (conn) {
+        mysql_close(conn);
+    }
 }
 
-optional<UserInfo> Database::getUserByLogin(const string& login) {
-    if (!conn) return nullopt;
+void Database::throwIfError(const string& context) const {
+    if (mysql_errno(conn) != 0) {
+        throw runtime_error(context + ": " + mysql_error(conn));
+    }
+}
 
-    string query = "SELECT ID, User_fullname, User_role, Is_blocked FROM Users WHERE User_login = '" + login + "'";
-    if (mysql_query(conn, query.c_str())) {
-        cerr << "mysql_query failed: " << mysql_error(conn) << endl;
+optional<UserInfo> Database::getUser(const string& login) {
+    if (!conn) {
+        cerr << "Database not connected\n";
         return nullopt;
     }
 
-    MYSQL_RES* res = mysql_store_result(conn);
-    if (!res) return nullopt;
+    string query = "SELECT id, fullname, login, role, is_blocked "
+                   "FROM users WHERE login = ? LIMIT 1";
 
-    MYSQL_ROW row = mysql_fetch_row(res);
-    if (!row) {
-        mysql_free_result(res);
+    MYSQL_STMT* stmt = mysql_stmt_init(conn);
+    if (!stmt) {
+        cerr << "mysql_stmt_init failed\n";
         return nullopt;
     }
 
-    UserInfo user;
-    user.id = stoi(row[0]);
-    user.fullname = row[1] ? row[1] : "";
-    user.login = login;
-    user.role = row[2] ? row[2] : "student";
-    user.is_blocked = row[3] && string(row[3]) == "1";
-
-    mysql_free_result(res);
-    return user;
-}
-
-int Database::createUser(const string& login, const string& fullname, const string& role) {
-    if (!conn) return -1;
-
-    string query = "INSERT INTO Users (User_login, User_fullname, User_role, Is_blocked, Exist) "
-                   "VALUES ('" + login + "', '" + fullname + "', '" + role + "', 0, 1)";
-    if (mysql_query(conn, query.c_str())) {
-        cerr << "createUser failed: " << mysql_error(conn) << endl;
-        return -1;
+    if (mysql_stmt_prepare(stmt, query.c_str(), query.size())) {
+        cerr << "mysql_stmt_prepare failed: " << mysql_stmt_error(stmt) << "\n";
+        mysql_stmt_close(stmt);
+        return nullopt;
     }
 
-    return static_cast<int>(mysql_insert_id(conn));
+    MYSQL_BIND bind[1] = {};
+    bind[0].buffer_type = MYSQL_TYPE_STRING;
+    bind[0].buffer = const_cast<char*>(login.c_str());
+    bind[0].buffer_length = login.size();
+
+    if (mysql_stmt_bind_param(stmt, bind)) {
+        cerr << "mysql_stmt_bind_param failed: " << mysql_stmt_error(stmt) << "\n";
+        mysql_stmt_close(stmt);
+        return nullopt;
+    }
+
+    if (mysql_stmt_execute(stmt)) {
+        cerr << "mysql_stmt_execute failed: " << mysql_stmt_error(stmt) << "\n";
+        mysql_stmt_close(stmt);
+        return nullopt;
+    }
+
+    MYSQL_BIND result[5] = {};
+    int id;
+    char fullname[256]{};
+    char loginBuf[256]{};
+    char role[64]{};
+    char isBlocked[2]{};
+
+    unsigned long lengths[5]{};
+
+    result[0].buffer_type = MYSQL_TYPE_LONG;
+    result[0].buffer = &id;
+
+    result[1].buffer_type = MYSQL_TYPE_STRING;
+    result[1].buffer = fullname;
+    result[1].buffer_length = sizeof(fullname);
+    result[1].length = &lengths[1];
+
+    result[2].buffer_type = MYSQL_TYPE_STRING;
+    result[2].buffer = loginBuf;
+    result[2].buffer_length = sizeof(loginBuf);
+    result[2].length = &lengths[2];
+
+    result[3].buffer_type = MYSQL_TYPE_STRING;
+    result[3].buffer = role;
+    result[3].buffer_length = sizeof(role);
+    result[3].length = &lengths[3];
+
+    result[4].buffer_type = MYSQL_TYPE_STRING;
+    result[4].buffer = isBlocked;
+    result[4].buffer_length = sizeof(isBlocked);
+    result[4].length = &lengths[4];
+
+    if (mysql_stmt_bind_result(stmt, result)) {
+        cerr << "mysql_stmt_bind_result failed: " << mysql_stmt_error(stmt) << "\n";
+        mysql_stmt_close(stmt);
+        return nullopt;
+    }
+
+    if (mysql_stmt_fetch(stmt) == 0) {
+        UserInfo user;
+        user.id = id;
+        user.fullname = string(fullname, lengths[1]);
+        user.login = string(loginBuf, lengths[2]);
+        user.role = string(role, lengths[3]);
+        user.is_blocked = (isBlocked[0] == '1');
+
+        mysql_stmt_close(stmt);
+        return user;
+    }
+
+    mysql_stmt_close(stmt);
+    return nullopt;
+}
+
+bool Database::updateUser(const UserInfo& user) {
+    if (!conn) {
+        cerr << "Database not connected\n";
+        return false;
+    }
+
+    string query = "UPDATE users SET fullname = ?, role = ?, is_blocked = ? "
+                   "WHERE id = ?";
+
+    MYSQL_STMT* stmt = mysql_stmt_init(conn);
+    if (!stmt) return false;
+
+    if (mysql_stmt_prepare(stmt, query.c_str(), query.size())) {
+        cerr << "prepare failed: " << mysql_stmt_error(stmt) << "\n";
+        mysql_stmt_close(stmt);
+        return false;
+    }
+
+    MYSQL_BIND bind[4] = {};
+    bind[0].buffer_type = MYSQL_TYPE_STRING;
+    bind[0].buffer = const_cast<char*>(user.fullname.c_str());
+    bind[0].buffer_length = user.fullname.size();
+
+    bind[1].buffer_type = MYSQL_TYPE_STRING;
+    bind[1].buffer = const_cast<char*>(user.role.c_str());
+    bind[1].buffer_length = user.role.size();
+
+    bind[2].buffer_type = MYSQL_TYPE_TINY;
+    bind[2].buffer = const_cast<char*>(&user.is_blocked);
+
+    bind[3].buffer_type = MYSQL_TYPE_LONG;
+    bind[3].buffer = const_cast<int*>(&user.id);
+
+    if (mysql_stmt_bind_param(stmt, bind)) {
+        cerr << "bind_param failed: " << mysql_stmt_error(stmt) << "\n";
+        mysql_stmt_close(stmt);
+        return false;
+    }
+
+    if (mysql_stmt_execute(stmt)) {
+        cerr << "execute failed: " << mysql_stmt_error(stmt) << "\n";
+        mysql_stmt_close(stmt);
+        return false;
+    }
+
+    mysql_stmt_close(stmt);
+    return true;
 }

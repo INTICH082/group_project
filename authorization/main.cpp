@@ -1,110 +1,229 @@
 #include "crow_all.h"
-#include "database.h"
 #include "auth.h"
+#include "database.h"
 #include "utils.h"
-#include "json.hpp"
+
 #include <iostream>
-#include <cstdlib>
+#include <string>
+#include <map>
+#include <cstdlib>      // getenv
+#include <exception>
+#include <nlohmann/json.hpp>  // если используешь nlohmann/json для парсинга
 
 using namespace std;
 using json = nlohmann::json;
 
-string httpGet(const string& url, const map<string, string>& headers = {});
-string httpPost(const string& url, const string& body, const map<string, string>& headers = {});
-
-int main() {
+int main()
+{
     crow::SimpleApp app;
-    Database db;
-    AuthService auth;
 
-    const char* dbPass = getenv("DB_PASSWORD");
-    if (!dbPass || !db.connect("127.0.0.1", "root", dbPass, "Project")) {
-        cerr << "Не удалось подключиться к базе данных" << endl;
-        return 1;
-}
+    try
+    {
+        // Получаем конфигурацию из переменных окружения
+        const char* github_client_id     = getenv("GITHUB_CLIENT_ID");
+        const char* github_client_secret = getenv("GITHUB_CLIENT_SECRET");
+        const char* db_password          = getenv("DB_PASSWORD");
+        const char* jwt_secret           = getenv("JWT_SECRET");
 
-    const char* clientId = getenv("GITHUB_CLIENT_ID");
-    const char* clientSecret = getenv("GITHUB_CLIENT_SECRET");
-    if (!clientId || !clientSecret) {
-        cerr << "Не заданы GITHUB_CLIENT_ID или GITHUB_CLIENT_SECRET" << endl;
-        return 1;
-    }
-    string githubClientId = clientId;
-    string githubClientSecret = clientSecret;
-
-    CROW_ROUTE(app, "/auth/github")([githubClientId]() {
-        string url = "https://github.com/login/oauth/authorize?client_id=" + githubClientId + "&scope=user";
-        crow::response res;
-        res.code = 302;
-        res.set_header("Location", url);
-        return res;
-    });
-
-    CROW_ROUTE(app, "/auth/github/callback")([&](const crow::request& req) {
-        auto code = req.url_params.get("code");
-        if (!code) return crow::response(400, "Нет параметра code");
-
-        string body = "client_id=" + githubClientId + "&client_secret=" + githubClientSecret + "&code=" + string(code);
-        string tokenResp = httpPost("https://github.com/login/oauth/access_token", body, {{"Accept", "application/json"}});
-
-        json tokenJson = json::parse(tokenResp);
-        if (!tokenJson.contains("access_token"))
-            return crow::response(500, "Не получен access_token");
-
-        string accessToken = tokenJson["access_token"];
-
-        string userResp = httpGet("https://api.github.com/user", {{"Authorization", "token " + accessToken}});
-        json userJson = json::parse(userResp);
-
-        string login = userJson.value("login", "");
-        string fullname = userJson.value("name", login);
-        if (login.empty())
-            return crow::response(500, "Не получен login");
-
-        auto userOpt = db.getUserByLogin(login);
-        UserInfo user;
-        if (userOpt) {
-            user = *userOpt;
-        } else {
-            int newId = db.createUser(login, fullname, "student");
-            if (newId == -1) return crow::response(500, "Ошибка создания пользователя");
-            user = {newId, fullname, login, "student", false};
+        if (!github_client_id || !github_client_secret)
+        {
+            cerr << "Ошибка: не заданы GITHUB_CLIENT_ID или GITHUB_CLIENT_SECRET\n";
+            return 1;
         }
 
-        if (user.is_blocked)
-            return crow::response(403, "Пользователь заблокирован");
+        if (!db_password)
+        {
+            cerr << "Ошибка: не задана переменная DB_PASSWORD\n";
+            return 1;
+        }
 
-        string jwt = auth.generateToken(user);
+        if (!jwt_secret || strlen(jwt_secret) < 32)
+        {
+            cerr << "Ошибка: JWT_SECRET должен быть минимум 32 символа\n";
+            return 1;
+        }
 
-        crow::json::wvalue result;
-        result["token"] = jwt;
-        result["role"] = user.role;
-        result["fullname"] = user.fullname;
-        result["login"] = user.login;
-        return crow::response(result);
-    });
+        // Подключение к базе данных
+        Database db("127.0.0.1", "root", db_password, "Project");
 
-    CROW_ROUTE(app, "/validate")([&auth](const crow::request& req) {
-        auto authHeader = req.get_header_value("Authorization");
-        if (authHeader.empty() || authHeader.substr(0, 7) != "Bearer ")
-            return crow::response(401, "Токен не передан или неверный формат");
+        AuthService auth(jwt_secret);  // передаём секрет для JWT
 
-        string token = authHeader.substr(7);
-        auto userOpt = auth.validateToken(token);
-        if (!userOpt)
-            return crow::response(401, "Неверный или просроченный токен");
+        // 1. Перенаправление на GitHub для авторизации
+        CROW_ROUTE(app, "/auth/github")
+        ([github_client_id]()
+         {
+             string url = "https://github.com/login/oauth/authorize"
+                          "?client_id=" + string(github_client_id) +
+                          "&scope=user:email";
+             crow::response res(302);
+             res.set_header("Location", url);
+             return res;
+         });
 
-        UserInfo user = *userOpt;
-        crow::json::wvalue resp;
-        resp["valid"] = true;
-        resp["user_id"] = user.id;
-        resp["login"] = user.login;
-        resp["role"] = user.role;
-        resp["blocked"] = user.is_blocked;
-        return crow::response(resp);
-    });
+        // 2. Callback после авторизации GitHub
+        CROW_ROUTE(app, "/auth/github/callback")
+        ([&db, &auth, github_client_id, github_client_secret](const crow::request& req)
+         {
+             auto code = req.url_params.get("code");
+             if (!code)
+             {
+                 return crow::response(400, "Параметр code не передан");
+             }
 
-    cout << "Сервер авторизации запущен на порту 8081" << endl;
-    app.port(8081).multithreaded().run();
+             // Получаем access_token
+             string token_body = "client_id=" + string(github_client_id) +
+                                 "&client_secret=" + string(github_client_secret) +
+                                 "&code=" + code;
+
+             map<string, string> headers = {
+                 {"Accept", "application/json"}
+             };
+
+             string token_response = httpPost("https://github.com/login/oauth/access_token", token_body, headers);
+
+             if (token_response.empty())
+             {
+                 return crow::response(500, "Не удалось получить токен от GitHub");
+             }
+
+             // Парсим JSON-ответ
+             json token_json;
+             try
+             {
+                 token_json = json::parse(token_response);
+             }
+             catch (const json::parse_error& e)
+             {
+                 cerr << "Ошибка парсинга token_response: " << e.what() << endl;
+                 return crow::response(500, "Ошибка обработки ответа GitHub");
+             }
+
+             if (!token_json.contains("access_token"))
+             {
+                 return crow::response(401, "Не получен access_token");
+             }
+
+             string access_token = token_json["access_token"];
+
+             // 3. Получаем данные пользователя GitHub
+             headers = {
+                 {"Authorization", "token " + access_token},
+                 {"Accept", "application/vnd.github.v3+json"}
+             };
+
+             string user_response = httpGet("https://api.github.com/user", headers);
+
+             if (user_response.empty())
+             {
+                 return crow::response(500, "Не удалось получить данные пользователя");
+             }
+
+             json user_json;
+             try
+             {
+                 user_json = json::parse(user_response);
+             }
+             catch (const json::parse_error& e)
+             {
+                 cerr << "Ошибка парсинга user_response: " << e.what() << endl;
+                 return crow::response(500, "Ошибка обработки данных пользователя");
+             }
+
+             string login = user_json.value("login", "");
+             string name  = user_json.value("name", login);
+
+             if (login.empty())
+             {
+                 return crow::response(500, "Не удалось получить login пользователя");
+             }
+
+             // 4. Проверяем / создаём пользователя в БД
+             auto user_opt = db.getUser(login);
+             UserInfo user;
+
+             if (user_opt)
+             {
+                 user = *user_opt;
+             }
+             else
+             {
+                 // Создаём нового пользователя
+                 user.id = db.createUser(login, name, "student");  // роль по умолчанию
+                 if (user.id <= 0)
+                 {
+                     return crow::response(500, "Ошибка создания пользователя в БД");
+                 }
+                 user.login = login;
+                 user.fullname = name;
+                 user.role = "student";
+                 user.is_blocked = false;
+             }
+
+             if (user.is_blocked)
+             {
+                 return crow::response(403, "Пользователь заблокирован");
+             }
+
+             // 5. Генерируем JWT
+             string jwt_token = auth.generateToken(user);
+
+             // 6. Возвращаем результат
+             json result;
+             result["token"]    = jwt_token;
+             result["user"]     = {{"login", user.login},
+                                   {"fullname", user.fullname},
+                                   {"role", user.role}};
+             result["message"]  = "Авторизация успешна";
+
+             crow::response res(result);
+             res.code = 200;
+             return res;
+         });
+
+        // 7. Защищённый маршрут — проверка токена
+        CROW_ROUTE(app, "/validate")
+        ([&auth](const crow::request& req)
+         {
+             auto auth_header = req.get_header_value("Authorization");
+             if (auth_header.empty() || auth_header.find("Bearer ") != 0)
+             {
+                 return crow::response(401, "Требуется Bearer-токен в заголовке Authorization");
+             }
+
+             string token = auth_header.substr(7);
+
+             auto user_opt = auth.validateToken(token);
+             if (!user_opt)
+             {
+                 return crow::response(401, "Недействительный или просроченный токен");
+             }
+
+             UserInfo user = *user_opt;
+
+             json result;
+             result["valid"]    = true;
+             result["user"]     = {{"id", user.id},
+                                   {"login", user.login},
+                                   {"fullname", user.fullname},
+                                   {"role", user.role},
+                                   {"blocked", user.is_blocked}};
+
+             return crow::response(result);
+         });
+
+        cout << "Сервер запущен на http://localhost:8081\n";
+        app.port(8081).multithreaded().run();
+    }
+    catch (const exception& e)
+    {
+        cerr << "Критическая ошибка сервера: " << e.what() << endl;
+        return 1;
+    }
+    catch (...)
+    {
+        cerr << "Неизвестная ошибка\n";
+        return 1;
+    }
+
     return 0;
 }

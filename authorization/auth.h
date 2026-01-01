@@ -1,7 +1,9 @@
 #pragma once
+
 #include <string>
 #include <optional>
-#include <jwt-cpp/jwt.h>
+
+using namespace std;
 
 struct UserInfo {
     int id;
@@ -13,10 +15,9 @@ struct UserInfo {
 
 class AuthService {
 public:
-    AuthService();
-    string generateToken(const UserInfo& user);
-    optional<UserInfo> validateToken(const string& token);
+    AuthService() = default;
+
+    optional<UserInfo> authenticate(const string& login, const string& password);
 
 private:
-    string secret;
 };

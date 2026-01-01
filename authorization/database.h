@@ -1,31 +1,26 @@
 #pragma once
+
+#include "auth.h"
 #include <mysql.h>
 #include <string>
 #include <optional>
+#include <stdexcept>
 
 using namespace std;
 
-struct UserInfo {
-    int id;
-    string fullname;
-    string login;
-    string role;
-    bool is_blocked;
-};
-
 class Database {
 public:
-    Database();
+    Database(const string& host, const string& user, const string& pass, const string& dbname);
     ~Database();
 
-    bool connect(const string& host = "127.0.0.1",
-                 const string& user = "root",
-                 const string& password = "",
-                 const string& db = "Project");
+    // nullopt если пользователь не найден или ошибка
+    optional<UserInfo> getUser(const string& login);
 
-    optional<UserInfo> getUserByLogin(const string& login);
-    int createUser(const string& login, const string& fullname, const string& role = "student");
+    // true при успехе, false + сообщение в cerr
+    bool updateUser(const UserInfo& user);
 
 private:
     MYSQL* conn = nullptr;
+
+    void throwIfError(const string& context) const;
 };
