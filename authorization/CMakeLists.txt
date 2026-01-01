@@ -5,9 +5,10 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 find_package(CURL REQUIRED)
+find_package(mysql-connector-cpp REQUIRED)
 
-include_directories("C:/Program Files/MySQL/MySQL Server 9.5/lib")
-link_directories("C:/Program Files/MySQL/MySQL Server 9.5/lib")
+# Добавляем текущую папку (authorization) для поиска crow_all.h и других локальных заголовков
+include_directories(${CMAKE_CURRENT_SOURCE_DIR} jwt-cpp/include)
 
 add_executable(auth_server
     main.cpp
@@ -18,6 +19,6 @@ add_executable(auth_server
 
 target_link_libraries(auth_server
     ${CURL_LIBRARIES}
-    mysqlclient          
+    mysql-connector-cpp::mysql-connector-cpp
     pthread
 )
