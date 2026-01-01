@@ -7,13 +7,13 @@
                 "${workspaceFolder}/jwt-cpp/include",
                 "C:/Users/KSK-SHOP/projects/group_project/group_project/vcpkg/installed/x64-windows/include",
                 "C:/Users/KSK-SHOP/projects/group_project/group_project/vcpkg/installed/x64-windows/include/openssl",
-                "${workspaceFolder}"
+                "C:/Program Files/MySQL/MySQL Server 9.5/include"  
             ],
             "defines": [],
             "compilerPath": "C:/msys64/ucrt64/bin/g++.exe",  
             "cStandard": "c17",
             "cppStandard": "c++17",
-            "intelliSenseMode": "windows-gcc-x64"   
+            "intelliSenseMode": "windows-gcc-x64"
         }
     ],
     "version": 4

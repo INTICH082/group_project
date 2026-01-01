@@ -1,11 +1,9 @@
 #pragma once
-#include <mysql_driver.h>
-#include <mysql_connection.h>
-#include <cppconn/prepared_statement.h>
-#include <cppconn/resultset.h>
-#include <memory>
+#include <mysql.h>
 #include <string>
 #include <optional>
+
+using namespace std;
 
 struct UserInfo {
     int id;
@@ -20,13 +18,14 @@ public:
     Database();
     ~Database();
 
-    bool connect(const string& dbPassword);
+    bool connect(const string& host = "127.0.0.1",
+                 const string& user = "root",
+                 const string& password = "",
+                 const string& db = "Project");
 
     optional<UserInfo> getUserByLogin(const string& login);
-
     int createUser(const string& login, const string& fullname, const string& role = "student");
 
 private:
-    unique_ptr<sql::mysql::MySQL_Driver> driver;
-    unique_ptr<sql::Connection> con;
+    MYSQL* conn = nullptr;
 };

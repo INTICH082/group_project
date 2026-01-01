@@ -18,10 +18,10 @@ int main() {
     AuthService auth;
 
     const char* dbPass = getenv("DB_PASSWORD");
-    if (!dbPass || !db.connect(dbPass)) {
+    if (!dbPass || !db.connect("127.0.0.1", "root", dbPass, "Project")) {
         cerr << "Не удалось подключиться к базе данных" << endl;
         return 1;
-    }
+}
 
     const char* clientId = getenv("GITHUB_CLIENT_ID");
     const char* clientSecret = getenv("GITHUB_CLIENT_SECRET");
