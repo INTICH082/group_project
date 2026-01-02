@@ -1,1 +1,24 @@
+# Клонируешь ПУСТОЙ репозиторий
+git clone https://github.com/твой-юзернейм/main-module.git
+cd main-module
 
+# Создаешь структуру папок
+mkdir -p cmd/server internal/{config,domain,repository/{postgres,redis},service,handler/middleware,pkg/{database/migrations,utils}} api docker .github/workflows scripts
+
+# Создаешь основные файлы
+touch cmd/server/main.go
+touch internal/config/config.go
+touch internal/domain/models.go
+touch internal/domain/permissions.go
+touch internal/repository/postgres/connection.go
+touch internal/handler/middleware/auth.go
+touch internal/handler/middleware/permissions.go
+touch docker/Dockerfile
+touch docker/docker-compose.yml
+touch .env.example
+touch Makefile
+touch .github/workflows/go.yml
+touch scripts/wait-for-db.sh
+
+# Инициализируешь Go модуль
+go mod init main-module
