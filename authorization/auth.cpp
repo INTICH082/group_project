@@ -1,3 +1,8 @@
+#define _HAS_STD_BYTE 0
+#define byte win_byte
+#include <windows.h>
+#undef byte
+
 #include "auth.h"
 #include <jwt-cpp/jwt.h>
 

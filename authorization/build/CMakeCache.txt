@@ -22,7 +22,7 @@ CMAKE_AR:FILEPATH=C:/msys64/ucrt64/bin/ar.exe
 
 //Choose the type of build, options are: None Debug Release RelWithDebInfo
 // MinSizeRel ...
-CMAKE_BUILD_TYPE:STRING=Release
+CMAKE_BUILD_TYPE:STRING=
 
 //Enable/Disable color output during build.
 CMAKE_COLOR_MAKEFILE:BOOL=ON
@@ -146,9 +146,6 @@ CMAKE_OBJCOPY:FILEPATH=C:/msys64/ucrt64/bin/objcopy.exe
 
 //Path to a program.
 CMAKE_OBJDUMP:FILEPATH=C:/msys64/ucrt64/bin/objdump.exe
-
-//No help, variable specified on the command line.
-CMAKE_PREFIX_PATH:UNINITIALIZED=C:/Users/KSK-SHOP/projects/group_project/group_project/vcpkg/installed/x64-windows
 
 //Value Computed by CMake
 CMAKE_PROJECT_COMPAT_VERSION:STATIC=
@@ -303,13 +300,10 @@ ZLIB_LIBRARY_DEBUG:FILEPATH=C:/Users/KSK-SHOP/projects/group_project/group_proje
 ZLIB_LIBRARY_RELEASE:FILEPATH=C:/Users/KSK-SHOP/projects/group_project/group_project/vcpkg/installed/x64-windows/lib/zlib.lib
 
 //Path to a program.
-Z_VCPKG_BUILTIN_POWERSHELL_PATH:FILEPATH=C:/Windows/System32/WindowsPowerShell/v1.0/powershell.exe
-
-//Path to a program.
 Z_VCPKG_CL:FILEPATH=Z_VCPKG_CL-NOTFOUND
 
 //Path to a program.
-Z_VCPKG_PWSH_PATH:FILEPATH=Z_VCPKG_PWSH_PATH-NOTFOUND
+Z_VCPKG_PWSH_PATH:FILEPATH=C:/Program Files/PowerShell/7/pwsh.exe
 
 //The directory which contains the installed libraries for each
 // triplet
@@ -500,7 +494,7 @@ CURL_LIBRARY_RELEASE-ADVANCED:INTERNAL=1
 //vcpkg
 CURL_LIBRARY_RELEASE:INTERNAL=C:/Users/KSK-SHOP/projects/group_project/group_project/vcpkg/installed/x64-windows/lib/libcurl.lib
 //Details about finding ZLIB
-FIND_PACKAGE_MESSAGE_DETAILS_ZLIB:INTERNAL=[optimized;C:/Users/KSK-SHOP/projects/group_project/group_project/vcpkg/installed/x64-windows/lib/zlib.lib;debug;C:/Users/KSK-SHOP/projects/group_project/group_project/vcpkg/installed/x64-windows/debug/lib/zlibd.lib][C:/Users/KSK-SHOP/projects/group_project/group_project/vcpkg/installed/x64-windows/include][ ][v1.3.1(1)]
+FIND_PACKAGE_MESSAGE_DETAILS_ZLIB:INTERNAL=[C:/Users/KSK-SHOP/projects/group_project/group_project/vcpkg/installed/x64-windows/lib/zlib.lib][C:/Users/KSK-SHOP/projects/group_project/group_project/vcpkg/installed/x64-windows/include][ ][v1.3.1(1)]
 //Install the dependencies listed in your manifest:
 //\n    If this is off, you will have to manually install your dependencies.
 //\n    See https://github.com/microsoft/vcpkg/tree/master/docs/specifications/manifests.md
@@ -518,7 +512,7 @@ ZLIB_LIBRARY_RELEASE-ADVANCED:INTERNAL=1
 //Making sure VCPKG_MANIFEST_MODE doesn't change
 Z_VCPKG_CHECK_MANIFEST_MODE:INTERNAL=OFF
 //The path to the PowerShell implementation to use.
-Z_VCPKG_POWERSHELL_PATH:INTERNAL=C:/Windows/System32/WindowsPowerShell/v1.0/powershell.exe
+Z_VCPKG_POWERSHELL_PATH:INTERNAL=C:/Program Files/PowerShell/7/pwsh.exe
 //Vcpkg root directory
 Z_VCPKG_ROOT_DIR:INTERNAL=C:/Users/KSK-SHOP/projects/group_project/group_project/vcpkg
 

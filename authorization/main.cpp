@@ -1,3 +1,5 @@
+#define _HAS_STD_BYTE 0
+
 #include "crow.h"         
 #include "auth.h"
 #include "database.h"
