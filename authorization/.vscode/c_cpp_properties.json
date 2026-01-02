@@ -4,13 +4,16 @@
             "name": "Win32",
             "includePath": [
                 "${workspaceFolder}/**",
+                "${workspaceFolder}/asio",
+                "${workspaceFolder}/Crow/include",
                 "${workspaceFolder}/jwt-cpp/include",
+                "C:/Program Files/MySQL/MySQL Server 9.5/include",
+                "C:/Program Files/MySQL/MySQL Server 9.5/include/mysql",
                 "C:/Users/KSK-SHOP/projects/group_project/group_project/vcpkg/installed/x64-windows/include",
-                "C:/Users/KSK-SHOP/projects/group_project/group_project/vcpkg/installed/x64-windows/include/openssl",
-                "C:/Program Files/MySQL/MySQL Server 9.5/include"  
+                "C:/Users/KSK-SHOP/projects/group_project/group_project/vcpkg/installed/x64-windows/include/openssl"
             ],
             "defines": [],
-            "compilerPath": "C:/msys64/ucrt64/bin/g++.exe",  
+            "compilerPath": "C:/msys64/ucrt64/bin/g++.exe",   
             "cStandard": "c17",
             "cppStandard": "c++17",
             "intelliSenseMode": "windows-gcc-x64"

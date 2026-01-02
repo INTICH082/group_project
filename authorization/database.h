@@ -4,23 +4,17 @@
 #include <mysql.h>
 #include <string>
 #include <optional>
-#include <stdexcept>
 
 using namespace std;
 
 class Database {
 public:
-    Database(const string& host, const string& user, const string& pass, const string& dbname);
+    Database(const string& host, const string& user, const string& pass, const string& db);
     ~Database();
 
-    // nullopt если пользователь не найден или ошибка
     optional<UserInfo> getUser(const string& login);
-
-    // true при успехе, false + сообщение в cerr
-    bool updateUser(const UserInfo& user);
+    int createUser(const string& login, const string& fullname, const string& role = "student");
 
 private:
     MYSQL* conn = nullptr;
-
-    void throwIfError(const string& context) const;
 };

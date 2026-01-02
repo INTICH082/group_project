@@ -15,9 +15,11 @@ struct UserInfo {
 
 class AuthService {
 public:
-    AuthService() = default;
+    AuthService(const string& jwt_secret) : secret(jwt_secret) {}
 
-    optional<UserInfo> authenticate(const string& login, const string& password);
+    string generateToken(const UserInfo& user);
+    optional<UserInfo> validateToken(const string& token);
 
 private:
+    string secret;
 };
