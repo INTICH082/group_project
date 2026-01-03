@@ -6,15 +6,19 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 set(CMAKE_TOOLCHAIN_FILE "C:/Users/KSK-SHOP/projects/group_project/group_project/vcpkg/scripts/buildsystems/vcpkg.cmake" CACHE STRING "")
 
+set(CURL_INCLUDE_DIRS "C:/Users/KSK-SHOP/projects/group_project/group_project/vcpkg/installed/x64-mingw-static/include")
+set(CURL_LIBRARIES "C:/Users/KSK-SHOP/projects/group_project/group_project/vcpkg/installed/x64-mingw-static/lib/libcurl.a")
+
+# CURL из vcpkg (это работает)
 find_package(CURL REQUIRED)
 
 include_directories(
     ${CURL_INCLUDE_DIRS}
-    ${CMAKE_CURRENT_SOURCE_DIR}             
-    ${CMAKE_CURRENT_SOURCE_DIR}/Crow/include 
+    ${CMAKE_CURRENT_SOURCE_DIR}
     ${CMAKE_CURRENT_SOURCE_DIR}/asio
+    ${CMAKE_CURRENT_SOURCE_DIR}/Crow/include
     ${CMAKE_CURRENT_SOURCE_DIR}/jwt-cpp/include
-    "C:/Program Files/MySQL/MySQL Server 9.5/include"
+    "C:/MySQL-8.0.35/mysql-8.0.35-winx64/include"
 )
 
 add_executable(auth_server
@@ -26,13 +30,10 @@ add_executable(auth_server
 
 target_link_libraries(auth_server
     PRIVATE
-    ${CURL_LIBRARIES}
-    "C:/Program Files/MySQL/MySQL Server 9.5/lib/mysqlclient.lib"
+    ${CURL_LIBRARIES}                              # CURL из vcpkg
+    ${CURL_INCLUDE_DIRS}
+    "C:/MySQL-8.0.35/mysql-8.0.35-winx64/lib/libmysql.lib"
+    mswsock
     ws2_32
     pthread
-)
-
-# Важно: говорим, что .dll будет в PATH или рядом с .exe
-set_target_properties(auth_server PROPERTIES
-    LINK_FLAGS "-Wl,--enable-auto-import"
 )

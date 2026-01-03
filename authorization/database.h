@@ -1,7 +1,7 @@
 #pragma once
 
 #include "auth.h"
-#include <mysql.h>         
+#include <mysql.h>
 #include <string>
 #include <optional>
 
