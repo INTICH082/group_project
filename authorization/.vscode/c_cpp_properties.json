@@ -10,7 +10,10 @@
                 "C:/Program Files/MySQL/MySQL Server 9.5/include",
                 "C:/Program Files/MySQL/MySQL Server 9.5/include/mysql",
                 "C:/Users/KSK-SHOP/projects/group_project/group_project/vcpkg/installed/x64-windows/include",
-                "C:/Users/KSK-SHOP/projects/group_project/group_project/vcpkg/installed/x64-windows/include/openssl"
+                "C:/Users/KSK-SHOP/projects/group_project/group_project/vcpkg/installed/x64-windows/include/openssl",
+                "${workspaceFolder}/**",
+                "C:/Users/KSK-SHOP/projects/group_project/group_project/vcpkg/installed/x64-mingw-static/include",
+                "C:/Users/KSK-SHOP/projects/group_project/group_project/vcpkg/installed/x64-mingw-static/include/mysqlx"
             ],
             "defines": [],
             "compilerPath": "C:/msys64/ucrt64/bin/g++.exe",   

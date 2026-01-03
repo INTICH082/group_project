@@ -27,7 +27,7 @@ add_executable(auth_server
 target_link_libraries(auth_server
     PRIVATE
     ${CURL_LIBRARIES}
-    "C:/Program Files/MySQL/MySQL Server 9.5/lib/mysqlclient.lib"   # ← оставляем .lib для импорта
+    "C:/Program Files/MySQL/MySQL Server 9.5/lib/mysqlclient.lib"
     ws2_32
     pthread
 )
