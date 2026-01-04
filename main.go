@@ -9,11 +9,11 @@ import (
 )
 
 func main() {
-	InitDB() // Должна быть в database.go
+	InitDB() // Инициализация из database.go
 
 	mux := http.NewServeMux()
 
-	// Маршруты
+	// Настройка маршрутов
 	mux.HandleFunc("/questions", CheckAuth(getQuestions))
 	mux.HandleFunc("/submit", CheckAuth(submitAnswer))
 	mux.HandleFunc("/teacher/create", CheckAuthAndRole([]string{"teacher", "admin"}, createQuestion))
@@ -24,7 +24,7 @@ func main() {
 	}
 
 	log.Printf("Server starting on port %s", port)
-	// Важно: вызываем corsMiddleware здесь
+	// Оборачиваем mux в CORS для работы с фронтендом
 	log.Fatal(http.ListenAndServe(":"+port, corsMiddleware(mux)))
 }
 
@@ -46,12 +46,20 @@ func corsMiddleware(next http.Handler) http.Handler {
 // --- HANDLERS ---
 
 func getQuestions(w http.ResponseWriter, r *http.Request) {
-	courseID := r.Context().Value("course_id").(int)
-	questions, err := GetQuestionsByCourse(courseID) // Из database.go
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+	// Безопасное извлечение ID курса
+	val := r.Context().Value("course_id")
+	courseID, ok := val.(int)
+	if !ok {
+		http.Error(w, "Invalid course ID in context", http.StatusBadRequest)
 		return
 	}
+
+	questions, err := GetQuestionsByCourse(courseID)
+	if err != nil {
+		http.Error(w, "DB Error: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(questions)
 }
@@ -62,18 +70,30 @@ func submitAnswer(w http.ResponseWriter, r *http.Request) {
 		Score      int `json:"score"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Bad request", http.StatusBadRequest)
+		http.Error(w, "Invalid JSON", http.StatusBadRequest)
 		return
 	}
 
-	userID := r.Context().Value("user_id").(int)
-	courseID := r.Context().Value("course_id").(int)
+	// Извлекаем данные из контекста с проверкой типа
+	uVal := r.Context().Value("user_id")
+	cVal := r.Context().Value("course_id")
+
+	userID, okU := uVal.(int)
+	courseID, okC := cVal.(int)
+
+	if !okU || !okC {
+		http.Error(w, "Auth data missing", http.StatusUnauthorized)
+		return
+	}
 
 	if err := SaveUserResult(userID, courseID, req.Score); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Error(w, "Failed to save result", http.StatusInternalServerError)
 		return
 	}
+
+	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
+	fmt.Fprint(w, `{"status":"success"}`)
 }
 
 func createQuestion(w http.ResponseWriter, r *http.Request) {
@@ -83,15 +103,17 @@ func createQuestion(w http.ResponseWriter, r *http.Request) {
 		Correct int      `json:"correct"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Bad request", http.StatusBadRequest)
+		http.Error(w, "Invalid JSON", http.StatusBadRequest)
 		return
 	}
 
 	id, err := CreateQuestion(req.Text, req.Options, req.Correct)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Error(w, "Failed to create question", http.StatusInternalServerError)
 		return
 	}
+
+	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
 	fmt.Fprintf(w, `{"id": %d}`, id)
 }

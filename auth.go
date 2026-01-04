@@ -18,7 +18,6 @@ func CheckAuth(next http.HandlerFunc) http.HandlerFunc {
 		}
 
 		tokenString := strings.TrimPrefix(authHeader, "Bearer ")
-		// Убедись, что JWT_SECRET прописан в настройках Render!
 		secret := []byte(os.Getenv("JWT_SECRET"))
 
 		token, err := jwt.Parse(tokenString, func(t *jwt.Token) (interface{}, error) {
@@ -31,30 +30,24 @@ func CheckAuth(next http.HandlerFunc) http.HandlerFunc {
 		}
 
 		if claims, ok := token.Claims.(jwt.MapClaims); ok {
-			// БЕЗОПАСНОЕ ИЗВЛЕЧЕНИЕ ДАННЫХ
+			// --- БЕЗОПАСНОЕ ИЗВЛЕЧЕНИЕ (FIX FLOAT64) ---
+			var userID, courseID int
 
-			// 1. Извлекаем user_id (защита от float64)
-			var userID int
 			if val, ok := claims["user_id"].(float64); ok {
 				userID = int(val)
 			}
-
-			// 2. Извлекаем course_id (защита от float64)
-			var courseID int
 			if val, ok := claims["course_id"].(float64); ok {
 				courseID = int(val)
 			}
-
-			// 3. Извлекаем роль
 			role, _ := claims["role"].(string)
 
-			// Проверка: если важные данные отсутствуют в токене
+			// Если критические данные отсутствуют - не пускаем
 			if userID == 0 || role == "" {
-				http.Error(w, "Token is missing user_id or role", http.StatusUnauthorized)
+				http.Error(w, "Token missing user_id or role", http.StatusUnauthorized)
 				return
 			}
 
-			// Записываем в контекст уже чистые типы данных
+			// Записываем в контекст
 			ctx := r.Context()
 			ctx = context.WithValue(ctx, "user_id", userID)
 			ctx = context.WithValue(ctx, "role", role)
@@ -69,8 +62,8 @@ func CheckAuth(next http.HandlerFunc) http.HandlerFunc {
 
 func CheckAuthAndRole(allowedRoles []string, next http.HandlerFunc) http.HandlerFunc {
 	return CheckAuth(func(w http.ResponseWriter, r *http.Request) {
-		// Достаем роль, будучи уверенными, что это string
-		userRole, ok := r.Context().Value("role").(string)
+		val := r.Context().Value("role")
+		userRole, ok := val.(string)
 		if !ok {
 			http.Error(w, "Role not found", http.StatusForbidden)
 			return
@@ -85,7 +78,7 @@ func CheckAuthAndRole(allowedRoles []string, next http.HandlerFunc) http.Handler
 		}
 
 		if !isAllowed {
-			http.Error(w, "Нет доступа для вашей роли", http.StatusForbidden)
+			http.Error(w, "Forbidden: insufficient permissions", http.StatusForbidden)
 			return
 		}
 		next.ServeHTTP(w, r)
