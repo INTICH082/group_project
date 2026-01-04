@@ -16,136 +16,118 @@ var db *sql.DB
 func InitDB() {
 	connStr := os.Getenv("DATABASE_URL")
 	if connStr == "" {
-		log.Fatal("ОШИБКА: DATABASE_URL не установлена")
+		log.Fatal("DATABASE_URL is missing")
 	}
 
 	var err error
 	db, err = sql.Open("postgres", connStr)
 	if err != nil {
-		log.Fatal("Ошибка конфигурации базы:", err)
+		log.Fatal(err)
 	}
 
-	// --- ТВОИ НОВЫЕ НАСТРОЙКИ ДЛЯ СТАБИЛЬНОСТИ ---
-	db.SetMaxOpenConns(25)                 // Макс. кол-во активных соединений
-	db.SetMaxIdleConns(5)                  // Сколько держать "про запас"
-	db.SetConnMaxLifetime(5 * time.Minute) // Пересоздавать соединение каждые 5 мин
-	// ---------------------------------------------
+	db.SetMaxOpenConns(25)
+	db.SetMaxIdleConns(5)
+	db.SetConnMaxLifetime(5 * time.Minute)
 
 	if err = db.Ping(); err != nil {
-		log.Fatal("База недоступна:", err)
+		log.Fatal("Database unreachable:", err)
 	}
-	log.Println("--- Успешное подключение к Neon DB ---")
+	log.Println("--- Database initialized with New Structure ---")
 }
 
-func GetQuestionsByCourse(courseID int) ([]map[string]interface{}, error) {
-	if db == nil {
-		return nil, fmt.Errorf("соединение с БД не инициализировано")
-	}
+// --- ЛОГИКА ВОПРОСОВ (ВЕРСИОННОСТЬ) ---
 
-	query := `
-		SELECT q.id, q.text, q.options 
-		FROM questions q
-		JOIN course_questions cq ON q.id = cq.question_id
-		WHERE cq.course_id = $1
-		ORDER BY q.id ASC` // Добавил сортировку, чтобы вопросы не прыгали
-
-	rows, err := db.Query(query, courseID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	questions := []map[string]interface{}{}
-
-	for rows.Next() {
-		var id int
-		var text string
-		var optionsJSON []byte
-
-		if err := rows.Scan(&id, &text, &optionsJSON); err != nil {
-			continue
-		}
-
-		var options []string
-		// Проверка на пустой JSON или NULL
-		if len(optionsJSON) > 0 {
-			json.Unmarshal(optionsJSON, &options)
-		} else {
-			options = []string{}
-		}
-
-		questions = append(questions, map[string]interface{}{
-			"id":      id,
-			"text":    text,
-			"options": options,
-		})
-	}
-
-	return questions, nil
-}
-
-func SaveUserResult(userID int, courseID int, score int) error {
-	if db == nil {
-		return fmt.Errorf("database connection is nil")
-	}
-
-	query := `
-		INSERT INTO results (user_id, course_id, score, created_at) 
-		VALUES ($1, $2, $3, NOW())
-		ON CONFLICT (user_id, course_id) 
-		DO UPDATE SET score = EXCLUDED.score, created_at = NOW()`
-
-	_, err := db.Exec(query, userID, courseID, score)
-	return err
-}
-
-func CreateQuestion(courseID int, text string, options []string, correctAnswer int) (int, error) {
-	if db == nil {
-		return 0, fmt.Errorf("соединение с БД не инициализировано")
-	}
-
+func CreateQuestion(text string, options []string, correct int, authorID int) (int, error) {
 	optionsJSON, _ := json.Marshal(options)
 
-	tx, err := db.Begin()
-	if err != nil {
-		return 0, err
-	}
-	defer tx.Rollback()
-
-	var lastID int
-	queryInsertQuestion := `INSERT INTO questions (text, options, correct_answer) VALUES ($1, $2, $3) RETURNING id`
-
-	err = tx.QueryRow(queryInsertQuestion, text, optionsJSON, correctAnswer).Scan(&lastID)
+	// Находим следующий свободный ID для группы версий
+	var nextID int
+	err := db.QueryRow("SELECT COALESCE(MAX(id), 0) + 1 FROM questions").Scan(&nextID)
 	if err != nil {
 		return 0, err
 	}
 
-	queryLinkCourse := `INSERT INTO course_questions (course_id, question_id) VALUES ($1, $2)`
-	_, err = tx.Exec(queryLinkCourse, courseID, lastID)
-	if err != nil {
-		return 0, err
-	}
+	query := `INSERT INTO questions (id, version, text, options, correct_option, author_id) 
+              VALUES ($1, 1, $2, $3, $4, $5) RETURNING id`
 
-	err = tx.Commit()
-	return lastID, err
+	var id int
+	err = db.QueryRow(query, nextID, text, optionsJSON, correct, authorID).Scan(&id)
+	return id, err
 }
 
-func DeleteQuestion(questionID int) error {
-	if db == nil {
-		return fmt.Errorf("соединение с БД не инициализировано")
-	}
-
-	// Сначала проверяем, есть ли такой вопрос вообще (необязательно, но для чистоты логов ок)
-	query := `DELETE FROM questions WHERE id = $1`
-	result, err := db.Exec(query, questionID)
+func UpdateQuestion(questionID int, text string, options []string, correct int) error {
+	// ТЗ требует: при изменении создаем новую версию
+	var currentVersion int
+	err := db.QueryRow("SELECT MAX(version) FROM questions WHERE id = $1", questionID).Scan(&currentVersion)
 	if err != nil {
 		return err
 	}
 
-	rowsAffected, _ := result.RowsAffected()
-	if rowsAffected == 0 {
-		return fmt.Errorf("вопрос %d не найден", questionID)
+	optionsJSON, _ := json.Marshal(options)
+	query := `INSERT INTO questions (id, version, text, options, correct_option, author_id) 
+              SELECT id, $2, $3, $4, $5, author_id FROM questions 
+              WHERE id = $1 AND version = $6`
+
+	_, err = db.Exec(query, questionID, currentVersion+1, text, optionsJSON, correct, currentVersion)
+	return err
+}
+
+// --- ЛОГИКА ПОПЫТОК (START TEST) ---
+
+func StartAttempt(userID int, testID int) (int, error) {
+	// 1. Получаем список актуальных версий вопросов для этого теста
+	// В ТЗ: при создании попытки замораживаем версии
+	queryVersions := `
+		SELECT q.id, MAX(q.version) 
+		FROM questions q
+		JOIN (SELECT unnest(question_ids) as qid FROM tests WHERE id = $1) t ON q.id = t.qid
+		WHERE q.is_deleted = false
+		GROUP BY q.id`
+
+	rows, err := db.Query(queryVersions, testID)
+	if err != nil {
+		return 0, err
+	}
+	defer rows.Close()
+
+	versionsMap := make(map[int]int)
+	for rows.Next() {
+		var qid, v int
+		rows.Scan(&qid, &v)
+		versionsMap[qid] = v
+	}
+	versionsJSON, _ := json.Marshal(versionsMap)
+
+	// 2. Создаем запись попытки
+	var attemptID int
+	err = db.QueryRow(`INSERT INTO attempts (user_id, test_id, question_versions) 
+                       VALUES ($1, $2, $3) RETURNING id`,
+		userID, testID, versionsJSON).Scan(&attemptID)
+	if err != nil {
+		return 0, err
 	}
 
-	return nil
+	// 3. Создаем пустые ответы для каждого вопроса (selected_option = -1)
+	for qid, v := range versionsMap {
+		db.Exec(`INSERT INTO user_answers (attempt_id, question_id, question_version) 
+                 VALUES ($1, $2, $3)`, attemptID, qid, v)
+	}
+
+	return attemptID, nil
+}
+
+// --- ЛОГИКА ОТВЕТОВ ---
+
+func SubmitAnswer(attemptID int, questionID int, selectedOption int) error {
+	// Проверяем, не завершена ли попытка
+	var status string
+	db.QueryRow("SELECT status FROM attempts WHERE id = $1", attemptID).Scan(&status)
+	if status == "completed" {
+		return fmt.Errorf("attempt already completed")
+	}
+
+	_, err := db.Exec(`UPDATE user_answers SET selected_option = $1 
+                       WHERE attempt_id = $2 AND question_id = $3`,
+		selectedOption, attemptID, questionID)
+	return err
 }
