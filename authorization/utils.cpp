@@ -5,26 +5,21 @@
 
 #include "utils.h"
 #include <curl/curl.h>
-#include <iostream>
-#include "json.hpp"  // Nlohmann JSON для парсинга ответов
+#include "json.hpp"
 
 using namespace std;
 using nlohmann::json;
 
 namespace {
     size_t WriteCallback(void* contents, size_t size, size_t nmemb, string* userp) {
-        size_t realsize = size * nmemb;
-        userp->append(static_cast<char*>(contents), realsize);
-        return realsize;
+        userp->append(static_cast<char*>(contents), size * nmemb);
+        return size * nmemb;
     }
 }
 
 string httpGet(const string& url, const map<string, string>& headers) {
     CURL* curl = curl_easy_init();
-    if (!curl) {
-        cerr << "curl_easy_init failed" << endl;
-        return "";
-    }
+    if (!curl) return "";
 
     string response;
     curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
@@ -33,17 +28,10 @@ string httpGet(const string& url, const map<string, string>& headers) {
     curl_easy_setopt(curl, CURLOPT_USERAGENT, "auth_server/1.0");
 
     struct curl_slist *chunk = nullptr;
-    for (const auto& h : headers) {
-        string header = h.first + ": " + h.second;
-        chunk = curl_slist_append(chunk, header.c_str());
-    }
+    for (const auto& h : headers) chunk = curl_slist_append(chunk, (h.first + ": " + h.second).c_str());
     curl_easy_setopt(curl, CURLOPT_HTTPHEADER, chunk);
 
-    CURLcode res = curl_easy_perform(curl);
-    if (res != CURLE_OK) {
-        cerr << "curl_easy_perform() failed: " << curl_easy_strerror(res) << endl;
-        response.clear();
-    }
+    curl_easy_perform(curl);
 
     curl_slist_free_all(chunk);
     curl_easy_cleanup(curl);
@@ -53,10 +41,7 @@ string httpGet(const string& url, const map<string, string>& headers) {
 
 string httpPost(const string& url, const string& body, const map<string, string>& headers) {
     CURL* curl = curl_easy_init();
-    if (!curl) {
-        cerr << "curl_easy_init failed" << endl;
-        return "";
-    }
+    if (!curl) return "";
 
     string response;
     curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
@@ -66,17 +51,10 @@ string httpPost(const string& url, const string& body, const map<string, string>
     curl_easy_setopt(curl, CURLOPT_USERAGENT, "auth_server/1.0");
 
     struct curl_slist *chunk = nullptr;
-    for (const auto& h : headers) {
-        string header = h.first + ": " + h.second;
-        chunk = curl_slist_append(chunk, header.c_str());
-    }
+    for (const auto& h : headers) chunk = curl_slist_append(chunk, (h.first + ": " + h.second).c_str());
     curl_easy_setopt(curl, CURLOPT_HTTPHEADER, chunk);
 
-    CURLcode res = curl_easy_perform(curl);
-    if (res != CURLE_OK) {
-        cerr << "curl_easy_perform() failed: " << curl_easy_strerror(res) << endl;
-        response.clear();
-    }
+    curl_easy_perform(curl);
 
     curl_slist_free_all(chunk);
     curl_easy_cleanup(curl);

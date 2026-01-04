@@ -1,18 +1,12 @@
-FROM mcr.microsoft.com/devcontainers/cpp:1-ubuntu-24.04
+FROM ubuntu:22.04
 
-ARG REINSTALL_CMAKE_VERSION_FROM_SOURCE="none"
+RUN apt-get update && apt-get install -y build-essential cmake git curl wget unzip libssl-dev libcurl4-openssl-dev libmysqlclient-dev
 
-# Optionally install the cmake for vcpkg
-COPY ./reinstall-cmake.sh /tmp/
+RUN git clone https://github.com/microsoft/vcpkg.git /vcpkg && /vcpkg/bootstrap-vcpkg.sh && /vcpkg/vcpkg install curl:x64-linux mysql-connector-cpp:x64-linux
 
-RUN if [ "${REINSTALL_CMAKE_VERSION_FROM_SOURCE}" != "none" ]; then \
-        chmod +x /tmp/reinstall-cmake.sh && /tmp/reinstall-cmake.sh ${REINSTALL_CMAKE_VERSION_FROM_SOURCE}; \
-    fi \
-    && rm -f /tmp/reinstall-cmake.sh
+WORKDIR /app
+COPY . /app
 
-# [Optional] Uncomment this section to install additional vcpkg ports.
-# RUN su vscode -c "${VCPKG_ROOT}/vcpkg install <your-port-name-here>"
+RUN mkdir build && cd build && cmake .. -DCMAKE_TOOLCHAIN_FILE=/vcpkg/scripts/buildsystems/vcpkg.cmake -DCMAKE_BUILD_TYPE=Release && make
 
-# [Optional] Uncomment this section to install additional packages.
-# RUN apt-get update && export DEBIAN_FRONTEND=noninteractive \
-#     && apt-get -y install --no-install-recommends <your-package-list-here>
+CMD ["./build/auth_server"]

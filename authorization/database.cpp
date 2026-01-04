@@ -10,57 +10,36 @@
 using namespace std;
 
 Database::Database(const string& host, const string& user, const string& pass, const string& dbname) {
-    std::cout << "Database constructor started: host=" << host << ", user=" << user << ", dbname=" << dbname << std::endl;
-
     conn = mysql_init(nullptr);
-    if (!conn) {
-        std::cerr << "mysql_init failed" << std::endl;
-        throw runtime_error("mysql_init failed");
-    }
-
-    std::cout << "mysql_init OK" << std::endl;
+    if (!conn) throw runtime_error("mysql_init failed");
 
     if (!mysql_real_connect(conn, host.c_str(), user.c_str(), pass.c_str(), dbname.c_str(), 3306, nullptr, 0)) {
         string err = mysql_error(conn);
-        std::cerr << "mysql_real_connect failed: " << err << std::endl;
         mysql_close(conn);
         conn = nullptr;
         throw runtime_error("mysql_real_connect failed: " + err);
     }
 
-    std::cout << "MySQL connected successfully!" << std::endl;
     mysql_set_character_set(conn, "utf8mb4");
 }
 
 Database::~Database() {
-    if (conn) {
-        mysql_close(conn);
-    }
+    if (conn) mysql_close(conn);
 }
 
 void Database::throwIfError(const string& context) const {
-    if (mysql_errno(conn) != 0) {
-        throw runtime_error(context + ": " + mysql_error(conn));
-    }
+    if (mysql_errno(conn) != 0) throw runtime_error(context + ": " + mysql_error(conn));
 }
 
 optional<UserInfo> Database::getUser(const string& login) {
-    if (!conn) {
-        cerr << "Database not connected\n";
-        return nullopt;
-    }
+    if (!conn) return nullopt;
 
-    string query = "SELECT id, fullname, login, role, is_blocked "
-                   "FROM users WHERE login = ? LIMIT 1";
+    string query = "SELECT id, fullname, login, role, is_blocked FROM users WHERE login = ? LIMIT 1";
 
     MYSQL_STMT* stmt = mysql_stmt_init(conn);
-    if (!stmt) {
-        cerr << "mysql_stmt_init failed\n";
-        return nullopt;
-    }
+    if (!stmt) return nullopt;
 
     if (mysql_stmt_prepare(stmt, query.c_str(), query.size())) {
-        cerr << "mysql_stmt_prepare failed: " << mysql_stmt_error(stmt) << "\n";
         mysql_stmt_close(stmt);
         return nullopt;
     }
@@ -71,13 +50,11 @@ optional<UserInfo> Database::getUser(const string& login) {
     bind[0].buffer_length = login.size();
 
     if (mysql_stmt_bind_param(stmt, bind)) {
-        cerr << "mysql_stmt_bind_param failed: " << mysql_stmt_error(stmt) << "\n";
         mysql_stmt_close(stmt);
         return nullopt;
     }
 
     if (mysql_stmt_execute(stmt)) {
-        cerr << "mysql_stmt_execute failed: " << mysql_stmt_error(stmt) << "\n";
         mysql_stmt_close(stmt);
         return nullopt;
     }
@@ -115,7 +92,6 @@ optional<UserInfo> Database::getUser(const string& login) {
     result[4].length = &lengths[4];
 
     if (mysql_stmt_bind_result(stmt, result)) {
-        cerr << "mysql_stmt_bind_result failed: " << mysql_stmt_error(stmt) << "\n";
         mysql_stmt_close(stmt);
         return nullopt;
     }
@@ -137,10 +113,7 @@ optional<UserInfo> Database::getUser(const string& login) {
 }
 
 int Database::createUser(const string& login, const string& fullname, const string& role) {
-    if (!conn) {
-        cerr << "Database not connected\n";
-        return -1;
-    }
+    if (!conn) return -1;
 
     string query = "INSERT INTO users (login, fullname, role, is_blocked) VALUES (?, ?, ?, 0)";
 
@@ -148,7 +121,6 @@ int Database::createUser(const string& login, const string& fullname, const stri
     if (!stmt) return -1;
 
     if (mysql_stmt_prepare(stmt, query.c_str(), query.size())) {
-        cerr << "prepare failed: " << mysql_stmt_error(stmt) << "\n";
         mysql_stmt_close(stmt);
         return -1;
     }
@@ -167,13 +139,11 @@ int Database::createUser(const string& login, const string& fullname, const stri
     bind[2].buffer_length = role.size();
 
     if (mysql_stmt_bind_param(stmt, bind)) {
-        cerr << "bind_param failed: " << mysql_stmt_error(stmt) << "\n";
         mysql_stmt_close(stmt);
         return -1;
     }
 
     if (mysql_stmt_execute(stmt)) {
-        cerr << "execute failed: " << mysql_stmt_error(stmt) << "\n";
         mysql_stmt_close(stmt);
         return -1;
     }
@@ -184,19 +154,14 @@ int Database::createUser(const string& login, const string& fullname, const stri
 }
 
 bool Database::updateUser(const UserInfo& user) {
-    if (!conn) {
-        cerr << "Database not connected\n";
-        return false;
-    }
+    if (!conn) return false;
 
-    string query = "UPDATE users SET fullname = ?, role = ?, is_blocked = ? "
-                   "WHERE id = ?";
+    string query = "UPDATE users SET fullname = ?, role = ?, is_blocked = ? WHERE id = ?";
 
     MYSQL_STMT* stmt = mysql_stmt_init(conn);
     if (!stmt) return false;
 
     if (mysql_stmt_prepare(stmt, query.c_str(), query.size())) {
-        cerr << "prepare failed: " << mysql_stmt_error(stmt) << "\n";
         mysql_stmt_close(stmt);
         return false;
     }
@@ -219,13 +184,11 @@ bool Database::updateUser(const UserInfo& user) {
     bind[3].buffer = const_cast<int*>(&user.id);
 
     if (mysql_stmt_bind_param(stmt, bind)) {
-        cerr << "bind_param failed: " << mysql_stmt_error(stmt) << "\n";
         mysql_stmt_close(stmt);
         return false;
     }
 
     if (mysql_stmt_execute(stmt)) {
-        cerr << "execute failed: " << mysql_stmt_error(stmt) << "\n";
         mysql_stmt_close(stmt);
         return false;
     }
