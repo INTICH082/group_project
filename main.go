@@ -9,48 +9,65 @@ import (
 )
 
 func main() {
-	InitDB() // Инициализация из database.go
+	// 1. Инициализация БД (функция должна быть в database.go)
+	InitDB()
 
+	// 2. Создаем стандартный маршрутизатор
 	mux := http.NewServeMux()
 
-	// Настройка маршрутов
+	// --- МАРШРУТЫ ---
+	// Студенческие эндпоинты
 	mux.HandleFunc("/questions", CheckAuth(getQuestions))
 	mux.HandleFunc("/submit", CheckAuth(submitAnswer))
+
+	// Учительские эндпоинты (с проверкой ролей)
 	mux.HandleFunc("/teacher/create", CheckAuthAndRole([]string{"teacher", "admin"}, createQuestion))
 	mux.HandleFunc("/teacher/delete", CheckAuthAndRole([]string{"teacher", "admin"}, deleteQuestionHandler))
+
+	// 3. Настройка порта
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8080"
 	}
 
-	log.Printf("Server starting on port %s", port)
-	// Оборачиваем mux в CORS для работы с фронтендом
-	log.Fatal(http.ListenAndServe(":"+port, corsMiddleware(mux)))
+	// 4. Запуск сервера с CORS middleware
+	// Важно: corsMiddleware должен оборачивать mux, чтобы обрабатывать OPTIONS запросы до аутентификации
+	log.Printf("🚀 Server starting on port %s", port)
+	err := http.ListenAndServe(":"+port, corsMiddleware(mux))
+	if err != nil {
+		log.Fatal("❌ Server failed to start: ", err)
+	}
 }
 
 // --- MIDDLEWARE ---
 
+// corsMiddleware исправляет проблемы доступа с фронтенда (браузеров)
 func corsMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Разрешаем доступ всем (можно заменить на конкретный домен позже)
 		w.Header().Set("Access-Control-Allow-Origin", "*")
-		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+		// Добавляем DELETE в список разрешенных методов
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS")
+		// Разрешаем заголовки, важные для JWT и JSON
 		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+
+		// Если браузер спрашивает разрешение (preflight), отвечаем 200 OK
 		if r.Method == "OPTIONS" {
 			w.WriteHeader(http.StatusOK)
 			return
 		}
+
 		next.ServeHTTP(w, r)
 	})
 }
 
-// --- HANDLERS ---
+// --- HANDLERS (Обработчики) ---
 
 func getQuestions(w http.ResponseWriter, r *http.Request) {
-	// Безопасное извлечение ID курса
 	val := r.Context().Value("course_id")
 	courseID, ok := val.(int)
 	if !ok {
-		http.Error(w, "Invalid course ID in context", http.StatusBadRequest)
+		http.Error(w, "Invalid course ID", http.StatusBadRequest)
 		return
 	}
 
@@ -74,12 +91,8 @@ func submitAnswer(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Извлекаем данные из контекста с проверкой типа
-	uVal := r.Context().Value("user_id")
-	cVal := r.Context().Value("course_id")
-
-	userID, okU := uVal.(int)
-	courseID, okC := cVal.(int)
+	userID, okU := r.Context().Value("user_id").(int)
+	courseID, okC := r.Context().Value("course_id").(int)
 
 	if !okU || !okC {
 		http.Error(w, "Auth data missing", http.StatusUnauthorized)
@@ -92,7 +105,6 @@ func submitAnswer(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
 	fmt.Fprint(w, `{"status":"success"}`)
 }
 
@@ -107,15 +119,12 @@ func createQuestion(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Достаем course_id из токена учителя
-	val := r.Context().Value("course_id")
-	courseID, ok := val.(int)
+	courseID, ok := r.Context().Value("course_id").(int)
 	if !ok {
-		http.Error(w, "Course ID missing in token", http.StatusUnauthorized)
+		http.Error(w, "Course ID missing", http.StatusUnauthorized)
 		return
 	}
 
-	// Вызываем обновленную функцию
 	id, err := CreateQuestion(courseID, req.Text, req.Options, req.Correct)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -124,25 +133,27 @@ func createQuestion(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
-	fmt.Fprintf(w, `{"id": %d, "message": "Question created and linked to course %d"}`, id, courseID)
+	fmt.Fprintf(w, `{"id": %d, "message": "Question created"}`, id)
 }
+
 func deleteQuestionHandler(w http.ResponseWriter, r *http.Request) {
-	// Достаем ID из параметров URL
 	idStr := r.URL.Query().Get("id")
 	if idStr == "" {
-		http.Error(w, "Укажите ID вопроса", http.StatusBadRequest)
+		http.Error(w, "ID missing", http.StatusBadRequest)
 		return
 	}
 
 	var id int
-	fmt.Sscanf(idStr, "%d", &id)
+	if _, err := fmt.Sscanf(idStr, "%d", &id); err != nil {
+		http.Error(w, "Invalid ID format", http.StatusBadRequest)
+		return
+	}
 
-	err := DeleteQuestion(id)
-	if err != nil {
+	if err := DeleteQuestion(id); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	w.WriteHeader(http.StatusOK)
+	w.Header().Set("Content-Type", "application/json")
 	fmt.Fprintf(w, `{"message": "Question %d deleted"}`, id)
 }
