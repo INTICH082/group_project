@@ -13,6 +13,7 @@ RUN pip install --no-cache-dir --upgrade pip && \
 # Копируем код бота и .env
 COPY bot.py .
 COPY .env ./.env
+#Теперь .env
 
 # Создаем не-root пользователя
 RUN adduser -D -u 1000 botuser && \
