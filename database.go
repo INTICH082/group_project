@@ -37,22 +37,32 @@ func InitDB() {
 
 // --- ЛОГИКА ВОПРОСОВ (ВЕРСИОННОСТЬ) ---
 
-func CreateQuestion(text string, options []string, correct int, authorID int) (int, error) {
-	optionsJSON, _ := json.Marshal(options)
-
-	// Находим следующий свободный ID для группы версий
-	var nextID int
-	err := db.QueryRow("SELECT COALESCE(MAX(id), 0) + 1 FROM questions").Scan(&nextID)
+func CreateQuestion(title string, text string, options []string, correct int, authorID int) (int, error) {
+	optionsJSON, err := json.Marshal(options)
 	if err != nil {
+		return 0, fmt.Errorf("marshal options: %v", err)
+	}
+
+	// Используем COALESCE, чтобы если таблица пуста, вернулся 1, а не ошибка
+	var nextID int
+	queryID := "SELECT COALESCE(MAX(id), 0) + 1 FROM questions"
+	err = db.QueryRow(queryID).Scan(&nextID)
+	if err != nil {
+		log.Printf("QueryRow MAX(id) error: %v", err)
 		return 0, err
 	}
 
-	query := `INSERT INTO questions (id, version, text, options, correct_option, author_id) 
-              VALUES ($1, 1, $2, $3, $4, $5) RETURNING id`
+	// ВАЖНО: Добавил поле title, так как оно есть в твоем списке колонок!
+	query := `INSERT INTO questions (id, version, title, text, options, correct_option, author_id) 
+              VALUES ($1, 1, $2, $3, $4, $5, $6) RETURNING id`
 
 	var id int
-	err = db.QueryRow(query, nextID, text, optionsJSON, correct, authorID).Scan(&id)
-	return id, err
+	err = db.QueryRow(query, nextID, title, text, optionsJSON, correct, authorID).Scan(&id)
+	if err != nil {
+		log.Printf("Insert question error: %v", err)
+		return 0, err
+	}
+	return id, nil
 }
 
 func UpdateQuestion(questionID int, text string, options []string, correct int) error {

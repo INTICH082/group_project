@@ -26,6 +26,7 @@ type MyCustomClaims struct {
 // --- СТРУКТУРЫ ДЛЯ ПРИЕМА JSON (DTO) ---
 
 type CreateQuestionRequest struct {
+	Title         string   `json:"title"` // Добавили заголовок
 	Text          string   `json:"text"`
 	Options       []string `json:"options"`
 	CorrectOption int      `json:"correct_option"`
@@ -104,7 +105,7 @@ func CreateQuestionHandler(w http.ResponseWriter, r *http.Request) {
 
 	authorID, _ := strconv.Atoi(r.Header.Get("X-User-ID"))
 
-	id, err := CreateQuestion(req.Text, req.Options, req.CorrectOption, authorID)
+	id, err := CreateQuestion(req.Title, req.Text, req.Options, req.CorrectOption, authorID)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
