@@ -312,10 +312,13 @@ async def main():
         await call.answer()
 
     # ---------- UNKNOWN ----------
-    @dp.message()
+    @dp.message(~Command())
     async def unknown(message: types.Message):
-        if message.text.startswith("/"):
-            await message.reply("❓ Неизвестная команда. Используйте /help")
+        await message.reply(
+            "❓ <b>Неизвестная команда</b>\n\n"
+            "Используйте /help для списка доступных команд.",
+            parse_mode="HTML"
+        )
 
     logger.info("🤖 Бот запущен")
     await dp.start_polling(bot)
