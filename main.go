@@ -37,7 +37,39 @@ type AnswerRequest struct {
 }
 
 // --- MIDDLEWARE ---
+type CreateTestRequest struct {
+	CourseID    int    `json:"course_id"`
+	Name        string `json:"name"`
+	QuestionIDs []int  `json:"question_ids"`
+}
 
+func CreateTestHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Use POST", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var req CreateTestRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Bad JSON", http.StatusBadRequest)
+		return
+	}
+
+	// Проверяем, что массив вопросов не пустой
+	if len(req.QuestionIDs) == 0 {
+		http.Error(w, "No questions provided", http.StatusBadRequest)
+		return
+	}
+
+	id, err := CreateTest(req.CourseID, req.Name, req.QuestionIDs)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusCreated)
+	json.NewEncoder(w).Encode(map[string]int{"test_id": id})
+}
 func AuthMiddleware(requiredPermission string) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -175,6 +207,7 @@ func main() {
 	// 3. Ресурс: Ответы
 	// Сохранение/изменение ответа: доступ для того, кто проходит тест [ТЗ: 673]
 	mux.HandleFunc("/test/answer", HasPermission("", SubmitAnswerHandler))
+	mux.HandleFunc("/teacher/test/create", HasPermission("course:test:add", CreateTestHandler))
 
 	// 4. Служебные эндпоинты
 	mux.HandleFunc("/ping", func(w http.ResponseWriter, r *http.Request) {

@@ -8,6 +8,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/lib/pq"
 	_ "github.com/lib/pq"
 )
 
@@ -140,4 +141,15 @@ func SubmitAnswer(attemptID int, questionID int, selectedOption int) error {
                        WHERE attempt_id = $2 AND question_id = $3`,
 		selectedOption, attemptID, questionID)
 	return err
+}
+func CreateTest(courseID int, name string, questionIDs []int) (int, error) {
+	// Превращаем массив интов в формат Postgres для вставки
+	query := `INSERT INTO tests (course_id, name, question_ids, is_active) 
+              VALUES ($1, $2, $3) RETURNING id`
+
+	var id int
+	// Используем pq.Array для записи среза Go в массив Postgres
+	// Не забудь импорт "github.com/lib/pq"
+	err := db.QueryRow(query, courseID, name, pq.Array(questionIDs)).Scan(&id)
+	return id, err
 }
