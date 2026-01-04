@@ -208,6 +208,7 @@ func main() {
 	// Сохранение/изменение ответа: доступ для того, кто проходит тест [ТЗ: 673]
 	mux.HandleFunc("/test/answer", HasPermission("", SubmitAnswerHandler))
 	mux.HandleFunc("/teacher/test/create", HasPermission("course:test:add", CreateTestHandler))
+	mux.HandleFunc("/test/finish", HasPermission("", FinishTestHandler))
 
 	// 4. Служебные эндпоинты
 	mux.HandleFunc("/ping", func(w http.ResponseWriter, r *http.Request) {
@@ -222,4 +223,23 @@ func main() {
 	if err := http.ListenAndServe(":8080", mux); err != nil {
 		log.Fatal(err)
 	}
+}
+func FinishTestHandler(w http.ResponseWriter, r *http.Request) {
+	attemptID, _ := strconv.Atoi(r.URL.Query().Get("attempt_id"))
+	if attemptID == 0 {
+		http.Error(w, "Missing attempt_id", http.StatusBadRequest)
+		return
+	}
+
+	score, err := FinishAttempt(attemptID)
+	if err != nil {
+		http.Error(w, "Could not finish test: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"status": "finished",
+		"score":  fmt.Sprintf("%.2f%%", score),
+	})
 }
