@@ -37,3 +37,24 @@ func CheckAuth(next http.HandlerFunc) http.HandlerFunc {
 		}
 	}
 }
+
+// Добавь это в auth.go
+func CheckAuthAndRole(allowedRoles []string, next http.HandlerFunc) http.HandlerFunc {
+	return CheckAuth(func(w http.ResponseWriter, r *http.Request) {
+		userRole := r.Context().Value("role").(string)
+
+		isAllowed := false
+		for _, role := range allowedRoles {
+			if role == userRole {
+				isAllowed = true
+				break
+			}
+		}
+
+		if !isAllowed {
+			http.Error(w, "Нет доступа для вашей роли", http.StatusForbidden)
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
+}
