@@ -83,22 +83,24 @@ func GetQuestionsByCourse(courseID int) ([]map[string]interface{}, error) {
 // SaveUserResult сохраняет балл пользователя за курс
 func SaveUserResult(userID int, courseID int, score int) error {
 	if db == nil {
-		return fmt.Errorf("соединение с БД не инициализировано")
+		log.Println("ОШИБКА: db is nil в SaveUserResult")
+		return fmt.Errorf("database connection is nil")
 	}
 
-	// SQL запрос для вставки или обновления (UPSERT)
-	// Если хочешь сохранять историю, просто убери ON CONFLICT и всё после него
 	query := `
 		INSERT INTO results (user_id, course_id, score, created_at) 
 		VALUES ($1, $2, $3, NOW())
 		ON CONFLICT (user_id, course_id) 
 		DO UPDATE SET score = EXCLUDED.score, created_at = NOW()`
 
+	// Используем Exec и ПРОВЕРЯЕМ только ошибку, не пытаясь брать возвращаемые значения
 	_, err := db.Exec(query, userID, courseID, score)
 	if err != nil {
-		log.Printf("DB Save Error (User: %d, Course: %d): %v", userID, courseID, err)
+		log.Printf("Ошибка выполнения UPSERT: %v", err)
+		return err
 	}
-	return err
+
+	return nil
 }
 
 // CreateQuestion добавляет новый вопрос в банк данных
