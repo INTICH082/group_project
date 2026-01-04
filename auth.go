@@ -3,12 +3,13 @@ package main
 import (
 	"context"
 	"net/http"
+	"os"
 	"strings"
 
 	"github.com/golang-jwt/jwt/v5"
 )
 
-var jwtSecret = []byte("my_secret_key_for_testing_only_do_not_use_in_production")
+var jwtSecret = []byte(os.Getenv("JWT_SECRET"))
 
 type Claims struct {
 	UserID int    `json:"user_id"`

@@ -1,0 +1,3 @@
+### 1. Получить вопросы курса (студент)
+GET http://localhost:8080/course/1/questions
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3Njc1NjY2MzYsInJvbGUiOiJzdHVkZW50IiwidXNlcl9pZCI6M30.pl-pHWhLiJpXwFRJe4ZTkhtK_td_l2ILPuUseqlZ2j0

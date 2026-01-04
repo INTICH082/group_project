@@ -4,22 +4,25 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 )
 
 func main() {
 	InitDB()
-
 	http.HandleFunc("/course/", CheckAuth(getCourseQuestions))
 	http.HandleFunc("/course/add-question/", CheckAuthAndRole([]string{"teacher", "admin"}, addQuestionToCourse))
 	http.HandleFunc("/answer", CheckAuth(checkAnswer))
 	http.HandleFunc("/question", CheckAuthAndRole([]string{"teacher", "admin"}, createQuestion))
 	http.HandleFunc("/user/", CheckAuthAndRole([]string{"admin"}, changeUserRole))
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080" // Локально останется 8080
+	}
 
-	port := ":8080"
-	log.Printf("Server started on http://localhost%s", port)
-	log.Fatal(http.ListenAndServe(port, nil))
+	log.Printf("Server started on port %s", port)
+	log.Fatal(http.ListenAndServe(":"+port, nil))
 }
 
 func getCourseQuestions(w http.ResponseWriter, r *http.Request) {

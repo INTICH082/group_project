@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"os"
 	"strings"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
@@ -13,8 +14,12 @@ import (
 var db *sql.DB
 
 func InitDB() {
-	// Для Windows - укажи свой пароль вместо "password"
-	connStr := "host=localhost port=5432 user=postgres password=7 dbname=main_module sslmode=disable"
+	// 1. Пытаемся взять URL из системы (для Render/Railway)
+	// 2. Если пусто — используем вашу новую строку от Neon
+	connStr := os.Getenv("DATABASE_URL")
+	if connStr == "" {
+		connStr = "postgresql://neondb_owner:npg_Sw1LVdo0JOpM@ep-soft-dust-adz0kss6-pooler.c-2.us-east-1.aws.neon.tech/neondb?sslmode=require"
+	}
 
 	var err error
 	db, err = sql.Open("pgx", connStr)
@@ -26,7 +31,7 @@ func InitDB() {
 		log.Fatalf("Database connection failed: %v", err)
 	}
 
-	log.Println("Connected to database successfully!")
+	log.Println("Connected to Neon Cloud Database successfully!")
 }
 
 func GetQuestionsForCourse(courseID int) ([]map[string]interface{}, error) {
