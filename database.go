@@ -143,13 +143,35 @@ func SubmitAnswer(attemptID int, questionID int, selectedOption int) error {
 	return err
 }
 func CreateTest(courseID int, name string, questionIDs []int) (int, error) {
-	// Превращаем массив интов в формат Postgres для вставки
-	query := `INSERT INTO tests (course_id, name, question_ids, is_active) 
-              VALUES ($1, $2, $3) RETURNING id`
+	// Мы перечисляем 4 колонки:
+	// 1. course_id
+	// 2. name
+	// 3. question_ids (массив в Postgres)
+	// 4. is_active (сразу ставим true)
+	// Поле id заполнится само (SERIAL), поле is_deleted по умолчанию false.
+
+	query := `
+		INSERT INTO tests (course_id, name, question_ids, is_active) 
+		VALUES ($1, $2, $3, $4) 
+		RETURNING id`
 
 	var id int
-	// Используем pq.Array для записи среза Go в массив Postgres
-	// Не забудь импорт "github.com/lib/pq"
-	err := db.QueryRow(query, courseID, name, pq.Array(questionIDs)).Scan(&id)
-	return id, err
+
+	// Передаем ровно 4 аргумента для 4 колонок:
+	err := db.QueryRow(
+		query,
+		courseID,              // $1
+		name,                  // $2
+		pq.Array(questionIDs), // $3 (превращает []int в {1,2,3} для Postgres)
+		true,                  // $4
+	).Scan(&id)
+
+	if err != nil {
+		// Логируем ошибку, чтобы её было видно в консоли Render
+		log.Printf("❌ Ошибка в CreateTest: %v", err)
+		return 0, err
+	}
+
+	log.Printf("✅ Тест успешно создан с ID: %d", id)
+	return id, nil
 }
