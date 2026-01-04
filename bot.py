@@ -222,7 +222,7 @@ async def main():
         for key in keys:
             user_id = redis_client.get(key)
             if user_id and int(user_id) == message.from_user.id:
-                token = key.decode().split(":", 1)[1]
+                token = key.split(":", 1)[1]
                 await message.reply(f"✅ Авторизация завершена! Токен: <code>{token}</code>", parse_mode='HTML')
                 await state.update_data(headers={"Authorization": f"Bearer {token}"})
                 found = True
