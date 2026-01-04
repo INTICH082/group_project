@@ -27,7 +27,7 @@ logger = logging.getLogger(__name__)
 # Глобальные настройки
 class Config:
     """Конфигурация бота"""
-    TELEGRAM_TOKEN: Optional[str] = "AAEuyq2Hq3gvwmf5nwX7gLA3hmJEpQOdzZU"
+    TELEGRAM_TOKEN: Optional[str] = None
     WEB_CLIENT_URL = "http://localhost:3000"
     CORE_API_URL = "http://core-service:8082"
     AUTH_API_URL = "http://auth-service:8081"
