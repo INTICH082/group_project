@@ -9,60 +9,31 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
-var jwtSecret = []byte(os.Getenv("JWT_SECRET"))
-
-type Claims struct {
-	UserID int    `json:"user_id"`
-	Role   string `json:"role"`
-	jwt.RegisteredClaims
-}
-
 func CheckAuth(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-
 		authHeader := r.Header.Get("Authorization")
 		if authHeader == "" {
-			http.Error(w, "Unauthorized: No token provided", http.StatusUnauthorized)
+			http.Error(w, "Missing token", http.StatusUnauthorized)
 			return
 		}
 
-		tokenStr := strings.Replace(authHeader, "Bearer ", "", 1)
+		tokenString := strings.TrimPrefix(authHeader, "Bearer ")
+		// Секрет берем из переменной окружения Render
+		secret := []byte(os.Getenv("JWT_SECRET"))
 
-		claims := &Claims{}
-		token, err := jwt.ParseWithClaims(tokenStr, claims, func(token *jwt.Token) (interface{}, error) {
-			return jwtSecret, nil
+		token, _ := jwt.Parse(tokenString, func(t *jwt.Token) (interface{}, error) {
+			return secret, nil
 		})
 
-		if err != nil || !token.Valid {
-			http.Error(w, "Unauthorized: Invalid token", http.StatusUnauthorized)
-			return
+		if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
+			// Вытаскиваем все данные
+			ctx := context.WithValue(r.Context(), "user_id", int(claims["user_id"].(float64)))
+			ctx = context.WithValue(ctx, "role", claims["role"].(string))
+			ctx = context.WithValue(ctx, "course_id", int(claims["course_id"].(float64)))
+
+			next.ServeHTTP(w, r.WithContext(ctx))
+		} else {
+			http.Error(w, "Invalid token", http.StatusUnauthorized)
 		}
-
-		ctx := context.WithValue(r.Context(), "user_id", claims.UserID)
-		ctx = context.WithValue(ctx, "user_role", claims.Role)
-		next.ServeHTTP(w, r.WithContext(ctx))
-	}
-}
-
-func CheckAuthAndRole(allowedRoles []string, next http.HandlerFunc) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		CheckAuth(func(w http.ResponseWriter, r *http.Request) {
-			userRole := r.Context().Value("user_role").(string)
-
-			isAllowed := false
-			for _, role := range allowedRoles {
-				if userRole == role {
-					isAllowed = true
-					break
-				}
-			}
-
-			if !isAllowed {
-				http.Error(w, "Forbidden: Insufficient permissions", http.StatusForbidden)
-				return
-			}
-
-			next.ServeHTTP(w, r)
-		}).ServeHTTP(w, r)
 	}
 }
