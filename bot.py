@@ -228,7 +228,7 @@ async def main():
                 found = True
                 break
         if not found:
-            await message.reply("❌ Сессия авторизации не найдена. Начните заново с /login", parse_mode='HTML')
+            await message.reply("Сессия авторизации не найдена. Начните заново с /login", parse_mode='HTML')
 
     @dp.message(Command("tests"))
     async def on_tests(message: types.Message, state: FSMContext):
@@ -236,7 +236,7 @@ async def main():
         data = await state.get_data()
         headers = data.get('headers')
         if not headers:
-            await message.reply("❌ Сначала авторизуйтесь через /login", parse_mode='HTML')
+            await message.reply("Сначала авторизуйтесь через /login", parse_mode='HTML')
             return
         async with aiohttp.ClientSession() as session:
             try:
@@ -263,7 +263,7 @@ async def main():
         data = await state.get_data()
         headers = data.get('headers')
         if not headers:
-            await message.reply("❌ Сначала авторизуйтесь через /login", parse_mode='HTML')
+            await message.reply("Сначала авторизуйтесь через /login", parse_mode='HTML')
             return
         args = message.text.split()
         if len(args) < 2:
