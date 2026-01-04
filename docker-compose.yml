@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   redis:
     image: redis:7-alpine
@@ -19,7 +17,7 @@ services:
       - REDIS_HOST=redis
     restart: unless-stopped
     env_file:
-      - .env  # Изменено на .env
+      - .env
 
 volumes:
   redis_data:
