@@ -1,4 +1,10 @@
-#include "jwt_utils.hpp"
+#ifdef _WIN32
+#define WIN32_LEAN_AND_MEAN
+#include <winsock2.h>
+#include <windows.h>
+#endif
+
+#include "jwt.hpp"
 #include "config.hpp"
 
 string create_access_token(const string& user_id, const string& secret) {

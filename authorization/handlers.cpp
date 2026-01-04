@@ -1,13 +1,20 @@
+#ifdef _WIN32
+#define WIN32_LEAN_AND_MEAN
+#include <winsock2.h>
+#include <windows.h>
+#endif
+
 #include "handlers.hpp"
 #include "config.hpp"
 #include "utils.hpp"
-#include "jwt_utils.hpp"
-#include "mongo_utils.hpp"
+#include "jwt.hpp"
+#include "mongo.hpp"
 #include <crow.h>
 
 using namespace std;
 
 void register_routes(crow::SimpleApp& app) {
+    init_mongo_ttl();
     CROW_ROUTE(app, "/login").methods(crow::HTTPMethod::Get)
     ([](const crow::request& req) {
         auto token_ptr = req.url_params.get("token");
@@ -53,9 +60,9 @@ void register_routes(crow::SimpleApp& app) {
 
         if (type == "code") {
             string code = random_string(6);
-            while (code.find_first_not_of("0123456789") != string::npos) {
-                code = random_string(6);
-            }
+            // делаем только цифры (если нужно строго 6 цифр)
+            code = string(6, '0') + code;
+            code = code.substr(code.size() - 6);
             state["code"] = code;
             state["provider"] = "code";
 
@@ -88,9 +95,10 @@ void register_routes(crow::SimpleApp& app) {
             return crow::response(400, "Неверный или истёкший state");
         }
 
-        json state = *state_opt;
+        json state = state_opt;
 
-        // Здесь в реальном проекте → обмен code на токен через HTTP POST
+        // TODO: здесь должен быть реальный обмен code на токен
+        // Пока оставляем заглушку с тестовым user_id
 
         string user_id = "user_" + random_string(12);
 
@@ -120,13 +128,14 @@ void register_routes(crow::SimpleApp& app) {
             return crow::response(404, "Состояние не найдено или истекло");
         }
 
-        json state = *state_opt;
-        crow::json::wvalue resp;
-        resp["status"] = state["status"].get<string>();
+        json state = state_opt;
 
-        if (state["status"] == "success") {
-            resp["access_token"] = state["access_token"];
-            resp["refresh_token"] = state["refresh_token"];
+        crow::json::wvalue resp;
+        resp["status"] = state["status"].get<std::string>();
+
+        if (state["status"].get<std::string>() == "success") {
+            resp["access_token"]  = state["access_token"].get<std::string>();
+            resp["refresh_token"] = state["refresh_token"].get<std::string>();
         }
 
         return crow::response(resp);

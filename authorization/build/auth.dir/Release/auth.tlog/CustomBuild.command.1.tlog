@@ -1,0 +1,10 @@
+^C:\USERS\KSK-SHOP\PROJECTS\GROUP_PROJECT\GROUP_PROJECT\AUTHORIZATION\CMAKELISTS.TXT
+setlocal
+"C:\Program Files\CMake\bin\cmake.exe" -SC:/Users/KSK-SHOP/projects/group_project/group_project/authorization -BC:/Users/KSK-SHOP/projects/group_project/group_project/authorization/build --check-stamp-file C:/Users/KSK-SHOP/projects/group_project/group_project/authorization/build/CMakeFiles/generate.stamp
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
