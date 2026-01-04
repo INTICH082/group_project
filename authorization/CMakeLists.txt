@@ -11,6 +11,7 @@ set(CURL_LIBRARIES "C:/Users/KSK-SHOP/projects/group_project/group_project/vcpkg
 
 # CURL из vcpkg (это работает)
 find_package(CURL REQUIRED)
+find_package(OpenSSL REQUIRED)
 
 include_directories(
     ${CURL_INCLUDE_DIRS}
@@ -19,6 +20,7 @@ include_directories(
     ${CMAKE_CURRENT_SOURCE_DIR}/Crow/include
     ${CMAKE_CURRENT_SOURCE_DIR}/jwt-cpp/include
     "C:/MySQL-8.0.35/mysql-8.0.35-winx64/include"
+    ${OPENSSL_INCLUDE_DIR}
 )
 
 add_executable(auth_server
@@ -36,4 +38,5 @@ target_link_libraries(auth_server
     mswsock
     ws2_32
     pthread
+    ${OPENSSL_LIBRARIES}
 )
