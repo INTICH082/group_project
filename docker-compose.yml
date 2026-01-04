@@ -1,0 +1,25 @@
+version: '3.8'
+
+services:
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+
+  telegram-bot:
+    build: .
+    container_name: telegram-bot
+    depends_on:
+      - redis
+    environment:
+      - REDIS_HOST=redis
+    restart: unless-stopped
+    env_file:
+      - .env.docker
+
+volumes:
+  redis_data:
