@@ -6,7 +6,6 @@ import (
 	"log"
 	"net/http"
 	"strconv"
-	"strings"
 
 	"github.com/golang-jwt/jwt/v5"
 )
@@ -39,53 +38,6 @@ type CreateTestRequest struct {
 
 type AnswerRequest struct {
 	Option int `json:"option"`
-}
-
-// --- MIDDLEWARE ---
-
-func HasPermission(requiredPermission string, next http.HandlerFunc) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		authHeader := r.Header.Get("Authorization")
-		if authHeader == "" {
-			http.Error(w, "Missing token", http.StatusUnauthorized)
-			return
-		}
-
-		tokenString := strings.TrimPrefix(authHeader, "Bearer ")
-		claims := &MyCustomClaims{}
-
-		token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
-			return jwtKey, nil
-		})
-
-		if err != nil || !token.Valid {
-			http.Error(w, "Invalid token", http.StatusUnauthorized)
-			return
-		}
-
-		if claims.IsBlocked {
-			w.WriteHeader(http.StatusTeapot)
-			fmt.Fprintf(w, "User is blocked")
-			return
-		}
-
-		if requiredPermission != "" {
-			hasPerm := false
-			for _, p := range claims.Permissions {
-				if p == requiredPermission {
-					hasPerm = true
-					break
-				}
-			}
-			if !hasPerm {
-				http.Error(w, "Forbidden: insufficient permissions", http.StatusForbidden)
-				return
-			}
-		}
-
-		r.Header.Set("X-User-ID", strconv.Itoa(claims.UserID))
-		next.ServeHTTP(w, r)
-	}
 }
 
 // --- ХЕНДЛЕРЫ ---
