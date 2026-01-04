@@ -11,25 +11,30 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
-// Секрет должен совпадать с секретом модуля авторизации
 var jwtKey = []byte("iplaygodotandclaimfun")
 
 // Структура токена согласно ТЗ
 type MyCustomClaims struct {
 	UserID      int      `json:"user_id"`
 	Role        string   `json:"role"`
-	Permissions []string `json:"permissions"` // Права: user:list:read, course:test:add и т.д.
-	IsBlocked   bool     `json:"is_blocked"`  // Флаг для ответа 418
+	Permissions []string `json:"permissions"`
+	IsBlocked   bool     `json:"is_blocked"`
 	jwt.RegisteredClaims
 }
 
-// --- СТРУКТУРЫ ДЛЯ ПРИЕМА JSON (DTO) ---
+// --- DTO СТРУКТУРЫ ---
 
 type CreateQuestionRequest struct {
-	Title         string   `json:"title"` // Добавили заголовок
+	Title         string   `json:"title"`
 	Text          string   `json:"text"`
 	Options       []string `json:"options"`
 	CorrectOption int      `json:"correct_option"`
+}
+
+type CreateTestRequest struct {
+	CourseID    int    `json:"course_id"`
+	Name        string `json:"name"`
+	QuestionIDs []int  `json:"question_ids"`
 }
 
 type AnswerRequest struct {
@@ -37,98 +42,55 @@ type AnswerRequest struct {
 }
 
 // --- MIDDLEWARE ---
-type CreateTestRequest struct {
-	CourseID    int    `json:"course_id"`
-	Name        string `json:"name"`
-	QuestionIDs []int  `json:"question_ids"`
-}
 
-func CreateTestHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.Error(w, "Use POST", http.StatusMethodNotAllowed)
-		return
-	}
+func HasPermission(requiredPermission string, next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		authHeader := r.Header.Get("Authorization")
+		if authHeader == "" {
+			http.Error(w, "Missing token", http.StatusUnauthorized)
+			return
+		}
 
-	var req CreateTestRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Bad JSON", http.StatusBadRequest)
-		return
-	}
+		tokenString := strings.TrimPrefix(authHeader, "Bearer ")
+		claims := &MyCustomClaims{}
 
-	// Проверяем, что массив вопросов не пустой
-	if len(req.QuestionIDs) == 0 {
-		http.Error(w, "No questions provided", http.StatusBadRequest)
-		return
-	}
-
-	id, err := CreateTest(req.CourseID, req.Name, req.QuestionIDs)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(map[string]int{"test_id": id})
-}
-func AuthMiddleware(requiredPermission string) func(http.Handler) http.Handler {
-	return func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			authHeader := r.Header.Get("Authorization")
-			if authHeader == "" {
-				http.Error(w, "Missing token", http.StatusUnauthorized)
-				return
-			}
-
-			tokenString := strings.TrimPrefix(authHeader, "Bearer ")
-			claims := &MyCustomClaims{}
-
-			token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
-				return jwtKey, nil
-			})
-
-			if err != nil || !token.Valid {
-				http.Error(w, "Invalid token", http.StatusUnauthorized)
-				return
-			}
-
-			// 1. Проверка на блокировку [ТЗ: ответ 418]
-			if claims.IsBlocked {
-				w.WriteHeader(http.StatusTeapot) // 418 I'm a teapot
-				fmt.Fprintf(w, "User is blocked")
-				return
-			}
-
-			// 2. Проверка прав (RBAC)
-			if requiredPermission != "" {
-				hasPerm := false
-				for _, p := range claims.Permissions {
-					if p == requiredPermission {
-						hasPerm = true
-						break
-					}
-				}
-				if !hasPerm {
-					http.Error(w, "Forbidden: insufficient permissions", http.StatusForbidden)
-					return
-				}
-			}
-
-			// Передаем UserID в заголовке для использования в хендлерах
-			r.Header.Set("X-User-ID", strconv.Itoa(claims.UserID))
-			next.ServeHTTP(w, r)
+		token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
+			return jwtKey, nil
 		})
+
+		if err != nil || !token.Valid {
+			http.Error(w, "Invalid token", http.StatusUnauthorized)
+			return
+		}
+
+		if claims.IsBlocked {
+			w.WriteHeader(http.StatusTeapot)
+			fmt.Fprintf(w, "User is blocked")
+			return
+		}
+
+		if requiredPermission != "" {
+			hasPerm := false
+			for _, p := range claims.Permissions {
+				if p == requiredPermission {
+					hasPerm = true
+					break
+				}
+			}
+			if !hasPerm {
+				http.Error(w, "Forbidden: insufficient permissions", http.StatusForbidden)
+				return
+			}
+		}
+
+		r.Header.Set("X-User-ID", strconv.Itoa(claims.UserID))
+		next.ServeHTTP(w, r)
 	}
 }
 
-// --- ОБРАБОТЧИКИ (HANDLERS) ---
+// --- ХЕНДЛЕРЫ ---
 
-// Создание вопроса (Преподаватель)
 func CreateQuestionHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.Error(w, "Use POST", http.StatusMethodNotAllowed)
-		return
-	}
-
 	var req CreateQuestionRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "Bad JSON", http.StatusBadRequest)
@@ -136,7 +98,6 @@ func CreateQuestionHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	authorID, _ := strconv.Atoi(r.Header.Get("X-User-ID"))
-
 	id, err := CreateQuestion(req.Title, req.Text, req.Options, req.CorrectOption, authorID)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -148,7 +109,24 @@ func CreateQuestionHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(map[string]int{"id": id})
 }
 
-// Старт теста (Студент)
+func CreateTestHandler(w http.ResponseWriter, r *http.Request) {
+	var req CreateTestRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Bad JSON", http.StatusBadRequest)
+		return
+	}
+
+	id, err := CreateTest(req.CourseID, req.Name, req.QuestionIDs)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	json.NewEncoder(w).Encode(map[string]int{"id": id})
+}
+
 func StartTestHandler(w http.ResponseWriter, r *http.Request) {
 	userID, _ := strconv.Atoi(r.Header.Get("X-User-ID"))
 	testID, _ := strconv.Atoi(r.URL.Query().Get("test_id"))
@@ -163,13 +141,7 @@ func StartTestHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(map[string]int{"attempt_id": attemptID})
 }
 
-// Отправка ответа (Студент)
 func SubmitAnswerHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.Error(w, "Use POST", http.StatusMethodNotAllowed)
-		return
-	}
-
 	attemptID, _ := strconv.Atoi(r.URL.Query().Get("attempt_id"))
 	questionID, _ := strconv.Atoi(r.URL.Query().Get("question_id"))
 
@@ -181,57 +153,18 @@ func SubmitAnswerHandler(w http.ResponseWriter, r *http.Request) {
 
 	err := SubmitAnswer(attemptID, questionID, req.Option)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusForbidden)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	fmt.Fprint(w, "OK")
 }
 
-func main() {
-	// Инициализируем БД (функция из database.go)
-	InitDB()
-
-	mux := http.NewServeMux()
-
-	// --- МАРШРУТЫ СОГЛАСНО ТЗ ---
-
-	// 1. Ресурс: Вопросы
-	// Создание вопроса: доступ только с разрешением "course:test:add" [ТЗ: 618]
-	mux.HandleFunc("/teacher/question/create", HasPermission("course:test:add", CreateQuestionHandler))
-
-	// 2. Ресурс: Тесты / Попытки
-	// Старт теста: доступ по умолчанию для любого авторизованного ("") [ТЗ: 662]
-	mux.HandleFunc("/test/start", HasPermission("", StartTestHandler))
-
-	mux.HandleFunc("/test/answer", HasPermission("", SubmitAnswerHandler))
-	mux.HandleFunc("/teacher/test/create", HasPermission("course:test:add", CreateTestHandler))
-	mux.HandleFunc("/test/finish", HasPermission("", FinishTestHandler))
-
-	// 4. Служебные эндпоинты
-	mux.HandleFunc("/ping", func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprint(w, "pong")
-	})
-
-	// --- ЗАПУСК ---
-
-	// Обернем весь mux в CORS middleware, если он у тебя был,
-	// чтобы фронтенд мог достучаться до API
-	log.Println("🚀 Main Module started on :8080")
-	if err := http.ListenAndServe(":8080", mux); err != nil {
-		log.Fatal(err)
-	}
-}
 func FinishTestHandler(w http.ResponseWriter, r *http.Request) {
 	attemptID, _ := strconv.Atoi(r.URL.Query().Get("attempt_id"))
-	if attemptID == 0 {
-		http.Error(w, "Missing attempt_id", http.StatusBadRequest)
-		return
-	}
-
 	score, err := FinishAttempt(attemptID)
 	if err != nil {
-		http.Error(w, "Could not finish test: "+err.Error(), http.StatusInternalServerError)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
@@ -240,4 +173,23 @@ func FinishTestHandler(w http.ResponseWriter, r *http.Request) {
 		"status": "finished",
 		"score":  fmt.Sprintf("%.2f%%", score),
 	})
+}
+
+func main() {
+	InitDB()
+	mux := http.NewServeMux()
+
+	// Учительские ручки
+	mux.HandleFunc("/teacher/question/create", HasPermission("course:test:add", CreateQuestionHandler))
+	mux.HandleFunc("/teacher/test/create", HasPermission("course:test:add", CreateTestHandler))
+
+	// Студенческие ручки
+	mux.HandleFunc("/test/start", HasPermission("", StartTestHandler))
+	mux.HandleFunc("/test/answer", HasPermission("", SubmitAnswerHandler))
+	mux.HandleFunc("/test/finish", HasPermission("", FinishTestHandler))
+
+	mux.HandleFunc("/ping", func(w http.ResponseWriter, r *http.Request) { fmt.Fprint(w, "pong") })
+
+	log.Println("🚀 Server started on :8080")
+	http.ListenAndServe(":8080", mux)
 }
