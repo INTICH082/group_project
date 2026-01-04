@@ -17,7 +17,7 @@ func main() {
 	mux.HandleFunc("/questions", CheckAuth(getQuestions))
 	mux.HandleFunc("/submit", CheckAuth(submitAnswer))
 	mux.HandleFunc("/teacher/create", CheckAuthAndRole([]string{"teacher", "admin"}, createQuestion))
-
+	mux.HandleFunc("/teacher/delete", CheckAuthAndRole([]string{"teacher", "admin"}, deleteQuestionHandler))
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8080"
@@ -125,4 +125,24 @@ func createQuestion(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
 	fmt.Fprintf(w, `{"id": %d, "message": "Question created and linked to course %d"}`, id, courseID)
+}
+func deleteQuestionHandler(w http.ResponseWriter, r *http.Request) {
+	// Достаем ID из параметров URL
+	idStr := r.URL.Query().Get("id")
+	if idStr == "" {
+		http.Error(w, "Укажите ID вопроса", http.StatusBadRequest)
+		return
+	}
+
+	var id int
+	fmt.Sscanf(idStr, "%d", &id)
+
+	err := DeleteQuestion(id)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	fmt.Fprintf(w, `{"message": "Question %d deleted"}`, id)
 }

@@ -155,3 +155,27 @@ func CreateQuestion(courseID int, text string, options []string, correctAnswer i
 	log.Printf("Вопрос создан с ID %d и привязан к курсу %d", lastID, courseID)
 	return lastID, nil
 }
+func DeleteQuestion(questionID int) error {
+	if db == nil {
+		return fmt.Errorf("соединение с БД не инициализировано")
+	}
+
+	// Благодаря ON DELETE CASCADE в базе,
+	// связи в таблице course_questions удалятся автоматически
+	query := `DELETE FROM questions WHERE id = $1`
+
+	result, err := db.Exec(query, questionID)
+	if err != nil {
+		log.Printf("Ошибка удаления вопроса %d: %v", questionID, err)
+		return err
+	}
+
+	// Проверяем, было ли что-то удалено (существовал ли такой ID)
+	rowsAffected, _ := result.RowsAffected()
+	if rowsAffected == 0 {
+		return fmt.Errorf("вопрос с ID %d не найден", questionID)
+	}
+
+	log.Printf("Вопрос %d успешно удален", questionID)
+	return nil
+}
