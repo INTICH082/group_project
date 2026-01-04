@@ -1,7 +1,7 @@
 import os
 import logging
 import asyncio
-from datetime import datetime
+from datetime import datetime, timezone  # Добавлен timezone для UTC
 from typing import Optional
 import uuid
 import redis
@@ -52,17 +52,18 @@ class SystemMonitor:
         }
 
         self.stats = {
-            'start_time': datetime.now(),
+            'start_time': datetime.now(timezone.utc),  # Используем UTC для consistency
             'total_commands': 0,
             'active_users': set(),
         }
 
     def get_status(self) -> str:
         """Получить статус системы"""
+        now_utc = datetime.now(timezone.utc)
         lines = [
             "🖥️ *СТАТУС СИСТЕМЫ*",
-            f"Время: {datetime.now().strftime('%H:%M:%S')}",
-            f"Активна: {(datetime.now() - self.stats['start_time']).seconds // 60} мин",
+            f"Время (UTC): {now_utc.strftime('%H:%M:%S')}",
+            f"Активна: {(now_utc - self.stats['start_time']).seconds // 60} мин",
             "",
             "*Сервисы:*"
         ]
@@ -98,17 +99,17 @@ class SystemMonitor:
         return "\n".join(lines)
 
     def get_help(self) -> str:
-        """Получить справку"""
+        """Получить справку с списком доступных команд"""
         return """*ПОМОЩЬ ПО КОМАНДАМ*
-*Основные команды:*
+*Список доступных команд:*
 /start - Начало работы
 /status - Статус системы
 /services - Информация о сервисах
 /help - Эта справка
 /login - Авторизация
-/complete_login - Завершить авторизацию после веб-клиента
+/complete_login (или /completelogin) - Завершить авторизацию после веб-клиента
 /tests - Список доступных тестов (после авторизации)
-/start_test <test_id> - Начать тест (после авторизации)
+/start_test <test_id> (или /starttest <test_id>) - Начать тест (после авторизации)
 
 *Технические данные:*
 📊 PostgreSQL: `localhost:5432`
@@ -159,7 +160,7 @@ async def main():
 • Полное прохождение тестов
 • Уведомления
 
-*Основные команды:*
+*Список команд:*
 /start - Начало работы
 /status - Статус системы
 /services - Информация о сервисах
@@ -195,7 +196,7 @@ async def main():
 
     @dp.message(Command("help"))
     async def on_help(message: types.Message):
-        logger.info(f"Help command from user {message.from_user.id}")  # Добавлен дебаг-лог для отслеживания вызова
+        logger.info(f"Help command from user {message.from_user.id}")  # Дебаг-лог для отслеживания
         monitor.stats['total_commands'] += 1
         await message.reply(monitor.get_help(), parse_mode='Markdown')
 
@@ -213,7 +214,7 @@ async def main():
             parse_mode='Markdown'
         )
 
-    @dp.message(Command("complete_login"))
+    @dp.message(Command("complete_login", "completelogin"))  # Добавлен алиас без _
     async def on_complete_login(message: types.Message, state: FSMContext):
         logger.info(f"Complete login command from user {message.from_user.id}")  # Дебаг-лог
         args = message.text.split()
@@ -224,12 +225,12 @@ async def main():
         with redis.Redis(connection_pool=redis_pool) as r:
             user_id = r.get(f"auth_code:{code}")
             if not user_id or int(user_id) != message.from_user.id:
-                await message.reply("Неверный или истекший код.")
+                await message.reply("🚫 Вы не авторизованы. Начните с /login.")
                 return
             # Здесь предполагаем, что после веб-авторизации токен сохраняется в Redis
             token = r.get(f"auth_token:{user_id}")  # Пример: токен из веб
             if not token:
-                await message.reply("Авторизация не завершена в веб-клиенте.")
+                await message.reply("🚫 Вы не авторизованы. Завершите процесс в веб-клиенте.")
                 return
             await state.set_data({'token': token})  # Сохраняем в FSM
             r.delete(f"auth_code:{code}")
@@ -266,7 +267,7 @@ async def main():
                 logger.error(f"API error: {e}")
                 await message.reply("Ошибка соединения с Core API. Попробуйте позже.")
 
-    @dp.message(Command("start_test"))
+    @dp.message(Command("start_test", "starttest"))  # Добавлен алиас без _
     async def on_start_test(message: types.Message, state: FSMContext):
         logger.info(f"Start test command from user {message.from_user.id}")  # Дебаг-лог
         args = message.text.split()
