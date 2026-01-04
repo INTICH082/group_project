@@ -19,7 +19,7 @@ services:
       - REDIS_HOST=redis
     restart: unless-stopped
     env_file:
-      - .env.docker  # Если переименовали в .env, измените на .env
+      - .env  # Изменено на .env
 
 volumes:
   redis_data:
