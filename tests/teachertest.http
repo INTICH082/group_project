@@ -1,8 +1,8 @@
 ### 👨‍🏫 ПРЕПОДАВАТЕЛЬ: Создать новый вопрос
 ### Преподаватель имеет право создавать вопросы для своих курсов
-POST http://localhost:8080/question
+POST https://my-app-logic.onrender.com/question
 Content-Type: application/json
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3Njc1NjcyODMsInJvbGUiOiJ0ZWFjaGVyIiwidXNlcl9pZCI6Mn0.TgVBJ50AO1akZv6cUqUscs7FStL-5Lx78w1scWROADg
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3Njc2MjU1MzksInJvbGUiOiJzdHVkZW50IiwidXNlcl9pZCI6M30.mg9i-z0hgLpGvNycSQY_zKKPji2GvldMIOb3FZIsvcM
 
 {
   "text": "What is the capital of Germany?",
@@ -12,9 +12,9 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3Njc1NjcyO
 
 ### 📚 ПРЕПОДАВАТЕЛЬ: Добавить вопрос в курс Mathematics (ID=1)
 ### После создания вопроса его нужно добавить в конкретный курс
-POST http://localhost:8080/course/add-question/
+POST https://my-app-logic.onrender.com/course/add-question/
 Content-Type: application/json
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3Njc1NjcyODMsInJvbGUiOiJ0ZWFjaGVyIiwidXNlcl9pZCI6Mn0.TgVBJ50AO1akZv6cUqUscs7FStL-5Lx78w1scWROADg
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3Njc2MjU1MzksInJvbGUiOiJzdHVkZW50IiwidXNlcl9pZCI6M30.mg9i-z0hgLpGvNycSQY_zKKPji2GvldMIOb3FZIsvcM
 
 {
   "course_id": 1,
@@ -23,14 +23,14 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3Njc1NjcyO
 
 ### 🔍 ПРЕПОДАВАТЕЛЬ: Проверить, что вопрос добавлен в курс
 ### Преподаватель может просматривать все вопросы своего курса
-GET http://localhost:8080/course/1/questions
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3Njc1NjcyODMsInJvbGUiOiJ0ZWFjaGVyIiwidXNlcl9pZCI6Mn0.TgVBJ50AO1akZv6cUqUscs7FStL-5Lx78w1scWROADg
+GET https://my-app-logic.onrender.com/course/1/questions
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3Njc2MjU1MzksInJvbGUiOiJzdHVkZW50IiwidXNlcl9pZCI6M30.mg9i-z0hgLpGvNycSQY_zKKPji2GvldMIOb3FZIsvcM
 
 ### 🚫 ПРЕПОДАВАТЕЛЬ: Попытка сменить роль студента (должна быть ошибка 403)
 ### Преподаватель не может менять роли пользователей - это право только админа
-PUT http://localhost:8080/user/3/role
+PUT https://my-app-logic.onrender.com/user/3/role
 Content-Type: application/json
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3Njc1NjcyODMsInJvbGUiOiJ0ZWFjaGVyIiwidXNlcl9pZCI6Mn0.TgVBJ50AO1akZv6cUqUscs7FStL-5Lx78w1scWROADg
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3Njc2MjU1MzksInJvbGUiOiJzdHVkZW50IiwidXNlcl9pZCI6M30.mg9i-z0hgLpGvNycSQY_zKKPji2GvldMIOb3FZIsvcM
 
 {
   "role": "admin"

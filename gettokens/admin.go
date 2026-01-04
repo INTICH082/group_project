@@ -9,7 +9,7 @@ import (
 
 func main() {
 	// ТОЧНО ТОТ ЖЕ СЕКРЕТ, ЧТО В auth.go
-	jwtSecret := []byte("my_secret_key_for_testing_only_do_not_use_in_production")
+	jwtSecret := []byte("iplaygodotandclaimfun")
 
 	claims := jwt.MapClaims{
 		"user_id": 1,                                     // ID админа из тестовых данных
