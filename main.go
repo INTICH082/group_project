@@ -9,21 +9,52 @@ import (
 	"strings"
 )
 
+// CORS Middleware: Разрешает браузерам (JS) делать запросы к твоему API
+func corsMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Разрешаем доступ с любых доменов (*)
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		// Разрешаем стандартные методы HTTP
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+		// Разрешаем передачу заголовков Content-Type и Authorization (для JWT)
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+
+		// Если это предзапрос OPTIONS от браузера, сразу отвечаем 200 OK
+		if r.Method == "OPTIONS" {
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+
+		next.ServeHTTP(w, r)
+	})
+}
+
 func main() {
 	InitDB()
-	http.HandleFunc("/course/", CheckAuth(getCourseQuestions))
-	http.HandleFunc("/course/add-question/", CheckAuthAndRole([]string{"teacher", "admin"}, addQuestionToCourse))
-	http.HandleFunc("/answer", CheckAuth(checkAnswer))
-	http.HandleFunc("/question", CheckAuthAndRole([]string{"teacher", "admin"}, createQuestion))
-	http.HandleFunc("/user/", CheckAuthAndRole([]string{"admin"}, changeUserRole))
+
+	// Используем ServeMux для более удобного управления маршрутами
+	mux := http.NewServeMux()
+
+	// Регистрация маршрутов
+	mux.HandleFunc("/course/", CheckAuth(getCourseQuestions))
+	mux.HandleFunc("/course/add-question/", CheckAuthAndRole([]string{"teacher", "admin"}, addQuestionToCourse))
+	mux.HandleFunc("/answer", CheckAuth(checkAnswer))
+	mux.HandleFunc("/question", CheckAuthAndRole([]string{"teacher", "admin"}, createQuestion))
+	mux.HandleFunc("/user/", CheckAuthAndRole([]string{"admin"}, changeUserRole))
+
+	// Получаем порт от Render или используем 8080 локально
 	port := os.Getenv("PORT")
 	if port == "" {
-		port = "8080" // Локально останется 8080
+		port = "8080"
 	}
 
 	log.Printf("Server started on port %s", port)
-	log.Fatal(http.ListenAndServe(":"+port, nil))
+
+	// Оборачиваем весь наш mux (роутер) в CORS Middleware
+	log.Fatal(http.ListenAndServe(":"+port, corsMiddleware(mux)))
 }
+
+// --- Обработчики (Handlers) ---
 
 func getCourseQuestions(w http.ResponseWriter, r *http.Request) {
 	pathParts := strings.Split(r.URL.Path, "/")
