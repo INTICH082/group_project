@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Авторизация</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Авторизация</h1>
+        
+        <!-- Обычная форма -->
+        <form id="loginForm">
+            <label for="login">Логин:</label>
+            <input type="text" id="login" name="login" required>
+            
+            <label for="password">Пароль:</label>
+            <input type="password" id="password" name="password" required>
+            
+            <button type="submit" class="primary-btn">Войти</button>
+        </form>
+        
+        <p id="errorMessage" style="color: red; display: none; margin-top: 10px;">
+            Заполните все поля!
+        </p>
+
+        <!-- Разделитель -->
+        <div class="separator">
+            <span>или</span>
+        </div>
+
+        <!-- Кнопки авторизации через сервисы -->
+        <div class="social-buttons">
+            <a href="https://github.com/login/oauth/authorize?client_id=Iv23li0example&redirect_uri=http://localhost&scope=user" 
+               class="social-btn github-btn" 
+               target="_blank">
+                <img src="img/github.png" 
+                     alt="GitHub" class="social-icon">
+                Войти через GitHub
+            </a>
+
+            <a href="https://oauth.yandex.ru/authorize?response_type=code&client_id=ваш_client_id_здесь" 
+               class="social-btn yandex-btn" 
+               target="_blank">
+                <img src="img/яндекс.png" 
+                     alt="Яндекс" class="social-icon">
+                Войти через Яндекс ID
+            </a>
+        </div>
+    </div>
+
+    <!-- Уведомление toast -->
+    <div id="toast" class="toast">
+        Вы успешно авторизировались под логином: <span id="username"></span>
+    </div>
+
+    <script src="java/script.js"></script>
+</body>
+</html>

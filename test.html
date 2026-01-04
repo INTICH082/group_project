@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Главная</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <!-- Верхняя панель -->
+    <header class="header">
+        <div class="header-content">
+            <button id="logoutBtn" class="header-btn">Выйти</button>
+            <button id="profileBtn" class="header-btn">Профиль</button>
+        </div>
+    </header>
+
+    <div class="container main-container">
+        <h1>Добро пожаловать!</h1>
+        <p id="welcomeText">Вы успешно вошли.</p>
+        
+        <button id="startTest" class="big-button">Пройти тест</button>
+    </div>
+
+    <!-- Модальное окно профиля -->
+    <div id="profileModal" class="modal">
+        <div class="modal-content">
+            <span id="closeModal" class="close">×</span>
+            <h2>Профиль пользователя</h2>
+            <p><strong>Логин:</strong> <span id="profileLogin"></span></p>
+            <p><strong>Пароль:</strong> <span id="profilePassword"></span></p>
+            <p><strong>Роль:</strong> <span id="profileRole">Пользователь</span></p>
+        </div>
+    </div>
+
+    <script src="java/script2.js"></script>
+</body>
+</html>
