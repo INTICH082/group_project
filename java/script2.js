@@ -29,7 +29,13 @@ window.addEventListener('click', (event) => {
         modal.style.display = 'none';
     }
 });
+ const jwtToken = localStorage.getItem('jwtToken');
+if (!jwtToken) {
+    window.location.href = 'index.html';  // Если нет токена — на вход
+}
 
+// В профиле добавь отображение токена (для дебага)
+document.getElementById('profileRole').insertAdjacentHTML('afterend', `<p><strong>JWT Токен:</strong> ${jwtToken}</p>`);
 // Выход
 document.getElementById('logoutBtn').addEventListener('click', () => {
     localStorage.removeItem('username');
@@ -37,8 +43,7 @@ document.getElementById('logoutBtn').addEventListener('click', () => {
     window.location.href = 'index.html';
 });
 
-// Кнопка теста
-document.getElementById('startTest').addEventListener('click', () => {
-    alert(`Тест запускается для пользователя: ${username}`);
-    // Позже здесь: window.location.href = 'quiz.html';
+// Кнопка "Пройти тест" → переход на quiz.html
+document.getElementById('startTest').addEventListener('click', function() {
+    window.location.href = 'quiz.html';
 });

@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Прохождение теста</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <header class="header">
+        <div class="header-content">
+            <button id="logoutBtn" class="header-btn">Выйти</button>
+            <button id="profileBtn" class="header-btn">Профиль</button>
+        </div>
+    </header>
+
+    <div class="container main-container">
+        <h1>Прохождение теста</h1>
+        <p>Вы вошли как: <strong id="usernameDisplay"></strong></p>
+
+        <label for="courseSelect">Выберите курс:</label>
+        <select id="courseSelect">
+            <option value="">— Выберите курс —</option>
+            <option value="1">Математика</option>
+            <option value="2">География</option>
+            <option value="3">Программирование</option>
+            <!-- Добавь больше, если друг скажет реальные ID -->
+        </select>
+
+        <button id="loadQuestions" class="big-button">Загрузить вопросы</button>
+
+        <div id="questionsContainer" style="margin-top: 30px;"></div>
+
+        <button id="submitAnswers" class="big-button" style="display:none; background:#28a745;">
+            Отправить ответы
+        </button>
+
+        <div id="resultContainer" style="margin-top: 20px; font-size: 18px; font-weight: bold;"></div>
+    </div>
+
+    <!-- Модальное окно профиля (как раньше) -->
+    <div id="profileModal" class="modal">
+        <div class="modal-content">
+            <span id="closeModal" class="close">×</span>
+            <h2>Профиль</h2>
+            <p><strong>Логин:</strong> <span id="profileLogin"></span></p>
+            <p><strong>Роль:</strong> student (пока фиксировано)</p>
+            <p><strong>Токен (для дебага):</strong><br>
+               <code id="profileToken" style="font-size:12px; word-break:break-all;"></code>
+            </p>
+        </div>
+    </div>
+
+    <script src="java/quiz.js"></script>
+</body>
+</html>
