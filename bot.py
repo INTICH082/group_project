@@ -77,7 +77,7 @@ class SystemMonitor:
             f"Команд выполнено: {self.stats['total_commands']}",
             f"Активных пользователей: {len(self.stats['active_users'])}",
             "",
-            f"🌐 Веб-интерфейс: {Config.WEB_CLIENT_URL}",
+            f"🌐 Веб\-интерфейс: {Config.WEB_CLIENT_URL}",
             f"🔧 API Core: {Config.CORE_API_URL}",
             f"🔐 API Auth: {Config.AUTH_API_URL}",
         ])
@@ -100,25 +100,29 @@ class SystemMonitor:
 
     def get_help(self) -> str:
         """Получить справку с списком доступных команд"""
-        return """*ПОМОЩЬ ПО КОМАНДАМ*
-*Список доступных команд:*
-/start - Начало работы
-/status - Статус системы
-/services - Информация о сервисах
-/help - Эта справка
-/login - Авторизация
-/complete_login (или /completelogin) - Завершить авторизацию после веб-клиента
-/tests - Список доступных тестов (после авторизации)
-/start_test \\<test_id\\> (или /starttest \\<test_id\\>) - Начать тест (после авторизации)
+        return """🤖 *ПОМОЩЬ И СПРАВКА*
 
-*Технические данные:*
-📊 PostgreSQL: `localhost:5432`
-🗄️ MongoDB: `localhost:27017`
-⚡ Redis: `localhost:6379`
+🚀 *Основные команды:*
+• /start \- Начать работу с ботом
+• /status \- Проверить статус системы
+• /services \- Детали о сервисах
+• /help \- Эта справка с командами
+• /login \- Начать процесс авторизации
+• /complete_login \- Завершить авторизацию (или /completelogin)
+• /tests \- Просмотреть список тестов (требует авторизации)
+• /start_test \<test_id\> \- Запустить тест (или /starttest \<test_id\>)
 
-🚧 *В РАЗРАБОТКЕ:* 
-• Полное прохождение тестов
-• Личный кабинет"""
+🔧 *Техническая информация:*
+• 📊 PostgreSQL: `localhost:5432`
+• 🗄️ MongoDB: `localhost:27017`
+• ⚡ Redis: `localhost:6379`
+
+🛠️ *Функции в разработке:*
+• Полное прохождение тестов с ответами
+• Личный кабинет пользователя
+• Уведомления о результатах
+
+Если возникли вопросы, используйте /status для проверки системы\!"""
 
 
 class TestStates(StatesGroup):
@@ -144,15 +148,15 @@ async def main():
         monitor.stats['total_commands'] += 1
         monitor.stats['active_users'].add(message.from_user.id)
 
-        welcome_msg = f"""👋 Привет, {message.from_user.first_name}!
+        welcome_msg = f"""👋 Привет, {message.from_user.first_name}\!
 
-🤖 Я - бот системы тестирования.
-Система находится в стадии активной разработки.
+🤖 Я \- бот системы тестирования\.
+Система находится в стадии активной разработки\.
 
 📊 *Что уже работает:*
 • Контейнеры Docker подняты
 • Базы данных запущены  
-• Веб-интерфейс доступен
+• Веб\-интерфейс доступен
 • API сервисы готовы
 • Базовая авторизация через веб
 
@@ -161,169 +165,132 @@ async def main():
 • Уведомления
 
 *Список команд:*
-/start - Начало работы
-/status - Статус системы
-/services - Информация о сервисах
-/help - Справка
-/login - Начать авторизацию
-/complete_login - Завершить авторизацию
-/tests - Список тестов
-/start_test \\<id\\> - Начать тест
+/start \- Начало работы
+/status \- Статус системы
+/services \- Информация о сервисах
+/help \- Справка
+/login \- Начать авторизацию
+/complete_login \- Завершить авторизацию
+/tests \- Список тестов
+/start_test \<id\> \- Начать тест
 
 🌐 *Ссылки:*
-• Веб-интерфейс: {Config.WEB_CLIENT_URL}
+• Веб\-интерфейс: {Config.WEB_CLIENT_URL}
 • API Core: {Config.CORE_API_URL}
 • API Auth: {Config.AUTH_API_URL}"""
 
         keyboard = InlineKeyboardMarkup(inline_keyboard=[
-            [InlineKeyboardButton(text='📊 Статус', callback_data='status')],
-            [InlineKeyboardButton(text='🔧 Сервисы', callback_data='services')],
-            [InlineKeyboardButton(text='🆘 Помощь', callback_data='help')],
-            [InlineKeyboardButton(text='🔐 Авторизация', callback_data='login')],
+            [InlineKeyboardButton(text="🖥️ Статус", callback_data="status")],
+            [InlineKeyboardButton(text="🔧 Сервисы", callback_data="services")],
+            [InlineKeyboardButton(text="❓ Помощь", callback_data="help")],
+            [InlineKeyboardButton(text="🔐 Авторизация", callback_data="login")],
         ])
 
-        await message.reply(welcome_msg, parse_mode='MarkdownV2')  # Изменено на V2
+        await message.reply(welcome_msg, parse_mode='MarkdownV2', reply_markup=keyboard)
 
     @dp.message(Command("status"))
     async def on_status(message: types.Message):
         monitor.stats['total_commands'] += 1
-        await message.reply(monitor.get_status(), parse_mode='MarkdownV2')  # V2
+        await message.reply(monitor.get_status(), parse_mode='MarkdownV2')
 
     @dp.message(Command("services"))
     async def on_services(message: types.Message):
         monitor.stats['total_commands'] += 1
-        await message.reply(monitor.get_services(), parse_mode='MarkdownV2')  # V2
+        await message.reply(monitor.get_services(), parse_mode='MarkdownV2')
 
     @dp.message(Command("help"))
     async def on_help(message: types.Message):
-        logger.info(f"Help command from user {message.from_user.id}")  # Дебаг-лог
         monitor.stats['total_commands'] += 1
-        await message.reply(monitor.get_help(), parse_mode='MarkdownV2')  # V2
+        await message.reply(monitor.get_help(), parse_mode='MarkdownV2')
 
     @dp.message(Command("login"))
     async def on_login(message: types.Message):
-        # Генерация кода авторизации
-        code = str(uuid.uuid4())[:8].upper()
-        user_id = message.from_user.id
-        with redis.Redis(connection_pool=redis_pool) as r:
-            r.setex(f"auth_code:{code}", 300, user_id)  # Храним 5 минут
+        monitor.stats['total_commands'] += 1
+        redis_client = redis.Redis(connection_pool=redis_pool)
+        session_id = str(uuid.uuid4())
+        redis_client.set(f"login:{session_id}", message.from_user.id, ex=600)
 
-        # Эскейпинг для MarkdownV2
-        escaped_code = code.replace('_', '\\_').replace('*', '\\*').replace('[', '\\[').replace(']', '\\]').replace('(',
-                                                                                                                    '\\(').replace(
-            ')', '\\)').replace('~', '\\~').replace('`', '\\`').replace('>', '\\>').replace('#', '\\#').replace('+',
-                                                                                                                '\\+').replace(
-            '-', '\\-').replace('=', '\\=').replace('|', '\\|').replace('{', '\\{').replace('}', '\\}').replace('.',
-                                                                                                                '\\.').replace(
-            '!', '\\!')
-        msg = f"🔐 Для авторизации перейдите в [веб\\-клиент]({Config.WEB_CLIENT_URL}/login)\n" \
-              f"Ваш код: `{escaped_code}`\n" \
-              f"После ввода кода в веб\\-клиенте используйте /complete\\_login \\<code\\> здесь\\."
+        auth_url = f"{Config.WEB_CLIENT_URL}/auth/telegram?session_id={session_id}"
+        msg = f"🔐 Для авторизации перейдите по ссылке:\n{auth_url}\n\nПосле авторизации в веб\-клиенте используйте /complete_login"
+        await message.reply(msg, parse_mode='MarkdownV2')
 
-        await message.reply(msg, parse_mode='MarkdownV2')  # V2 с эскейпингом
-
-    @dp.message(Command("complete_login", "completelogin"))  # Алиас без _
-    async def on_complete_login(message: types.Message, state: FSMContext):
-        logger.info(f"Complete login command from user {message.from_user.id}")  # Дебаг-лог
-        args = message.text.split()
-        if len(args) < 2:
-            await message.reply("Используйте: /complete_login \\<code\\>", parse_mode='MarkdownV2')
-            return
-        code = args[1]
-        with redis.Redis(connection_pool=redis_pool) as r:
-            user_id = r.get(f"auth_code:{code}")
-            if not user_id or int(user_id) != message.from_user.id:
-                await message.reply("🚫 Вы не авторизованы\\. Начните с /login\\.", parse_mode='MarkdownV2')
-                return
-            # Предполагаем, что токен из веб сохраняется в Redis
-            token = r.get(f"auth_token:{user_id}")
-            if not token:
-                await message.reply("🚫 Вы не авторизованы\\. Завершите процесс в веб\\-клиенте\\.",
-                                    parse_mode='MarkdownV2')
-                return
-            await state.set_data({'token': token})
-            r.delete(f"auth_code:{code}")
-        await message.reply("✅ Авторизация завершена\! Теперь доступны тесты\\.", parse_mode='MarkdownV2')
+    @dp.message(Command(commands=["complete_login", "completelogin"]))
+    async def on_complete_login(message: types.Message):
+        monitor.stats['total_commands'] += 1
+        redis_client = redis.Redis(connection_pool=redis_pool)
+        keys = redis_client.keys("auth_token:*")
+        found = False
+        for key in keys:
+            user_id = redis_client.get(key)
+            if user_id and int(user_id) == message.from_user.id:
+                token = key.decode().split(":", 1)[1]
+                await message.reply(f"✅ Авторизация завершена\! Токен: `{token}`", parse_mode='MarkdownV2')
+                found = True
+                break
+        if not found:
+            await message.reply("❌ Сессия авторизации не найдена\. Начните заново с /login", parse_mode='MarkdownV2')
 
     @dp.message(Command("tests"))
     async def on_tests(message: types.Message, state: FSMContext):
-        logger.info(f"Tests command from user {message.from_user.id}")
+        monitor.stats['total_commands'] += 1
         data = await state.get_data()
-        token = data.get('token')
-        if not token:
-            await message.reply("🚫 Вы не авторизованы\\. Используйте /login\\.", parse_mode='MarkdownV2')
+        headers = data.get('headers')
+        if not headers:
+            await message.reply("❌ Сначала авторизуйтесь через /login", parse_mode='MarkdownV2')
             return
-        headers = {'Authorization': f'Bearer {token}'}
         async with aiohttp.ClientSession() as session:
             try:
                 async with session.get(f"{Config.CORE_API_URL}/tests", headers=headers, timeout=5) as response:
-                    if response.status == 401:
-                        await message.reply("🚫 Вы не авторизованы\\.", parse_mode='MarkdownV2')
-                        return
                     if response.status != 200:
                         await message.reply(f"Ошибка: {response.status}", parse_mode='MarkdownV2')
                         return
                     tests = await response.json()
-                    if not tests:
-                        await message.reply("Нет доступных тестов\\.", parse_mode='MarkdownV2')
-                        return
-                    msg = "📝 Доступные тесты:\\n"
-                    for t in tests:
-                        msg += f"• {t['id']}: {t['name']}\\n"
-                    await message.reply(msg, parse_mode='MarkdownV2')
             except Exception as e:
                 logger.error(f"API error: {e}")
-                await message.reply("Ошибка соединения с Core API\\. Попробуйте позже\\.", parse_mode='MarkdownV2')
+                await message.reply("Ошибка соединения с Core API\. Попробуйте позже\.", parse_mode='MarkdownV2')
+                return
+        if not tests:
+            await message.reply("Нет доступных тестов\.", parse_mode='MarkdownV2')
+            return
+        msg = "📋 *Доступные тесты:*\n"
+        for test in tests:
+            msg += f"• ID: {test['id']} \- {test['title']}\n"
+        await message.reply(msg, parse_mode='MarkdownV2')
 
-    @dp.message(Command("start_test", "starttest"))  # Алиас без _
+    @dp.message(Command(commands=["start_test", "starttest"]))
     async def on_start_test(message: types.Message, state: FSMContext):
-        logger.info(f"Start test command from user {message.from_user.id}")
+        monitor.stats['total_commands'] += 1
+        data = await state.get_data()
+        headers = data.get('headers')
+        if not headers:
+            await message.reply("❌ Сначала авторизуйтесь через /login", parse_mode='MarkdownV2')
+            return
         args = message.text.split()
         if len(args) < 2:
-            await message.reply("Используйте: /start_test \\<test_id\\>", parse_mode='MarkdownV2')
+            await message.reply("Использование: /start_test <test_id>", parse_mode='MarkdownV2')
             return
         test_id = args[1]
-        data = await state.get_data()
-        token = data.get('token')
-        if not token:
-            await message.reply("🚫 Вы не авторизованы\\. Используйте /login\\.", parse_mode='MarkdownV2')
-            return
-        headers = {'Authorization': f'Bearer {token}'}
         async with aiohttp.ClientSession() as session:
             try:
-                async with session.post(f"{Config.CORE_API_URL}/tests/{test_id}/attempts", headers=headers,
-                                        timeout=5) as response:
-                    if response.status != 200:
+                async with session.post(f"{Config.CORE_API_URL}/attempts", json={"test_id": test_id}, headers=headers, timeout=5) as response:
+                    if response.status != 201:
                         await message.reply(f"Ошибка начала теста: {response.status}", parse_mode='MarkdownV2')
                         return
                     attempt = await response.json()
-                    attempt_id = attempt['id']
-                async with session.get(f"{Config.CORE_API_URL}/tests/{test_id}/questions", headers=headers,
-                                       timeout=5) as response:
-                    if response.status != 200:
-                        await message.reply(f"Ошибка получения вопросов: {response.status}", parse_mode='MarkdownV2')
-                        return
-                    questions = await response.json()
-                    if not questions:
-                        await message.reply("В тесте нет вопросов\\.", parse_mode='MarkdownV2')
-                        return
-                    questions.sort(key=lambda x: x['order_index'])
-                    question_ids = [q['question_id'] for q in questions]
             except Exception as e:
                 logger.error(f"API error: {e}")
-                await message.reply("Ошибка соединения с Core API\\. Попробуйте позже\\.", parse_mode='MarkdownV2')
+                await message.reply("Ошибка соединения с Core API\. Попробуйте позже\.", parse_mode='MarkdownV2')
                 return
-
         await state.set_state(TestStates.answering)
         await state.set_data({
-            'attempt_id': attempt_id,
-            'question_ids': question_ids,
+            'attempt_id': attempt['id'],
+            'question_ids': attempt['question_ids'],
             'current_index': 0,
             'headers': headers
         })
         await send_next_question(message, state)
 
-    async def send_next_question(message_or_callback: types.Message | types.CallbackQuery, state: FSMContext):
+    async def send_next_question(message_or_callback, state: FSMContext):
         data = await state.get_data()
         index = data['current_index']
         question_id = data['question_ids'][index]
@@ -340,7 +307,7 @@ async def main():
                     q = await response.json()
             except Exception as e:
                 logger.error(f"API error: {e}")
-                await message_or_callback.reply("Ошибка соединения с Core API\\. Попробуйте позже\\.",
+                await message_or_callback.reply("Ошибка соединения с Core API\. Попробуйте позже\.",
                                                 parse_mode='MarkdownV2')
                 await state.clear()
                 return
@@ -382,7 +349,7 @@ async def main():
                         return
             except Exception as e:
                 logger.error(f"API error: {e}")
-                await callback.message.reply("Ошибка соединения с Core API\\. Попробуйте позже\\.",
+                await callback.message.reply("Ошибка соединения с Core API\. Попробуйте позже\.",
                                              parse_mode='MarkdownV2')
                 await state.clear()
                 return
@@ -405,7 +372,7 @@ async def main():
                             await callback.message.reply(f"Тест завершен\! Результат: {score}", parse_mode='MarkdownV2')
                 except Exception as e:
                     logger.error(f"API error: {e}")
-                    await callback.message.reply("Ошибка соединения с Core API\\. Попробуйте позже\\.",
+                    await callback.message.reply("Ошибка соединения с Core API\. Попробуйте позже\.",
                                                  parse_mode='MarkdownV2')
             await state.clear()
         else:
@@ -428,7 +395,7 @@ async def main():
     @dp.message()
     async def on_unknown(message: types.Message):
         if message.text and message.text.startswith('/'):
-            await message.reply("❓ Неизвестная команда\\.\nИспользуйте /help для списка доступных команд\\.",
+            await message.reply("❓ Неизвестная команда\.\nИспользуйте /help для списка доступных команд\.",
                                 parse_mode='MarkdownV2')
 
     logger.info("🤖 Бот запущен. Нажмите Ctrl+C для остановки")
