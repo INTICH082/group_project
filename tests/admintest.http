@@ -1,7 +1,0 @@
-PUT https://my-app-logic.onrender.com/user/3/role
-Content-Type: application/json
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3Njc2MjM5OTksInJvbGUiOiJhZG1pbiIsInVzZXJfaWQiOjF9.muW5YHLtXSllg5S2NzhFzHfX69lMsJ82hPLxGUu17Hc
-
-{
-  "role": "teacher"
-}
