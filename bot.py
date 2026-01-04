@@ -110,7 +110,7 @@ class SystemMonitor:
 • /login - Начать процесс авторизации
 • /complete_login - Завершить авторизацию (или /completelogin)
 • /tests - Просмотреть список тестов (требует авторизации)
-• /start_test <test_id> - Запустить тест (или /starttest <test_id>)
+• /start_test &lt;test_id&gt; - Запустить тест (или /starttest &lt;test_id&gt;)
 
 🔧 <b>Техническая информация:</b>
 • 📊 PostgreSQL: <code>localhost:5432</code>
@@ -172,7 +172,7 @@ async def main():
 /login - Начать авторизацию
 /complete_login - Завершить авторизацию
 /tests - Список тестов
-/start_test <id> - Начать тест
+/start_test &lt;id&gt; - Начать тест
 
 🌐 <b>Ссылки:</b>
 • Веб-интерфейс: {Config.WEB_CLIENT_URL}
@@ -210,9 +210,6 @@ async def main():
         code = uuid.uuid4().hex[:8].upper()
         user_id = str(message.from_user.id)
         redis_client.set(f"login:{code}", user_id, ex=600)
-        # Симуляция удалена, чтобы соответствовать поведению на скриншоте (не найдена сессия без веб)
-        # Если нужно протестировать без веб, раскомментируйте следующую строку
-        # redis_client.set(f"auth_token:{code}", user_id, ex=3600)
         msg = f"Для авторизации введите пароль в бек-клиент. Ваш код: {code}. После ввода кода в бек-клиенте используйте /complete_login здесь."
         await message.reply(msg, parse_mode='HTML')
 
@@ -270,7 +267,7 @@ async def main():
             return
         args = message.text.split()
         if len(args) < 2:
-            await message.reply("Использование: /start_test <test_id>", parse_mode='HTML')
+            await message.reply("Использование: /start_test &lt;test_id&gt;", parse_mode='HTML')
             return
         test_id = args[1]
         async with aiohttp.ClientSession() as session:
