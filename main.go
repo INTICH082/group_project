@@ -204,8 +204,6 @@ func main() {
 	// Старт теста: доступ по умолчанию для любого авторизованного ("") [ТЗ: 662]
 	mux.HandleFunc("/test/start", HasPermission("", StartTestHandler))
 
-	// 3. Ресурс: Ответы
-	// Сохранение/изменение ответа: доступ для того, кто проходит тест [ТЗ: 673]
 	mux.HandleFunc("/test/answer", HasPermission("", SubmitAnswerHandler))
 	mux.HandleFunc("/teacher/test/create", HasPermission("course:test:add", CreateTestHandler))
 	mux.HandleFunc("/test/finish", HasPermission("", FinishTestHandler))

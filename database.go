@@ -129,18 +129,23 @@ func StartAttempt(userID int, testID int) (int, error) {
 
 // --- ЛОГИКА ОТВЕТОВ ---
 
-func SubmitAnswer(attemptID int, questionID int, selectedOption int) error {
-	// Проверяем, не завершена ли попытка
-	var status string
-	db.QueryRow("SELECT status FROM attempts WHERE id = $1", attemptID).Scan(&status)
-	if status == "completed" {
-		return fmt.Errorf("attempt already completed")
+func SubmitAnswer(attemptID, questionID, option int) error {
+	// 1. (Опционально) Тут может быть проверка, не завершена ли попытка
+	// Но главное — это шаг 2:
+
+	// 2. СОХРАНЕНИЕ ОТВЕТА (этого у тебя, скорее всего, не хватает)
+	query := `
+		INSERT INTO student_answers (attempt_id, question_id, selected_option)
+		VALUES ($1, $2, $3)
+		ON CONFLICT DO NOTHING` // Чтобы не дублировать, если студент нажал дважды
+
+	_, err := db.Exec(query, attemptID, questionID, option)
+	if err != nil {
+		log.Printf("❌ Ошибка записи ответа в БД: %v", err)
+		return err
 	}
 
-	_, err := db.Exec(`UPDATE user_answers SET selected_option = $1 
-                       WHERE attempt_id = $2 AND question_id = $3`,
-		selectedOption, attemptID, questionID)
-	return err
+	return nil
 }
 func CreateTest(courseID int, name string, questionIDs []int) (int, error) {
 	// Мы перечисляем 4 колонки:
@@ -200,4 +205,16 @@ func FinishAttempt(attemptID int) (float64, error) {
 		return 0, err
 	}
 	return score, nil
+}
+func SaveAnswer(attemptID, questionID, selectedOption int) error {
+	query := `
+		INSERT INTO student_answers (attempt_id, question_id, selected_option) 
+		VALUES ($1, $2, $3)`
+
+	_, err := db.Exec(query, attemptID, questionID, selectedOption)
+	if err != nil {
+		log.Printf("❌ Ошибка при сохранении ответа: %v", err)
+		return err
+	}
+	return nil
 }
