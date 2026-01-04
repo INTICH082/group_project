@@ -6,17 +6,17 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"time"
 
-	_ "github.com/lib/pq" // Драйвер для PostgreSQL
+	_ "github.com/lib/pq"
 )
 
 var db *sql.DB
 
-// InitDB подключается к Neon через переменную окружения
 func InitDB() {
 	connStr := os.Getenv("DATABASE_URL")
 	if connStr == "" {
-		log.Fatal("ОШИБКА: Переменная DATABASE_URL не установлена")
+		log.Fatal("ОШИБКА: DATABASE_URL не установлена")
 	}
 
 	var err error
@@ -25,14 +25,18 @@ func InitDB() {
 		log.Fatal("Ошибка конфигурации базы:", err)
 	}
 
-	// Проверка соединения
+	// --- ТВОИ НОВЫЕ НАСТРОЙКИ ДЛЯ СТАБИЛЬНОСТИ ---
+	db.SetMaxOpenConns(25)                 // Макс. кол-во активных соединений
+	db.SetMaxIdleConns(5)                  // Сколько держать "про запас"
+	db.SetConnMaxLifetime(5 * time.Minute) // Пересоздавать соединение каждые 5 мин
+	// ---------------------------------------------
+
 	if err = db.Ping(); err != nil {
 		log.Fatal("База недоступна:", err)
 	}
 	log.Println("--- Успешное подключение к Neon DB ---")
 }
 
-// GetQuestionsByCourse возвращает вопросы для конкретного курса
 func GetQuestionsByCourse(courseID int) ([]map[string]interface{}, error) {
 	if db == nil {
 		return nil, fmt.Errorf("соединение с БД не инициализировано")
@@ -42,16 +46,15 @@ func GetQuestionsByCourse(courseID int) ([]map[string]interface{}, error) {
 		SELECT q.id, q.text, q.options 
 		FROM questions q
 		JOIN course_questions cq ON q.id = cq.question_id
-		WHERE cq.course_id = $1`
+		WHERE cq.course_id = $1
+		ORDER BY q.id ASC` // Добавил сортировку, чтобы вопросы не прыгали
 
 	rows, err := db.Query(query, courseID)
 	if err != nil {
-		log.Printf("DB Query Error (courseID %d): %v", courseID, err)
 		return nil, err
 	}
 	defer rows.Close()
 
-	// Используем пустой срез вместо nil, чтобы JSON-ответ был [] вместо null
 	questions := []map[string]interface{}{}
 
 	for rows.Next() {
@@ -60,14 +63,15 @@ func GetQuestionsByCourse(courseID int) ([]map[string]interface{}, error) {
 		var optionsJSON []byte
 
 		if err := rows.Scan(&id, &text, &optionsJSON); err != nil {
-			log.Printf("Scan Error: %v", err)
 			continue
 		}
 
 		var options []string
-		if err := json.Unmarshal(optionsJSON, &options); err != nil {
-			log.Printf("JSON Unmarshal Error for ID %d: %v", id, err)
-			options = []string{"ошибка загрузки вариантов"}
+		// Проверка на пустой JSON или NULL
+		if len(optionsJSON) > 0 {
+			json.Unmarshal(optionsJSON, &options)
+		} else {
+			options = []string{}
 		}
 
 		questions = append(questions, map[string]interface{}{
@@ -80,10 +84,8 @@ func GetQuestionsByCourse(courseID int) ([]map[string]interface{}, error) {
 	return questions, nil
 }
 
-// SaveUserResult сохраняет балл пользователя за курс
 func SaveUserResult(userID int, courseID int, score int) error {
 	if db == nil {
-		log.Println("ОШИБКА: db is nil в SaveUserResult")
 		return fmt.Errorf("database connection is nil")
 	}
 
@@ -93,89 +95,57 @@ func SaveUserResult(userID int, courseID int, score int) error {
 		ON CONFLICT (user_id, course_id) 
 		DO UPDATE SET score = EXCLUDED.score, created_at = NOW()`
 
-	// Используем Exec и ПРОВЕРЯЕМ только ошибку, не пытаясь брать возвращаемые значения
 	_, err := db.Exec(query, userID, courseID, score)
-	if err != nil {
-		log.Printf("Ошибка выполнения UPSERT: %v", err)
-		return err
-	}
-
-	return nil
+	return err
 }
 
-// CreateQuestion добавляет новый вопрос в банк данных
 func CreateQuestion(courseID int, text string, options []string, correctAnswer int) (int, error) {
 	if db == nil {
 		return 0, fmt.Errorf("соединение с БД не инициализировано")
 	}
 
-	// 1. Кодируем варианты ответов в JSON
-	optionsJSON, err := json.Marshal(options)
-	if err != nil {
-		return 0, fmt.Errorf("ошибка маршалинга опций: %v", err)
-	}
+	optionsJSON, _ := json.Marshal(options)
 
-	// 2. Начинаем транзакцию, чтобы оба действия выполнились вместе
 	tx, err := db.Begin()
 	if err != nil {
-		return 0, fmt.Errorf("ошибка начала транзакции: %v", err)
+		return 0, err
 	}
-
-	// Функция отката (выполнится только если не было Commit)
 	defer tx.Rollback()
 
-	// 3. Вставляем сам вопрос
 	var lastID int
-	queryInsertQuestion := `
-		INSERT INTO questions (text, options, correct_answer) 
-		VALUES ($1, $2, $3) RETURNING id`
+	queryInsertQuestion := `INSERT INTO questions (text, options, correct_answer) VALUES ($1, $2, $3) RETURNING id`
 
 	err = tx.QueryRow(queryInsertQuestion, text, optionsJSON, correctAnswer).Scan(&lastID)
 	if err != nil {
-		log.Printf("DB Create Question Error: %v", err)
 		return 0, err
 	}
 
-	// 4. СРАЗУ привязываем этот вопрос к курсу в таблице-посреднике
-	queryLinkCourse := `
-		INSERT INTO course_questions (course_id, question_id) 
-		VALUES ($1, $2)`
-
+	queryLinkCourse := `INSERT INTO course_questions (course_id, question_id) VALUES ($1, $2)`
 	_, err = tx.Exec(queryLinkCourse, courseID, lastID)
 	if err != nil {
-		log.Printf("DB Link Course Error: %v", err)
 		return 0, err
 	}
 
-	// 5. Подтверждаем транзакцию — теперь данные реально сохранятся в обе таблицы
-	if err := tx.Commit(); err != nil {
-		return 0, fmt.Errorf("ошибка подтверждения транзакции: %v", err)
-	}
-
-	log.Printf("Вопрос создан с ID %d и привязан к курсу %d", lastID, courseID)
-	return lastID, nil
+	err = tx.Commit()
+	return lastID, err
 }
+
 func DeleteQuestion(questionID int) error {
 	if db == nil {
 		return fmt.Errorf("соединение с БД не инициализировано")
 	}
 
-	// Благодаря ON DELETE CASCADE в базе,
-	// связи в таблице course_questions удалятся автоматически
+	// Сначала проверяем, есть ли такой вопрос вообще (необязательно, но для чистоты логов ок)
 	query := `DELETE FROM questions WHERE id = $1`
-
 	result, err := db.Exec(query, questionID)
 	if err != nil {
-		log.Printf("Ошибка удаления вопроса %d: %v", questionID, err)
 		return err
 	}
 
-	// Проверяем, было ли что-то удалено (существовал ли такой ID)
 	rowsAffected, _ := result.RowsAffected()
 	if rowsAffected == 0 {
-		return fmt.Errorf("вопрос с ID %d не найден", questionID)
+		return fmt.Errorf("вопрос %d не найден", questionID)
 	}
 
-	log.Printf("Вопрос %d успешно удален", questionID)
 	return nil
 }
