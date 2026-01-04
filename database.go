@@ -178,24 +178,20 @@ func CreateTest(courseID int, name string, questionIDs []int) (int, error) {
 func FinishAttempt(attemptID int) (float64, error) {
 	var score float64
 
-	// Исправленный запрос:
-	// 1. Считаем общее кол-во вопросов в тесте через подзапрос.
-	// 2. Считаем только ПРАВИЛЬНЫЕ ответы студента.
-	// 3. Используем NULLIF, чтобы избежать деления на ноль.
 	query := `
-		UPDATE attempts a
+		UPDATE attempts
 		SET 
 			is_finished = true,
 			finished_at = NOW(),
 			score = (
 				SELECT 
 					(COUNT(CASE WHEN sa.selected_option = q.correct_option THEN 1 END)::float / 
-					NULLIF((SELECT array_length(question_ids, 1) FROM tests WHERE id = a.test_id), 0)) * 100
+					NULLIF((SELECT array_length(question_ids, 1) FROM tests WHERE id = attempts.test_id), 0)) * 100
 				FROM student_answers sa
 				JOIN questions q ON sa.question_id = q.id
-				WHERE sa.attempt_id = a.id
+				WHERE sa.attempt_id = attempts.id
 			)
-		WHERE a.id = $1 AND a.is_finished = false
+		WHERE id = $1
 		RETURNING COALESCE(score, 0)`
 
 	err := db.QueryRow(query, attemptID).Scan(&score)
