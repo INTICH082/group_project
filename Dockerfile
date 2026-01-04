@@ -10,10 +10,9 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt
 
-# Копируем код бота
+# Копируем код бота и .env
 COPY bot.py .
 COPY .env .
-# Если используете .env
 
 # Создаем не-root пользователя
 RUN adduser -D -u 1000 botuser && \
