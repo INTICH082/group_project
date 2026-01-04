@@ -7,6 +7,8 @@ services:
     volumes:
       - redis_data:/data
     restart: unless-stopped
+    environment:
+      - TZ=Europe/Moscow  # Установите ваш TZ, например Europe/Moscow для MSK
 
   telegram-bot:
     build: .
@@ -15,6 +17,7 @@ services:
       - redis
     environment:
       - REDIS_HOST=redis
+      - TZ=Europe/Moscow  # То же для бота
     restart: unless-stopped
     env_file:
       - .env
