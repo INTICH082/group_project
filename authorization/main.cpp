@@ -15,75 +15,58 @@ using namespace std;
 
 int main()
 {
-    crow::SimpleApp app;
+    cout << "1. Server started main()" << endl;
 
     try
     {
         const char* github_client_id     = getenv("GITHUB_CLIENT_ID");
         const char* github_client_secret = getenv("GITHUB_CLIENT_SECRET");
         const char* db_password          = getenv("DB_PASSWORD");
+        const char* jwt_secret           = getenv("JWT_SECRET");
 
-        if (!github_client_id || !github_client_secret)
-        {
-            cerr << "Не заданы GITHUB_CLIENT_ID или GITHUB_CLIENT_SECRET\n";
+        cout << "2. Env variables read" << endl;
+        cout << "GITHUB_CLIENT_ID:     " << (github_client_id     ? github_client_id     : "NOT SET") << endl;
+        cout << "GITHUB_CLIENT_SECRET: " << (github_client_secret ? github_client_secret : "NOT SET") << endl;
+        cout << "DB_PASSWORD:          " << (db_password          ? db_password          : "NOT SET") << endl;
+        cout << "JWT_SECRET:           " << (jwt_secret           ? jwt_secret           : "NOT SET") << endl;
+
+        if (!github_client_id || !github_client_secret || !db_password || !jwt_secret) {
+            cerr << "Error: Missing one or more environment variables" << endl;
             return 1;
         }
 
-        if (!db_password)
-        {
-            cerr << "Не задана DB_PASSWORD\n";
-            return 1;
-        }
+        cout << "3. Creating Crow app..." << endl;
+        crow::SimpleApp app;
+        cout << "4. Crow app created" << endl;
 
-        Database db("127.0.0.1", "root", db_password, "Project");
+        // Тестовый маршрут для проверки — открой http://localhost:8081/test
+        CROW_ROUTE(app, "/test")
+        ([](){
+            return "Server is alive! Everything works.";
+        });
 
-        // Авторизация через GitHub
-        CROW_ROUTE(app, "/auth/github")
-        ([github_client_id]()
-         {
-             string url = "https://github.com/login/oauth/authorize?client_id=" + string(github_client_id) + "&scope=user";
-             crow::response res(302);
-             res.set_header("Location", url);
-             return res;
-         });
+        // Здесь должны быть твои основные маршруты (OAuth, auth и т.д.)
+        // Пример:
+        // CROW_ROUTE(app, "/auth/github")(...) 
+        // CROW_ROUTE(app, "/auth/github/callback")(...)
 
-        CROW_ROUTE(app, "/auth/github/callback")
-        ([&db](const crow::request& req)
-         {
-             auto code = req.url_params.get("code");
-             if (!code)
-             {
-                 return crow::response(400, "Параметр code не передан");
-             }
+        cout << "5. Routes registered" << endl;
 
-             cout << "Получен code: " << code << "\n";
-
-             // Здесь: обмен code на token, получение пользователя, создание в БД, JWT
-
-             return crow::response(200, "Авторизация успешна");
-         });
-
-        // Пример защищённого маршрута
-        CROW_ROUTE(app, "/validate")
-        ([](const crow::request& req)
-         {
-             auto auth = req.get_header_value("Authorization");
-             if (auth.empty() || auth.find("Bearer ") != 0)
-             {
-                 return crow::response(401, "Требуется Bearer-токен");
-             }
-
-             return crow::response(200, "Токен действителен");
-         });
-
-        cout << "Сервер запущен на http://localhost:8081\n";
+        cout << "6. Starting server on port 8081..." << endl;
         app.port(8081).multithreaded().run();
+        cout << "7. Server stopped (should not reach here)" << endl;
     }
     catch (const exception& e)
     {
-        cerr << "Ошибка: " << e.what() << endl;
+        cerr << "Exception in main: " << e.what() << endl;
+        return 1;
+    }
+    catch (...)
+    {
+        cerr << "Unknown exception in main" << endl;
         return 1;
     }
 
+    cout << "8. main() finished" << endl;
     return 0;
 }

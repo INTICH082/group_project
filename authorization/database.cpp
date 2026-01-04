@@ -10,19 +10,25 @@
 using namespace std;
 
 Database::Database(const string& host, const string& user, const string& pass, const string& dbname) {
+    std::cout << "Database constructor started: host=" << host << ", user=" << user << ", dbname=" << dbname << std::endl;
+
     conn = mysql_init(nullptr);
     if (!conn) {
+        std::cerr << "mysql_init failed" << std::endl;
         throw runtime_error("mysql_init failed");
     }
 
-    if (!mysql_real_connect(conn, host.c_str(), user.c_str(), pass.c_str(),
-                            dbname.c_str(), 3306, nullptr, 0)) {
+    std::cout << "mysql_init OK" << std::endl;
+
+    if (!mysql_real_connect(conn, host.c_str(), user.c_str(), pass.c_str(), dbname.c_str(), 3306, nullptr, 0)) {
         string err = mysql_error(conn);
+        std::cerr << "mysql_real_connect failed: " << err << std::endl;
         mysql_close(conn);
         conn = nullptr;
         throw runtime_error("mysql_real_connect failed: " + err);
     }
 
+    std::cout << "MySQL connected successfully!" << std::endl;
     mysql_set_character_set(conn, "utf8mb4");
 }
 
