@@ -34,7 +34,7 @@ class Config:
     REDIS_URL = "redis://redis:6379/0"
 
 
-# Global Redis connection pool (optimized for reuse)
+# Глобальный пул соединений с Redis (оптимизировано для повторного использования)
 redis_pool = redis.ConnectionPool.from_url(Config.REDIS_URL, decode_responses=True)
 
 
@@ -195,141 +195,110 @@ async def main():
 
     @dp.message(Command("help"))
     async def on_help(message: types.Message):
+        logger.info(f"Help command from user {message.from_user.id}")  # Добавлен дебаг-лог для отслеживания вызова
         monitor.stats['total_commands'] += 1
         await message.reply(monitor.get_help(), parse_mode='Markdown')
 
     @dp.message(Command("login"))
     async def on_login(message: types.Message):
-        monitor.stats['total_commands'] += 1
-        state_uuid = str(uuid.uuid4())
-        async with redis_pool.client() as r:
-            try:
-                await r.set(f"auth_state:{state_uuid}", str(message.from_user.id), ex=3600)
-            except Exception as e:
-                logger.error(f"Redis error: {e}")
-                await message.reply("Ошибка соединения с Redis. Попробуйте позже.")
-                return
-
-        link = f"{Config.WEB_CLIENT_URL}/auth/telegram?state={state_uuid}"
-        msg = f"Для авторизации перейдите по ссылке:\n{link}\n\nПосле успешной авторизации в веб-клиенте вернитесь сюда и используйте /complete_login для завершения."
-        await message.reply(msg)
+        # Генерация кода авторизации
+        code = str(uuid.uuid4())[:8].upper()
+        user_id = message.from_user.id
+        with redis.Redis(connection_pool=redis_pool) as r:
+            r.setex(f"auth_code:{code}", 300, user_id)  # Храним 5 минут
+        await message.reply(
+            f"🔐 Для авторизации перейдите в веб-клиент: {Config.WEB_CLIENT_URL}/login\n"
+            f"Ваш код: `{code}`\n"
+            "После ввода кода в веб-клиенте используйте /complete_login <code> здесь.",
+            parse_mode='Markdown'
+        )
 
     @dp.message(Command("complete_login"))
-    async def on_complete_login(message: types.Message):
-        monitor.stats['total_commands'] += 1
-        user_id = message.from_user.id
-        state = None
-        async with redis_pool.client() as r:
-            try:
-                async for key in r.scan_iter("auth_state:*"):
-                    if await r.get(key) == str(user_id):
-                        state = key.split(':')[1]
-                        break
-            except Exception as e:
-                logger.error(f"Redis error: {e}")
-                await message.reply("Ошибка соединения с Redis. Попробуйте позже.")
-                return
-
-        if not state:
-            await message.reply("Не найдена активная сессия авторизации. Начните заново с /login.")
+    async def on_complete_login(message: types.Message, state: FSMContext):
+        logger.info(f"Complete login command from user {message.from_user.id}")  # Дебаг-лог
+        args = message.text.split()
+        if len(args) < 2:
+            await message.reply("Используйте: /complete_login <code>")
             return
-
-        async with redis_pool.client() as r:
-            jwt_key = f"auth_jwt:{state}"
-            try:
-                jwt = await r.get(jwt_key)
-                if not jwt:
-                    await message.reply(
-                        "Авторизация еще не завершена в веб-клиенте. Попробуйте позже или начните заново.")
-                    return
-                await r.set(f"user_jwt:{user_id}", jwt, ex=86400)
-                await r.delete(f"auth_state:{state}")
-                await r.delete(jwt_key)
-            except Exception as e:
-                logger.error(f"Redis error: {e}")
-                await message.reply("Ошибка сохранения токена. Попробуйте позже.")
+        code = args[1]
+        with redis.Redis(connection_pool=redis_pool) as r:
+            user_id = r.get(f"auth_code:{code}")
+            if not user_id or int(user_id) != message.from_user.id:
+                await message.reply("Неверный или истекший код.")
                 return
-
-        await message.reply(
-            "Авторизация завершена успешно! Теперь вы можете использовать защищенные команды, такие как /tests и /start_test.")
+            # Здесь предполагаем, что после веб-авторизации токен сохраняется в Redis
+            token = r.get(f"auth_token:{user_id}")  # Пример: токен из веб
+            if not token:
+                await message.reply("Авторизация не завершена в веб-клиенте.")
+                return
+            await state.set_data({'token': token})  # Сохраняем в FSM
+            r.delete(f"auth_code:{code}")
+        await message.reply("✅ Авторизация завершена! Теперь доступны тесты.")
 
     @dp.message(Command("tests"))
-    async def on_tests(message: types.Message):
-        monitor.stats['total_commands'] += 1
-        user_id = message.from_user.id
-        async with redis_pool.client() as r:
-            jwt = await r.get(f"user_jwt:{user_id}")
-        if not jwt:
-            await message.reply("Сначала авторизуйтесь с помощью /login и /complete_login.")
+    async def on_tests(message: types.Message, state: FSMContext):
+        logger.info(f"Tests command from user {message.from_user.id}")  # Дебаг-лог
+        data = await state.get_data()
+        token = data.get('token')
+        if not token:
+            await message.reply("🚫 Вы не авторизованы. Используйте /login.")
             return
-
-        headers = {"Authorization": f"Bearer {jwt}"}
+        headers = {'Authorization': f'Bearer {token}'}
         async with aiohttp.ClientSession() as session:
             try:
                 async with session.get(f"{Config.CORE_API_URL}/tests", headers=headers, timeout=5) as response:
+                    if response.status == 401:
+                        await message.reply("🚫 Вы не авторизованы.")
+                        return
                     if response.status != 200:
-                        await message.reply(f"Ошибка при получении тестов: {response.status}")
+                        await message.reply(f"Ошибка: {response.status}")
                         return
-                    tests_data = await response.json()
-                    msg = "Доступные тесты:\n"
-                    tests = tests_data.get('tests', [])
+                    tests = await response.json()
                     if not tests:
-                        msg = "Нет доступных тестов."
-                    else:
-                        for test in tests:
-                            msg += f"- {test.get('test_name', 'Без названия')} (ID: {test.get('id')})\n"
-            except Exception as e:
-                logger.error(f"API error: {e}")
-                msg = "Ошибка соединения с Core API. Попробуйте позже."
-
-        await message.reply(msg)
-
-    @dp.message(Command("start_test"))
-    async def on_start_test(message: types.Message, state: FSMContext):
-        monitor.stats['total_commands'] += 1
-        args = message.text.split()
-        if len(args) < 2:
-            await message.reply("Использование: /start_test <test_id>")
-            return
-        test_id = args[1]
-        user_id = message.from_user.id
-        async with redis_pool.client() as r:
-            jwt = await r.get(f"user_jwt:{user_id}")
-        if not jwt:
-            await message.reply("Сначала авторизуйтесь с помощью /login и /complete_login.")
-            return
-
-        headers = {"Authorization": f"Bearer {jwt}"}
-        async with aiohttp.ClientSession() as session:
-            try:
-                async with session.post(f"{Config.CORE_API_URL}/attempts", json={"test_id": test_id}, headers=headers,
-                                        timeout=5) as response:
-                    if response.status != 201:
-                        await message.reply(f"Ошибка при создании попытки: {response.status}")
+                        await message.reply("Нет доступных тестов.")
                         return
-                    data = await response.json()
-                    attempt_id = data.get('attempt_id')
-                    if not attempt_id:
-                        await message.reply("Ошибка: не получен ID попытки.")
-                        return
+                    # Предполагаем tests = list of {'id': id, 'name': name}
+                    msg = "📝 Доступные тесты:\n"
+                    for t in tests:
+                        msg += f"• {t['id']}: {t['name']}\n"
+                    await message.reply(msg)
             except Exception as e:
                 logger.error(f"API error: {e}")
                 await message.reply("Ошибка соединения с Core API. Попробуйте позже.")
-                return
 
+    @dp.message(Command("start_test"))
+    async def on_start_test(message: types.Message, state: FSMContext):
+        logger.info(f"Start test command from user {message.from_user.id}")  # Дебаг-лог
+        args = message.text.split()
+        if len(args) < 2:
+            await message.reply("Используйте: /start_test <test_id>")
+            return
+        test_id = args[1]
+        data = await state.get_data()
+        token = data.get('token')
+        if not token:
+            await message.reply("🚫 Вы не авторизованы. Используйте /login.")
+            return
+        headers = {'Authorization': f'Bearer {token}'}
         async with aiohttp.ClientSession() as session:
             try:
-                async with session.get(f"{Config.CORE_API_URL}/tests/{test_id}/questions", headers=headers,
-                                       timeout=5) as response:
+                # Создание попытки
+                async with session.post(f"{Config.CORE_API_URL}/tests/{test_id}/attempts", headers=headers, timeout=5) as response:
                     if response.status != 200:
-                        await message.reply(f"Ошибка при получении вопросов: {response.status}")
+                        await message.reply(f"Ошибка начала теста: {response.status}")
                         return
-                    questions_data = await response.json()
-                    questions = questions_data.get('questions', [])
+                    attempt = await response.json()
+                    attempt_id = attempt['id']
+                # Получение вопросов
+                async with session.get(f"{Config.CORE_API_URL}/tests/{test_id}/questions", headers=headers, timeout=5) as response:
+                    if response.status != 200:
+                        await message.reply(f"Ошибка получения вопросов: {response.status}")
+                        return
+                    questions = await response.json()
                     if not questions:
                         await message.reply("В тесте нет вопросов.")
                         return
-                    # Assume questions is list of {'question_id': id, 'order_index': n}
+                    # Предполагаем questions = list of {'question_id': id, 'order_index': n}
                     questions.sort(key=lambda x: x['order_index'])
                     question_ids = [q['question_id'] for q in questions]
             except Exception as e:
@@ -360,7 +329,7 @@ async def main():
                         await state.clear()
                         return
                     q = await response.json()
-                    # Assume q = {'question_name': str, 'question_text': str, 'options': list[str]}
+                    # Предполагаем q = {'question_name': str, 'question_text': str, 'options': list[str]}
             except Exception as e:
                 logger.error(f"API error: {e}")
                 await message_or_callback.reply("Ошибка соединения с Core API. Попробуйте позже.")
