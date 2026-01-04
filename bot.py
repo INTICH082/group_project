@@ -109,7 +109,7 @@ class SystemMonitor:
 /login - Авторизация
 /complete_login (или /completelogin) - Завершить авторизацию после веб-клиента
 /tests - Список доступных тестов (после авторизации)
-/start_test <test_id> (или /starttest <test_id>) - Начать тест (после авторизации)
+/start_test \\<test_id\\> (или /starttest \\<test_id\\>) - Начать тест (после авторизации)
 
 *Технические данные:*
 📊 PostgreSQL: `localhost:5432`
@@ -168,7 +168,7 @@ async def main():
 /login - Начать авторизацию
 /complete_login - Завершить авторизацию
 /tests - Список тестов
-/start_test <id> - Начать тест
+/start_test \\<id\\> - Начать тест
 
 🌐 *Ссылки:*
 • Веб-интерфейс: {Config.WEB_CLIENT_URL}
@@ -208,7 +208,7 @@ async def main():
         with redis.Redis(connection_pool=redis_pool) as r:
             r.setex(f"auth_code:{code}", 300, user_id)  # Храним 5 минут
 
-        # Эскейпинг для MarkdownV2: \ для специальных специальных символов
+        # Эскейпинг для MarkdownV2
         escaped_code = code.replace('_', '\\_').replace('*', '\\*').replace('[', '\\[').replace(']', '\\]').replace('(',
                                                                                                                     '\\(').replace(
             ')', '\\)').replace('~', '\\~').replace('`', '\\`').replace('>', '\\>').replace('#', '\\#').replace('+',
@@ -227,7 +227,7 @@ async def main():
         logger.info(f"Complete login command from user {message.from_user.id}")  # Дебаг-лог
         args = message.text.split()
         if len(args) < 2:
-            await message.reply("Используйте: /complete_login <code>", parse_mode='MarkdownV2')
+            await message.reply("Используйте: /complete_login \\<code\\>", parse_mode='MarkdownV2')
             return
         code = args[1]
         with redis.Redis(connection_pool=redis_pool) as r:
@@ -280,7 +280,7 @@ async def main():
         logger.info(f"Start test command from user {message.from_user.id}")
         args = message.text.split()
         if len(args) < 2:
-            await message.reply("Используйте: /start_test <test_id>", parse_mode='MarkdownV2')
+            await message.reply("Используйте: /start_test \\<test_id\\>", parse_mode='MarkdownV2')
             return
         test_id = args[1]
         data = await state.get_data()
