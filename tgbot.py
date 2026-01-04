@@ -12,6 +12,9 @@ from aiogram.fsm.context import FSMContext
 from aiogram.fsm.storage.memory import MemoryStorage
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.fsm.state import State, StatesGroup
+from dotenv import load_dotenv
+
+load_dotenv()
 
 # Настройка логирования
 logging.basicConfig(
@@ -24,7 +27,7 @@ logger = logging.getLogger(__name__)
 # Глобальные настройки
 class Config:
     """Конфигурация бота"""
-    TELEGRAM_TOKEN: Optional[str] = None
+    TELEGRAM_TOKEN: Optional[str] = "AAEuyq2Hq3gvwmf5nwX7gLA3hmJEpQOdzZU"
     WEB_CLIENT_URL = "http://localhost:3000"
     CORE_API_URL = "http://core-service:8082"
     AUTH_API_URL = "http://auth-service:8081"
