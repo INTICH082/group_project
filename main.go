@@ -103,17 +103,26 @@ func createQuestion(w http.ResponseWriter, r *http.Request) {
 		Correct int      `json:"correct"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		http.Error(w, "Bad request", http.StatusBadRequest)
 		return
 	}
 
-	id, err := CreateQuestion(req.Text, req.Options, req.Correct)
+	// Достаем course_id из токена учителя
+	val := r.Context().Value("course_id")
+	courseID, ok := val.(int)
+	if !ok {
+		http.Error(w, "Course ID missing in token", http.StatusUnauthorized)
+		return
+	}
+
+	// Вызываем обновленную функцию
+	id, err := CreateQuestion(courseID, req.Text, req.Options, req.Correct)
 	if err != nil {
-		http.Error(w, "Failed to create question", http.StatusInternalServerError)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
-	fmt.Fprintf(w, `{"id": %d}`, id)
+	fmt.Fprintf(w, `{"id": %d, "message": "Question created and linked to course %d"}`, id, courseID)
 }

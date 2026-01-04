@@ -104,26 +104,54 @@ func SaveUserResult(userID int, courseID int, score int) error {
 }
 
 // CreateQuestion добавляет новый вопрос в банк данных
-func CreateQuestion(text string, options []string, correctAnswer int) (int, error) {
+func CreateQuestion(courseID int, text string, options []string, correctAnswer int) (int, error) {
 	if db == nil {
 		return 0, fmt.Errorf("соединение с БД не инициализировано")
 	}
 
+	// 1. Кодируем варианты ответов в JSON
 	optionsJSON, err := json.Marshal(options)
 	if err != nil {
 		return 0, fmt.Errorf("ошибка маршалинга опций: %v", err)
 	}
 
+	// 2. Начинаем транзакцию, чтобы оба действия выполнились вместе
+	tx, err := db.Begin()
+	if err != nil {
+		return 0, fmt.Errorf("ошибка начала транзакции: %v", err)
+	}
+
+	// Функция отката (выполнится только если не было Commit)
+	defer tx.Rollback()
+
+	// 3. Вставляем сам вопрос
 	var lastID int
-	query := `
+	queryInsertQuestion := `
 		INSERT INTO questions (text, options, correct_answer) 
 		VALUES ($1, $2, $3) RETURNING id`
 
-	err = db.QueryRow(query, text, optionsJSON, correctAnswer).Scan(&lastID)
+	err = tx.QueryRow(queryInsertQuestion, text, optionsJSON, correctAnswer).Scan(&lastID)
 	if err != nil {
 		log.Printf("DB Create Question Error: %v", err)
 		return 0, err
 	}
 
+	// 4. СРАЗУ привязываем этот вопрос к курсу в таблице-посреднике
+	queryLinkCourse := `
+		INSERT INTO course_questions (course_id, question_id) 
+		VALUES ($1, $2)`
+
+	_, err = tx.Exec(queryLinkCourse, courseID, lastID)
+	if err != nil {
+		log.Printf("DB Link Course Error: %v", err)
+		return 0, err
+	}
+
+	// 5. Подтверждаем транзакцию — теперь данные реально сохранятся в обе таблицы
+	if err := tx.Commit(); err != nil {
+		return 0, fmt.Errorf("ошибка подтверждения транзакции: %v", err)
+	}
+
+	log.Printf("Вопрос создан с ID %d и привязан к курсу %d", lastID, courseID)
 	return lastID, nil
 }
