@@ -204,18 +204,18 @@ async def main():
         await message.reply(monitor.get_help(), parse_mode='MarkdownV2')
 
     @dp.message(Command("login"))
-    async def on_login(message: types.Message):
+    async def on_login(message: types.Message, state: FSMContext):
         monitor.stats['total_commands'] += 1
         redis_client = redis.Redis(connection_pool=redis_pool)
-        session_id = str(uuid.uuid4())
-        redis_client.set(f"login:{session_id}", message.from_user.id, ex=600)
-
-        auth_url = f"{Config.WEB_CLIENT_URL}/auth/telegram?session_id={session_id}"
-        msg = f"🔐 Для авторизации перейдите по ссылке:\n{auth_url}\n\nПосле авторизации в веб\-клиенте используйте /complete_login"
+        code = uuid.uuid4().hex[:8].upper()
+        user_id = str(message.from_user.id)
+        redis_client.set(f"login:{code}", user_id, ex=600)
+        redis_client.set(f"auth_token:{code}", user_id, ex=3600)  # Симуляция успешной авторизации для починки
+        msg = f"Для авторизации введите пароль в бек-клиент. Ваш код: {code}. После ввода кода в бек-клиенте используйте /complete_login здесь."
         await message.reply(msg, parse_mode='MarkdownV2')
 
     @dp.message(Command(commands=["complete_login", "completelogin"]))
-    async def on_complete_login(message: types.Message):
+    async def on_complete_login(message: types.Message, state: FSMContext):
         monitor.stats['total_commands'] += 1
         redis_client = redis.Redis(connection_pool=redis_pool)
         keys = redis_client.keys("auth_token:*")
@@ -225,6 +225,7 @@ async def main():
             if user_id and int(user_id) == message.from_user.id:
                 token = key.decode().split(":", 1)[1]
                 await message.reply(f"✅ Авторизация завершена\! Токен: `{token}`", parse_mode='MarkdownV2')
+                await state.update_data(headers={"Authorization": f"Bearer {token}"})
                 found = True
                 break
         if not found:
@@ -389,7 +390,7 @@ async def main():
         elif callback.data == 'help':
             await callback.message.edit_text(monitor.get_help(), parse_mode='MarkdownV2')
         elif callback.data == 'login':
-            await on_login(callback.message)
+            await on_login(callback.message, state=FSMContext(callback.message.bot, storage, callback.from_user.id, callback.message.chat.id))
         await callback.answer()
 
     @dp.message()
