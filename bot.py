@@ -1,6 +1,5 @@
 import os
 import asyncio
-import logging
 import uuid
 from datetime import datetime
 from typing import Optional
@@ -15,7 +14,6 @@ from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 
 # ================= INIT =================
 load_dotenv()
-logging.basicConfig(level=logging.INFO)
 
 # ================= CONFIG =================
 class Config:
@@ -39,18 +37,19 @@ class SystemMonitor:
     def __init__(self):
         self.start_time = datetime.now()
 
-    def status(self):
+    def status_text(self) -> str:
         uptime = (datetime.now() - self.start_time).seconds // 60
         return (
             "🖥️ <b>СТАТУС СИСТЕМЫ</b>\n"
             f"Время: {datetime.now().strftime('%H:%M:%S')}\n"
             f"Активна: {uptime} мин\n\n"
-            "• core-service: 🟢 Онлайн\n"
-            "• auth-service: 🟢 Онлайн\n"
-            "• web-client: 🟢 Онлайн\n"
-            "• postgres: 🟢 Онлайн\n"
-            "• mongodb: 🟢 Онлайн\n"
-            "• redis: 🟢 Онлайн"
+            "Сервисы:\n"
+            "• core-service: 🟢 Онлайн :8082\n"
+            "• auth-service: 🟢 Онлайн :8081\n"
+            "• web-client: 🟢 Онлайн :3000\n"
+            "• postgres: 🟢 Онлайн :5432\n"
+            "• mongodb: 🟢 Онлайн :27017\n"
+            "• redis: 🟢 Онлайн :6379\n"
         )
 
 monitor = SystemMonitor()
@@ -58,6 +57,9 @@ monitor = SystemMonitor()
 # ================= AUTH =================
 def get_user_token(user_id: int) -> Optional[str]:
     return redis_client().get(f"user_token:{user_id}")
+
+def set_user_token(user_id: int, token: str):
+    redis_client().set(f"user_token:{user_id}", token, ex=3600)
 
 # ================= BOT =================
 async def main():
@@ -127,7 +129,7 @@ async def main():
     # ================= /status =================
     @dp.message(Command("status"))
     async def status(message: types.Message):
-        await message.reply(monitor.status(), parse_mode="HTML")
+        await message.reply(monitor.status_text(), parse_mode="HTML")
 
     # ================= /services =================
     @dp.message(Command("services"))
@@ -178,15 +180,28 @@ async def main():
             parse_mode="HTML"
         )
 
+    # ================= /completelogin =================
+    @dp.message(Command(commands=["complete_login", "completelogin"]))
+    async def complete_login(message: types.Message):
+        # заглушка, имитация успешного входа
+        set_user_token(message.from_user.id, "demo-token")
+
+        await message.reply(
+            "✅ <b>АВТОРИЗАЦИЯ УСПЕШНА</b>\n\n"
+            "Теперь доступны команды:\n"
+            "/tests\n"
+            "/start_test <id>",
+            parse_mode="HTML"
+        )
+
     # ================= UNKNOWN =================
-    @dp.message(
-        F.text.startswith("/")
-        & ~F.text.startswith((
-            "/start", "/help", "/status", "/services",
-            "/login", "/completelogin",
-            "/tests", "/start_test", "/starttest"
-        ))
+    KNOWN = (
+        "/start", "/help", "/status", "/services",
+        "/login", "/completelogin", "/complete_login",
+        "/tests", "/start_test", "/starttest"
     )
+
+    @dp.message(F.text.startswith("/") & ~F.text.split()[0].in_(KNOWN))
     async def unknown(message: types.Message):
         await message.reply(
             "❓ <b>Неизвестная команда</b>\n\n"
@@ -194,7 +209,6 @@ async def main():
             parse_mode="HTML"
         )
 
-    logging.info("🤖 Бот запущен")
     await dp.start_polling(bot)
 
 # ================= RUN =================
