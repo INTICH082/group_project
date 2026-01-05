@@ -2,16 +2,13 @@
 FROM alpine:latest
 
 # Устанавливаем зависимости для MySQL Connector/C
-RUN apk add --no-cache \
+RUN apk update && apk add --no-cache \
     g++ \
     make \
     cmake \
     curl-dev \
     mysql-client \
-    mysql-dev \
-    mysql-connector-c \
-    mysql-connector-c-dev \
-    musl-dev
+    mysql-dev
 
 # Альтернатива: используем MySQL Connector/C из исходников
 RUN apk add --no-cache wget tar && \
