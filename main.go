@@ -163,19 +163,178 @@ func SubmitAnswerHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprint(w, "OK")
 }
 
+// Хендлер добавления вопроса в тест
+func AddQuestionToTestHandler(w http.ResponseWriter, r *http.Request) {
+	// Получаем ID теста и вопроса из параметров запроса
+	testID, _ := strconv.Atoi(r.URL.Query().Get("test_id"))
+	questionID, _ := strconv.Atoi(r.URL.Query().Get("question_id"))
+
+	if testID == 0 || questionID == 0 {
+		http.Error(w, "Нужны параметры test_id и question_id", http.StatusBadRequest)
+		return
+	}
+
+	// Вызываем функцию из database.go
+	err := AddQuestionToTest(testID, questionID)
+	if err != nil {
+		// Если попытки уже были, вернется ошибка, и мы отправим её клиенту
+		http.Error(w, err.Error(), http.StatusForbidden)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	fmt.Fprint(w, "Вопрос успешно добавлен в тест")
+}
+
+// Хендлер удаления вопроса из теста
+func RemoveQuestionFromTestHandler(w http.ResponseWriter, r *http.Request) {
+	testID, _ := strconv.Atoi(r.URL.Query().Get("test_id"))
+	questionID, _ := strconv.Atoi(r.URL.Query().Get("question_id"))
+
+	err := RemoveQuestionFromTest(testID, questionID)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusForbidden)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	fmt.Fprint(w, "Вопрос удален из теста")
+}
+func UpdateQuestionHandler(w http.ResponseWriter, r *http.Request) {
+	// Структура для приема данных
+	var req struct {
+		ID            int      `json:"id"`
+		Text          string   `json:"text"`
+		Options       []string `json:"options"`
+		CorrectOption int      `json:"correct_option"`
+	}
+
+	// Декодируем JSON из тела запроса
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Некорректный JSON", http.StatusBadRequest)
+		return
+	}
+
+	// Вызываем твою функцию (которая делает INSERT новой версии)
+	err := UpdateQuestion(req.ID, req.Text, req.Options, req.CorrectOption)
+	if err != nil {
+		http.Error(w, "Ошибка при обновлении вопроса: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	fmt.Fprintf(w, "Создана новая версия вопроса для ID %d", req.ID)
+}
+
+// Добавим сразу и хендлер удаления (с проверкой на использование в тестах)
+func DeleteQuestionHandler(w http.ResponseWriter, r *http.Request) {
+	id, _ := strconv.Atoi(r.URL.Query().Get("id"))
+	if id == 0 {
+		http.Error(w, "Нужен id вопроса", http.StatusBadRequest)
+		return
+	}
+
+	err := DeleteQuestion(id) // Ту функцию, что я давал выше
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusForbidden) // 403 если вопрос в тесте
+		return
+	}
+
+	fmt.Fprint(w, "Вопрос помечен как удаленный")
+}
+
+// Хендлер записи на курс
+func EnrollHandler(w http.ResponseWriter, r *http.Request) {
+	cID, _ := strconv.Atoi(r.URL.Query().Get("course_id"))
+	uID, _ := strconv.Atoi(r.URL.Query().Get("user_id"))
+
+	if err := EnrollUser(cID, uID); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	fmt.Fprint(w, "Пользователь успешно записан на курс")
+}
+func GetTestsHandler(w http.ResponseWriter, r *http.Request) {
+	// 1. Извлекаем параметры из URL
+	courseID, _ := strconv.Atoi(r.URL.Query().Get("course_id"))
+	if courseID == 0 {
+		http.Error(w, "Параметр course_id обязателен", http.StatusBadRequest)
+		return
+	}
+
+	// 2. Получаем данные пользователя (которые положил кент в Middleware)
+	// Если кент еще не доделал Middleware, пока можно закомментировать проверку ниже
+	uIDVal := r.Context().Value("userID")
+	roleVal := r.Context().Value("role")
+
+	if uIDVal != nil && roleVal != nil {
+		userID := uIDVal.(int)
+		role := roleVal.(string)
+
+		// ТЗ: Студент видит тесты только если он записан на курс
+		if role == "student" {
+			enrolled, err := IsUserEnrolled(courseID, userID)
+			if err != nil || !enrolled {
+				http.Error(w, "Доступ запрещен: вы не записаны на этот курс", http.StatusForbidden)
+				return
+			}
+		}
+	}
+
+	// 3. Получаем тесты из БД
+	// (Убедись, что у тебя есть функция GetTestsByCourse в database.go)
+	tests, err := GetTestsByCourse(courseID)
+	if err != nil {
+		http.Error(w, "Ошибка БД: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(tests)
+}
+
 func main() {
 	InitDB()
 	mux := http.NewServeMux()
 
-	// Настройка ручек с Middleware согласно ТЗ
+	// --- РЕСУРС: ВОПРОСЫ ---
+	// Создать (quest:create), Обновить версию (quest:update), Удалить (quest:del)
 	mux.HandleFunc("/teacher/question/create", AuthMiddleware("quest:create", CreateQuestionHandler))
+	mux.HandleFunc("/teacher/question/update", AuthMiddleware("quest:update", UpdateQuestionHandler))
+	mux.HandleFunc("/teacher/question/delete", AuthMiddleware("quest:del", DeleteQuestionHandler))
+
+	// --- РЕСУРС: ТЕСТЫ (Управление и Состав) ---
+	// Создать тест (course:test:add), Статус/Автозакрытие (course:test:write)
 	mux.HandleFunc("/teacher/test/create", AuthMiddleware("course:test:add", CreateTestHandler))
 	mux.HandleFunc("/teacher/test/status", AuthMiddleware("course:test:write", UpdateTestStatusHandler))
 
+	// Добавить/Удалить вопрос из теста (проверка на наличие попыток внутри)
+	mux.HandleFunc("/teacher/test/question/add", AuthMiddleware("test:quest:add", AddQuestionToTestHandler))
+	mux.HandleFunc("/teacher/test/question/remove", AuthMiddleware("test:quest:del", RemoveQuestionFromTestHandler))
+
+	// --- РЕСУРС: ДИСЦИПЛИНЫ (Курсы) ---
+	// Получить тесты курса (с проверкой записи для студентов)
+	mux.HandleFunc("/course/tests", AuthMiddleware("course:read", GetTestsHandler))
+
+	// Запись и отчисление (course:user:add / course:user:del)
+	mux.HandleFunc("/teacher/course/enroll", AuthMiddleware("course:user:add", EnrollHandler))
+	mux.HandleFunc("/teacher/course/kick", AuthMiddleware("course:user:del", func(w http.ResponseWriter, r *http.Request) {
+		cID, _ := strconv.Atoi(r.URL.Query().Get("course_id"))
+		uID, _ := strconv.Atoi(r.URL.Query().Get("user_id"))
+		UnenrollUser(cID, uID)
+		fmt.Fprint(w, "Пользователь отчислен")
+	}))
+
+	// --- ПРОХОЖДЕНИЕ ТЕСТА (Студент) ---
+	// Права пустые (""), так как это базовые действия студента
 	mux.HandleFunc("/test/start", AuthMiddleware("", StartTestHandler))
 	mux.HandleFunc("/test/answer", AuthMiddleware("", SubmitAnswerHandler))
 	mux.HandleFunc("/test/finish", AuthMiddleware("", FinishTestHandler))
 
 	log.Println("🚀 Full API started on :8080")
-	http.ListenAndServe(":8080", mux)
+	log.Println("Secret initialized: iplaygodotandclaimfun")
+
+	if err := http.ListenAndServe(":8080", mux); err != nil {
+		log.Fatal(err)
+	}
 }

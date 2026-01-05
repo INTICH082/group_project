@@ -91,24 +91,45 @@ func CreateQuestion(title string, text string, options []string, correct int, au
 }
 
 func UpdateQuestion(questionID int, text string, options []string, correct int) error {
+	// 1. Находим текущую макс. версию
 	var currentVersion int
 	err := db.QueryRow("SELECT MAX(version) FROM questions WHERE id = $1", questionID).Scan(&currentVersion)
+	if err != nil {
+		return fmt.Errorf("вопрос не найден: %v", err)
+	}
+
+	// 2. ТЗ: Проверка прав обычно в Middleware, но тут мы просто делаем INSERT
+	// Если в базе options это массив TEXT[], используй pq.Array(options)
+	// Если это JSONB, оставляй json.Marshal
+	optionsJSON, _ := json.Marshal(options)
+
+	query := `
+        INSERT INTO questions (id, version, text, options, correct_option, author_id, is_deleted) 
+        SELECT id, $2, $3, $4, $5, author_id, false 
+        FROM questions 
+        WHERE id = $1 AND version = $6
+        RETURNING version`
+
+	var newVer int
+	err = db.QueryRow(query, questionID, currentVersion+1, text, optionsJSON, correct, currentVersion).Scan(&newVer)
+	return err
+}
+
+func DeleteQuestion(questionID int) error {
+	// 1. Проверяем, используется ли вопрос в ЛЮБЫХ тестах
+	var exists bool
+	checkQuery := `SELECT EXISTS(SELECT 1 FROM tests WHERE $1 = ANY(question_ids))`
+	err := db.QueryRow(checkQuery, questionID).Scan(&exists)
 	if err != nil {
 		return err
 	}
 
-	optionsJSON, _ := json.Marshal(options)
-	query := `INSERT INTO questions (id, version, text, options, correct_option, author_id) 
-              SELECT id, $2, $3, $4, $5, author_id FROM questions 
-              WHERE id = $1 AND version = $6`
+	if exists {
+		return fmt.Errorf("нельзя удалить: вопрос используется в одном или нескольких тестах")
+	}
 
-	_, err = db.Exec(query, questionID, currentVersion+1, text, optionsJSON, correct, currentVersion)
-	return err
-}
-
-// ТЗ: Удаление вопроса (is_deleted = true)
-func DeleteQuestion(questionID int) error {
-	_, err := db.Exec("UPDATE questions SET is_deleted = true WHERE id = $1", questionID)
+	// 2. Если не используется — помечаем как удаленный (Soft Delete)
+	_, err = db.Exec("UPDATE questions SET is_deleted = true WHERE id = $1", questionID)
 	return err
 }
 
@@ -134,16 +155,35 @@ func CreateTest(courseID int, name string, questionIDs []int) (int, error) {
 
 // ТЗ: Активация/Деактивация + авто-завершение попыток
 func SetTestStatus(testID int, active bool) error {
-	_, err := db.Exec("UPDATE tests SET is_active = $1 WHERE id = $2", active, testID)
+	// ТЗ: Если тест установлен в состояние Не активный (false),
+	// все начатые попытки автоматически отмечаются завершёнными.
+
+	tx, err := db.Begin()
 	if err != nil {
 		return err
 	}
 
-	// ТЗ: "Если тест НЕ активный, все начатые попытки автоматически завершаются"
-	if !active {
-		_, err = db.Exec("UPDATE attempts SET is_finished = true, finished_at = NOW() WHERE test_id = $1 AND is_finished = false", testID)
+	// Обновляем статус теста
+	_, err = tx.Exec("UPDATE tests SET is_active = $1 WHERE id = $2", active, testID)
+	if err != nil {
+		tx.Rollback()
+		return err
 	}
-	return err
+
+	// Если мы выключаем тест, закрываем все открытые попытки
+	if !active {
+		_, err = tx.Exec(`
+			UPDATE attempts 
+			SET is_finished = true 
+			WHERE test_id = $1 AND is_finished = false`,
+			testID)
+		if err != nil {
+			tx.Rollback()
+			return err
+		}
+	}
+
+	return tx.Commit()
 }
 
 // --- ЛОГИКА ПОПЫТОК ---
@@ -295,4 +335,87 @@ func CreateTestHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(map[string]int{"id": id})
+}
+func AddQuestionToTest(testID int, questionID int) error {
+	// 1. Проверяем, были ли попытки
+	var count int
+	err := db.QueryRow("SELECT COUNT(*) FROM attempts WHERE test_id = $1", testID).Scan(&count)
+	if err != nil {
+		return err
+	}
+	if count > 0 {
+		return fmt.Errorf("нельзя изменять тест: студенты уже начали прохождение (попыток: %d)", count)
+	}
+
+	// 2. Добавляем вопрос в массив question_ids
+	// array_append добавит ID в конец массива, как требует ТЗ
+	_, err = db.Exec(`
+		UPDATE tests 
+		SET question_ids = array_append(question_ids, $1) 
+		WHERE id = $2 AND is_deleted = false`,
+		questionID, testID)
+
+	return err
+}
+func RemoveQuestionFromTest(testID int, questionID int) error {
+	// 1. Проверяем, были ли попытки
+	var count int
+	err := db.QueryRow("SELECT COUNT(*) FROM attempts WHERE test_id = $1", testID).Scan(&count)
+	if err != nil {
+		return err
+	}
+	if count > 0 {
+		return fmt.Errorf("нельзя изменять тест: студенты уже начали прохождение")
+	}
+
+	// 2. Удаляем вопрос из массива
+	_, err = db.Exec(`
+		UPDATE tests 
+		SET question_ids = array_remove(question_ids, $1) 
+		WHERE id = $2 AND is_deleted = false`,
+		questionID, testID)
+
+	return err
+}
+
+// EnrollUser записывает студента на курс (course:user:add по ТЗ)
+func EnrollUser(courseID int, userID int) error {
+	_, err := db.Exec(`
+        INSERT INTO course_users (course_id, user_id) 
+        VALUES ($1, $2) 
+        ON CONFLICT DO NOTHING`, courseID, userID)
+	return err
+}
+
+// UnenrollUser отчисляет студента (course:user:del по ТЗ)
+func UnenrollUser(courseID int, userID int) error {
+	_, err := db.Exec("DELETE FROM course_users WHERE course_id = $1 AND user_id = $2", courseID, userID)
+	return err
+}
+
+// IsUserEnrolled проверяет, имеет ли студент доступ к курсу
+func IsUserEnrolled(courseID int, userID int) (bool, error) {
+	var exists bool
+	err := db.QueryRow("SELECT EXISTS(SELECT 1 FROM course_users WHERE course_id = $1 AND user_id = $2)",
+		courseID, userID).Scan(&exists)
+	return exists, err
+}
+func GetTestsByCourse(courseID int) ([]map[string]interface{}, error) {
+	rows, err := db.Query("SELECT id, title, is_active FROM tests WHERE course_id = $1 AND is_deleted = false", courseID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var results []map[string]interface{}
+	for rows.Next() {
+		var id int
+		var title string
+		var active bool
+		rows.Scan(&id, &title, &active)
+		results = append(results, map[string]interface{}{
+			"id": id, "title": title, "is_active": active,
+		})
+	}
+	return results, nil
 }
