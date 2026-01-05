@@ -1,9 +1,10 @@
 import os
 import time
 from aiogram import Bot, Dispatcher, types
-from aiogram.utils import executor
+import aiogram.utils
+from django.db.migrations import executor
 from dotenv import load_dotenv
-import redis.asyncio as redis
+import redis
 
 # =========================
 # INIT
