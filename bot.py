@@ -76,11 +76,19 @@ async def start_cmd(m: types.Message):
     await inc_commands()
     await ensure_user(m.chat.id)
 
-    await m.answer(
-        f"👋 <b>Привет, {m.from_user.first_name}!</b>\n\n"
+    text = (
+        f"👋 Привет, {m.from_user.first_name}!\n\n"
         "🤖 Я — бот системы тестирования.\n"
         "Система находится в стадии активной разработки.\n\n"
-        "📋 <b>Основные команды:</b>\n"
+
+        "📊 Что уже работает:\n"
+        "• Docker контейнеры\n"
+        "• Базы данных\n"
+        "• Веб-интерфейс\n"
+        "• API-сервисы\n"
+        "• Базовая авторизация\n\n"
+
+        "🧭 Основные команды:\n"
         "/start — начало работы\n"
         "/status — статус системы\n"
         "/services — сервисы\n"
@@ -90,11 +98,14 @@ async def start_cmd(m: types.Message):
         "/tests — список тестов\n"
         "/start_test — начать тест\n"
         "/logout — выход\n\n"
-        "🌐 <b>Ссылки:</b>\n"
+
+        "🌐 Ссылки:\n"
         "Web: http://localhost:3000\n"
         "Core API: http://core-service:8082\n"
         "Auth API: http://auth-service:8081"
     )
+
+    await m.answer(text)
 
 @dp.message_handler(commands=["help"])
 async def help_cmd(m: types.Message):
