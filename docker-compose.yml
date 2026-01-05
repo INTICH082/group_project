@@ -1,5 +1,3 @@
-version: "3.9"
-
 services:
   telegram-bot:
     build: .
@@ -9,13 +7,9 @@ services:
     depends_on:
       - redis
     restart: unless-stopped
-    volumes:
-      - .:/app
-    command: python bot.py
 
   redis:
     image: redis:7
     container_name: redis
-    restart: unless-stopped
     ports:
       - "6379:6379"
