@@ -1,9 +1,10 @@
+import asyncio
 import os
 import time
-import asyncio
 
-from aiogram import Bot, Dispatcher, types
-from aiogram.utils import executor
+from aiogram import Bot, Dispatcher, F
+from aiogram.types import Message
+from aiogram.filters import Command
 from dotenv import load_dotenv
 import redis.asyncio as redis
 
@@ -14,18 +15,15 @@ import redis.asyncio as redis
 load_dotenv()
 
 BOT_TOKEN = os.getenv("BOT_TOKEN")
-REDIS_URL = os.getenv("REDIS_URL", "redis://redis:6379/0")
+REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
 
 if not BOT_TOKEN:
     raise RuntimeError("BOT_TOKEN is not set")
 
 bot = Bot(token=BOT_TOKEN, parse_mode="HTML")
-dp = Dispatcher(bot)
+dp = Dispatcher()
 
-redis_client = redis.from_url(
-    REDIS_URL,
-    decode_responses=True
-)
+redis_client = redis.from_url(REDIS_URL, decode_responses=True)
 
 # =========================
 # REDIS HELPERS
@@ -47,9 +45,8 @@ async def delete_user(chat_id: int):
 # AUTH CHECK
 # =========================
 
-async def require_auth(message: types.Message) -> bool:
+async def require_auth(message: Message) -> bool:
     user = await get_user(message.chat.id)
-
     if not user or user.get("status") != "AUTHORIZED":
         await message.answer(
             "❌ <b>ДОСТУП ЗАПРЕЩЁН</b>\n\n"
@@ -58,15 +55,14 @@ async def require_auth(message: types.Message) -> bool:
             "/login"
         )
         return False
-
     return True
 
 # =========================
 # COMMANDS
 # =========================
 
-@dp.message_handler(commands=["start"])
-async def start_cmd(message: types.Message):
+@dp.message(Command("start"))
+async def start_cmd(message: Message):
     await message.answer(
         f"👋 <b>Привет, {message.from_user.first_name}!</b>\n\n"
         "🤖 Я — бот системы тестирования.\n"
@@ -92,8 +88,8 @@ async def start_cmd(message: types.Message):
         "• Auth API: http://auth-service:8081"
     )
 
-@dp.message_handler(commands=["help"])
-async def help_cmd(message: types.Message):
+@dp.message(Command("help"))
+async def help_cmd(message: Message):
     await message.answer(
         "🆘 <b>ПОМОЩЬ</b>\n\n"
         "/start — начало работы\n"
@@ -105,15 +101,15 @@ async def help_cmd(message: types.Message):
         "/start_test — начать тест"
     )
 
-@dp.message_handler(commands=["status"])
-async def status_cmd(message: types.Message):
+@dp.message(Command("status"))
+async def status_cmd(message: Message):
     await message.answer(
         "📊 <b>СТАТУС СИСТЕМЫ</b>\n\n"
         "Все сервисы работают 🟢"
     )
 
-@dp.message_handler(commands=["services"])
-async def services_cmd(message: types.Message):
+@dp.message(Command("services"))
+async def services_cmd(message: Message):
     await message.answer(
         "🛠 <b>СЕРВИСЫ СИСТЕМЫ</b>\n\n"
         "<b>CORE-SERVICE</b>\n"
@@ -130,8 +126,8 @@ async def services_cmd(message: types.Message):
         "REDIS — 6379"
     )
 
-@dp.message_handler(commands=["login"])
-async def login_cmd(message: types.Message):
+@dp.message(Command("login"))
+async def login_cmd(message: Message):
     user = await get_user(message.chat.id)
 
     if user and user.get("status") == "AUTHORIZED":
@@ -142,65 +138,10 @@ async def login_cmd(message: types.Message):
         return
 
     code = str(int(time.time()))
-
     await set_user(message.chat.id, {
         "status": "ANONYMOUS",
         "login_code": code
     })
 
     await message.answer(
-        "🔐 <b>АВТОРИЗАЦИЯ</b>\n\n"
-        f"Ваш код: <code>{code}</code>\n\n"
-        "Введите код в веб-клиенте и затем выполните:\n"
-        "/complete_login"
-    )
-
-@dp.message_handler(commands=["complete_login"])
-async def complete_login_cmd(message: types.Message):
-    user = await get_user(message.chat.id)
-
-    if not user or user.get("status") != "ANONYMOUS":
-        await message.answer(
-            "❌ <b>СЕССИЯ НЕ НАЙДЕНА</b>\n\n"
-            "Выполните /login и попробуйте снова."
-        )
-        return
-
-    await message.answer(
-        "⏳ <b>ОЖИДАНИЕ ПОДТВЕРЖДЕНИЯ</b>\n\n"
-        "Завершите вход в веб-клиенте."
-    )
-
-@dp.message_handler(commands=["tests"])
-async def tests_cmd(message: types.Message):
-    if not await require_auth(message):
-        return
-
-    await message.answer(
-        "🧪 <b>ТЕСТОВ НЕТ</b>\n\n"
-        "В данный момент доступных тестов нет."
-    )
-
-@dp.message_handler(commands=["start_test"])
-async def start_test_cmd(message: types.Message):
-    if not await require_auth(message):
-        return
-
-    await message.answer(
-        "🚀 <b>ТЕСТ НЕ ДОСТУПЕН</b>\n\n"
-        "Сначала выберите тест через /tests."
-    )
-
-@dp.message_handler()
-async def unknown_cmd(message: types.Message):
-    await message.answer(
-        "❓ <b>Неизвестная команда</b>\n\n"
-        "Используйте /help"
-    )
-
-# =========================
-# RUN
-# =========================
-
-if __name__ == "__main__":
-    executor.start_polling(dp, skip_updates=True)
+        "🔐 <b>АВТОРИЗАЦИЯ</b>\n\
