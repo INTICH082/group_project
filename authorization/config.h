@@ -12,9 +12,9 @@ namespace Config {
     const int PORT = 8081;
     
     // База данных
-    const string DB_HOST = "localhost";
+    const string DB_HOST = "127.0.0.1";
     const string DB_USER = "root";
-    const string DB_PASS = "";
+    const string DB_PASS = "dbpassiplaygodotandclaimfun";
     const string DB_NAME = "Project";
     
     // Секрет для токенов
