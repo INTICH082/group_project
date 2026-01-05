@@ -325,6 +325,29 @@ func UpdateTestHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	fmt.Fprint(w, "OK")
 }
+func UniversalAddQuestionHandler(w http.ResponseWriter, r *http.Request) {
+	// Пробуем все варианты имен параметров, которые может слать тест
+	tID, _ := strconv.Atoi(r.URL.Query().Get("test_id"))
+	if tID == 0 {
+		tID, _ = strconv.Atoi(r.URL.Query().Get("id"))
+	}
+
+	qID, _ := strconv.Atoi(r.URL.Query().Get("question_id"))
+
+	log.Printf("📥 Добавление: Test=%d, Question=%d", tID, qID)
+
+	if tID == 0 || qID == 0 {
+		http.Error(w, "Missing test_id or question_id", http.StatusBadRequest)
+		return
+	}
+
+	if err := AddQuestionToTest(tID, qID); err != nil {
+		log.Printf("❌ Ошибка: %v", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+}
 func main() {
 	InitDB()
 	mux := http.NewServeMux()

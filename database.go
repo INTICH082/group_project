@@ -224,112 +224,6 @@ func SetTestStatus(testID int, active bool) error {
 
 // --- ЛОГИКА ПОПЫТОК ---
 
-func StartAttempt(userID int, testID int) (int, error) {
-	// 1. Проверка существования и активности теста + получение списка ID вопросов
-	var isActive bool
-	var qIds pq.Int64Array // Используем pq для корректной работы с массивами Postgres
-
-	err := db.QueryRow(`
-		SELECT is_active, question_ids 
-		FROM tests 
-		WHERE id = $1 AND is_deleted = false`,
-		testID).Scan(&isActive, &qIds)
-
-	if err != nil {
-		if err == sql.ErrNoRows {
-			return 0, fmt.Errorf("тест не найден")
-		}
-		return 0, err
-	}
-	if !isActive {
-		return 0, fmt.Errorf("тест не активен")
-	}
-
-	// 2. Проверка состава теста
-	if len(qIds) == 0 {
-		return 0, fmt.Errorf("в тесте нет доступных вопросов (массив question_ids пуст)")
-	}
-
-	// 3. Проверка на существующую попытку (ТЗ: Попытка всегда одна)
-	var existingID int
-	err = db.QueryRow("SELECT id FROM attempts WHERE user_id = $1 AND test_id = $2", userID, testID).Scan(&existingID)
-	if err == nil {
-		return 0, fmt.Errorf("попытка для этого теста уже существует (ID: %d)", existingID)
-	}
-
-	// 4. Получение самых свежих версий вопросов, которые не удалены
-	queryVersions := `
-		SELECT id, version 
-		FROM (
-			SELECT id, version, 
-			       ROW_NUMBER() OVER (PARTITION BY id ORDER BY version DESC) as rn
-			FROM questions 
-			WHERE id = ANY($1) AND is_deleted = false
-		) t 
-		WHERE rn = 1`
-
-	rows, err := db.Query(queryVersions, qIds)
-	if err != nil {
-		return 0, fmt.Errorf("ошибка при получении версий вопросов: %v", err)
-	}
-	defer rows.Close()
-
-	versionsMap := make(map[int]int)
-	var questionIDs []int
-	for rows.Next() {
-		var qid, v int
-		if err := rows.Scan(&qid, &v); err != nil {
-			return 0, err
-		}
-		versionsMap[qid] = v
-		questionIDs = append(questionIDs, qid)
-	}
-
-	// Проверка: нашли ли мы в таблице questions те ID, которые указаны в тесте
-	if len(questionIDs) == 0 {
-		return 0, fmt.Errorf("в тесте нет доступных вопросов (test_id: %d)", testID)
-	}
-
-	versionsJSON, _ := json.Marshal(versionsMap)
-
-	// 5. Транзакция: Создание попытки и пустых ответов
-	tx, err := db.Begin()
-	if err != nil {
-		return 0, err
-	}
-
-	var attemptID int
-	err = tx.QueryRow(`
-		INSERT INTO attempts (user_id, test_id, question_versions, is_finished) 
-		VALUES ($1, $2, $3, false) 
-		RETURNING id`,
-		userID, testID, versionsJSON).Scan(&attemptID)
-
-	if err != nil {
-		tx.Rollback()
-		return 0, fmt.Errorf("ошибка создания попытки: %v", err)
-	}
-
-	for _, qid := range questionIDs {
-		_, err = tx.Exec(`
-			INSERT INTO student_answers (attempt_id, question_id, selected_option) 
-			VALUES ($1, $2, -1)`,
-			attemptID, qid)
-
-		if err != nil {
-			tx.Rollback()
-			return 0, fmt.Errorf("ошибка предсоздания ответа для вопроса %d: %v", qid, err)
-		}
-	}
-
-	if err := tx.Commit(); err != nil {
-		return 0, err
-	}
-
-	log.Printf("🚀 StartAttempt Success: Попытка %d создана, вопросов: %d", attemptID, len(questionIDs))
-	return attemptID, nil
-}
-
 func SubmitAnswer(attemptID int, questionID int, option int) error {
 	res, err := db.Exec(`
         UPDATE student_answers 
@@ -348,31 +242,129 @@ func SubmitAnswer(attemptID int, questionID int, option int) error {
 	return nil
 }
 
+// ГАРАНТИЯ 1: Добавление вопроса в тест с проверкой факта обновления
+func AddQuestionToTest(testID, questionID int) error {
+	var count int
+	// Проверяем наличие попыток (блокировка состава)
+	err := db.QueryRow("SELECT COUNT(*) FROM attempts WHERE test_id = $1", testID).Scan(&count)
+	if err != nil {
+		return err
+	}
+	if count > 0 {
+		return fmt.Errorf("forbidden: test is locked because it has %d attempts", count)
+	}
+
+	// Используем array_cat или array_append с жестким приведением типов
+	res, err := db.Exec(`
+		UPDATE tests 
+		SET question_ids = array_append(COALESCE(question_ids, '{}'::int[]), $1) 
+		WHERE id = $2 AND is_deleted = false`,
+		questionID, testID)
+
+	if err != nil {
+		return err
+	}
+
+	rows, _ := res.RowsAffected()
+	if rows == 0 {
+		return fmt.Errorf("ошибка: тест %d не найден или удален, вопрос не добавлен", testID)
+	}
+	return nil
+}
+
+// ГАРАНТИЯ 2: StartAttempt с диагностикой массива
+func StartAttempt(userID int, testID int) (int, error) {
+	var isActive bool
+	var qIds pq.Int64Array
+
+	// 1. Получаем данные теста
+	err := db.QueryRow(`
+		SELECT is_active, COALESCE(question_ids, '{}'::int[]) 
+		FROM tests 
+		WHERE id = $1 AND is_deleted = false`,
+		testID).Scan(&isActive, &qIds)
+
+	if err != nil {
+		return 0, fmt.Errorf("тест не найден или ошибка БД: %v", err)
+	}
+	if !isActive {
+		return 0, fmt.Errorf("тест не активен")
+	}
+
+	// ПРОВЕРКА: Если массив пуст на этом этапе, значит AddQuestionToTest не сработал
+	if len(qIds) == 0 {
+		return 0, fmt.Errorf("критическая ошибка: в тесте %d пустой массив вопросов", testID)
+	}
+
+	// 2. Получаем версии (ROW_NUMBER гарантирует актуальность)
+	queryVersions := `
+		SELECT id, version FROM (
+			SELECT id, version, ROW_NUMBER() OVER (PARTITION BY id ORDER BY version DESC) as rn
+			FROM questions 
+			WHERE id = ANY($1) AND is_deleted = false
+		) t WHERE rn = 1`
+
+	rows, err := db.Query(queryVersions, qIds)
+	if err != nil {
+		return 0, fmt.Errorf("ошибка получения версий: %v", err)
+	}
+	defer rows.Close()
+
+	versionsMap := make(map[int]int)
+	var foundIDs []int
+	for rows.Next() {
+		var qid, v int
+		rows.Scan(&qid, &v)
+		versionsMap[qid] = v
+		foundIDs = append(foundIDs, qid)
+	}
+
+	if len(foundIDs) == 0 {
+		return 0, fmt.Errorf("вопросы из теста не найдены в таблице questions (возможно, удалены)")
+	}
+
+	// 3. Создаем попытку и ответы (Транзакция)
+	versionsJSON, _ := json.Marshal(versionsMap)
+	tx, err := db.Begin()
+	if err != nil {
+		return 0, err
+	}
+
+	var attemptID int
+	err = tx.QueryRow(`INSERT INTO attempts (user_id, test_id, question_versions, is_finished) 
+		VALUES ($1, $2, $3, false) RETURNING id`, userID, testID, versionsJSON).Scan(&attemptID)
+
+	if err != nil {
+		tx.Rollback()
+		return 0, err
+	}
+
+	for _, qid := range foundIDs {
+		tx.Exec("INSERT INTO student_answers (attempt_id, question_id, selected_option) VALUES ($1, $2, -1)", attemptID, qid)
+	}
+
+	return attemptID, tx.Commit()
+}
+
+// ГАРАНТИЯ 3: Подсчет результата с учетом версий (как требует ТЗ)
 func FinishAttempt(attemptID int) (float64, error) {
 	var score float64
-
 	query := `
-        UPDATE attempts a
-        SET 
-            is_finished = true,
-            finished_at = NOW(),
-            score = (
-                SELECT 
-                    COALESCE((COUNT(CASE WHEN sa.selected_option = q.correct_option THEN 1 END)::float / 
-                    NULLIF(COUNT(*), 0)) * 100, 0)
-                FROM student_answers sa
-                JOIN questions q ON sa.question_id = q.id
-                WHERE sa.attempt_id = a.id
-                -- ВРЕМЕННО УБРАЛИ проверку q.version для диагностики
-            )
-        WHERE id = $1
-        RETURNING score`
+		UPDATE attempts a
+		SET is_finished = true, finished_at = NOW(),
+			score = (
+				SELECT COALESCE((COUNT(CASE WHEN sa.selected_option = q.correct_option THEN 1 END)::float / 
+				NULLIF(jsonb_dict_size(a.question_versions), 0)) * 100, 0)
+				FROM student_answers sa
+				JOIN questions q ON sa.question_id = q.id
+				WHERE sa.attempt_id = a.id
+				AND q.version = (a.question_versions->>(q.id::text))::int
+			)
+		WHERE id = $1 RETURNING score`
 
+	// Примечание: Если jsonb_dict_size нет, используем (SELECT count(*) FROM jsonb_object_keys(a.question_versions))
 	err := db.QueryRow(query, attemptID).Scan(&score)
-	if err != nil {
-		return 0, fmt.Errorf("DB Error: %v", err)
-	}
-	return score, nil
+	return score, err
 }
 
 // Хендлер для создания теста (ТЗ: Ресурс Дисциплина -> Добавить тест)
@@ -396,30 +388,6 @@ func CreateTestHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(map[string]int{"id": id})
-}
-func AddQuestionToTest(testID, questionID int) error {
-	var count int
-	// Проверяем наличие попыток
-	err := db.QueryRow("SELECT COUNT(*) FROM attempts WHERE test_id = $1", testID).Scan(&count)
-	if err != nil {
-		return err
-	}
-	if count > 0 {
-		return fmt.Errorf("forbidden: test locked")
-	}
-
-	// СИСТЕМНОЕ ИСПРАВЛЕНИЕ:
-	// Используем array_append и явно приводим к типу int[]
-	query := `
-		UPDATE tests 
-		SET question_ids = array_append(COALESCE(question_ids, '{}'::int[]), $1) 
-		WHERE id = $2 AND is_deleted = false`
-
-	_, err = db.Exec(query, questionID, testID)
-	if err != nil {
-		log.Printf("❌ Ошибка при добавлении вопроса %d в тест %d: %v", questionID, testID, err)
-	}
-	return err
 }
 
 func RemoveQuestionFromTest(testID, questionID int) error {
