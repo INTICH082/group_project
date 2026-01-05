@@ -1,16 +1,13 @@
 services:
+  redis:
+    image: redis:7
+    ports:
+      - "6379:6379"
+
   telegram-bot:
     build: .
-    container_name: telegram-bot
-    restart: unless-stopped
     env_file:
       - .env
     depends_on:
       - redis
-
-  redis:
-    image: redis:7
-    container_name: redis
-    restart: unless-stopped
-    ports:
-      - "6379:6379"
+    restart: always
