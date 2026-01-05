@@ -1,26 +1,21 @@
-services:
-  redis:
-    image: redis:7-alpine
-    container_name: redis
-    ports:
-      - "6379:6379"
-    volumes:
-      - redis_data:/data
-    restart: unless-stopped
-    environment:
-      - TZ=Europe/Moscow  # Установите ваш TZ, например Europe/Moscow для MSK
+version: "3.9"
 
+services:
   telegram-bot:
     build: .
     container_name: telegram-bot
-    depends_on:
-      - redis
-    environment:
-      - REDIS_HOST=redis
-      - TZ=Europe/Moscow  # То же для бота
-    restart: unless-stopped
     env_file:
       - .env
+    depends_on:
+      - redis
+    restart: unless-stopped
+    volumes:
+      - .:/app
+    command: python bot.py
 
-volumes:
-  redis_data:
+  redis:
+    image: redis:7
+    container_name: redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
