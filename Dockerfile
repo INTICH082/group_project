@@ -2,52 +2,54 @@ FROM alpine:3.19
 
 # 1. Устанавливаем все необходимые зависимости
 RUN apk update && apk add --no-cache \
-    # Компилятор и инструменты сборки
     g++ \
     make \
     cmake \
-    # MySQL зависимости
     mysql-dev \
     mariadb-dev \
     mariadb-connector-c-dev \
-    # Сетевые библиотеки
     curl-dev \
-    # Системные библиотеки
     musl-dev \
     openssl-dev \
     zlib-dev \
-    # Для работы с сервером
     linux-headers
 
 # 2. Устанавливаем рабочую директорию
 WORKDIR /app
 
-# 3. Копируем ТОЛЬКО нужные файлы (минимизируем кэш)
-# Сначала копируем заголовочные файлы и CMakeLists.txt (если есть)
-COPY CMakeLists.txt ./
-COPY *.h ./
-COPY *.cpp ./
-# Копируем скрипт сборки (если нужен)
-COPY build.ps1 ./
+# 3. Копируем папку authorization со всеми файлами
+COPY authorization/ ./authorization/
 
-# 4. Создаем папку build и компилируем проект
+# 4. Переходим в папку authorization
+WORKDIR /app/authorization
+
+# 5. Собираем проект (без использования build.ps1 - используем нативные команды)
 RUN mkdir -p build && \
     cd build && \
-    # Если есть CMakeLists.txt в корне
-    cmake .. -DCMAKE_BUILD_TYPE=Release && \
+    cmake .. && \
     make -j$(nproc)
 
-# 5. Проверяем, что бинарник создан
-RUN ls -la /app/build/
+# 6. Проверяем сборку
+RUN ls -la build/
 
-# 6. Устанавливаем рабочую директорию для запуска
-WORKDIR /app/build
+# 7. Устанавливаем рабочую директорию для запуска
+WORKDIR /app/authorization/build
 
-# 7. Проверяем зависимости бинарника
-RUN ldd auth.exe 2>/dev/null || echo "Binary check completed"
+# 8. Проверяем бинарник
+RUN if [ -f "auth.exe" ]; then \
+    echo "Build successful!"; \
+    echo "Binary size:"; \
+    ls -lh auth.exe; \
+    else \
+    echo "Available files:"; \
+    ls -la; \
+    echo "Trying to find binary..."; \
+    find . -name "*.exe" -o -name "auth*" -type f; \
+    exit 1; \
+    fi
 
-# 8. Открываем порт (уточните какой порт использует ваше приложение)
-EXPOSE 8080
+# 9. Открываем порт (укажите правильный порт из вашего кода)
+EXPOSE 8081
 
-# 9. Команда запуска сервера
+# 10. Команда запуска сервера
 CMD ["./auth.exe"]
