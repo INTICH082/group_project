@@ -1,10 +1,10 @@
-import asyncio
 import os
 import time
+import asyncio
 
-from aiogram import Bot, Dispatcher, Router, F
-from aiogram.filters import Command
+from aiogram import Bot, Dispatcher, F
 from aiogram.types import Message
+from aiogram.filters import Command
 from dotenv import load_dotenv
 import redis.asyncio as redis
 
@@ -15,29 +15,34 @@ import redis.asyncio as redis
 load_dotenv()
 
 BOT_TOKEN = os.getenv("BOT_TOKEN")
-REDIS_URL = os.getenv("REDIS_URL")
+REDIS_URL = os.getenv("REDIS_URL", "redis://redis:6379/0")
 
 if not BOT_TOKEN:
-    raise RuntimeError("BOT_TOKEN is not set")
+    raise RuntimeError("BOT_TOKEN not set")
 
 bot = Bot(token=BOT_TOKEN, parse_mode="HTML")
 dp = Dispatcher()
-router = Router()
 
-redis_client = redis.from_url(REDIS_URL, decode_responses=True)
+redis_client = redis.from_url(
+    REDIS_URL,
+    decode_responses=True
+)
 
 # =========================
 # REDIS HELPERS
 # =========================
 
-def rkey(chat_id: int) -> str:
+def user_key(chat_id: int) -> str:
     return f"user:{chat_id}"
 
 async def get_user(chat_id: int) -> dict:
-    return await redis_client.hgetall(rkey(chat_id))
+    return await redis_client.hgetall(user_key(chat_id))
 
 async def set_user(chat_id: int, data: dict):
-    await redis_client.hset(rkey(chat_id), mapping=data)
+    await redis_client.hset(user_key(chat_id), mapping=data)
+
+async def delete_user(chat_id: int):
+    await redis_client.delete(user_key(chat_id))
 
 # =========================
 # AUTH CHECK
@@ -45,69 +50,100 @@ async def set_user(chat_id: int, data: dict):
 
 async def require_auth(message: Message) -> bool:
     user = await get_user(message.chat.id)
+
     if not user or user.get("status") != "AUTHORIZED":
         await message.answer(
             "❌ <b>ДОСТУП ЗАПРЕЩЁН</b>\n\n"
             "Для выполнения команды необходимо авторизоваться.\n\n"
-            "🔐 Используйте:\n/login"
+            "🔐 Используйте команду:\n"
+            "/login"
         )
         return False
+
     return True
 
 # =========================
 # COMMANDS
 # =========================
 
-@router.message(Command("start"))
-async def start_cmd(message: Message):
+@dp.message(Command("start"))
+async def cmd_start(message: Message):
     await message.answer(
         f"👋 <b>Привет, {message.from_user.first_name}!</b>\n\n"
-        "🤖 Я — бот системы тестирования.\n\n"
-        "📌 <b>Команды:</b>\n"
-        "/start\n"
-        "/help\n"
-        "/status\n"
-        "/services\n"
-        "/login\n"
-        "/complete_login\n"
-        "/tests\n"
-        "/start_test"
+        "🤖 Я — бот системы тестирования.\n"
+        "Система находится в стадии активной разработки.\n\n"
+        "📊 <b>Что уже работает:</b>\n"
+        "• Docker контейнеры\n"
+        "• Базы данных\n"
+        "• Web-интерфейс\n"
+        "• API-сервисы\n"
+        "• Базовая авторизация\n\n"
+        "🧩 <b>Основные команды:</b>\n"
+        "/start — начало работы\n"
+        "/status — статус системы\n"
+        "/services — сервисы\n"
+        "/help — помощь\n"
+        "/login — авторизация\n"
+        "/complete_login — завершить авторизацию\n"
+        "/tests — список тестов\n"
+        "/start_test — начать тест\n\n"
+        "🌐 <b>Ссылки:</b>\n"
+        "• Web: http://localhost:3000\n"
+        "• Core API: http://core-service:8082\n"
+        "• Auth API: http://auth-service:8081"
     )
 
-@router.message(Command("help"))
-async def help_cmd(message: Message):
+@dp.message(Command("help"))
+async def cmd_help(message: Message):
     await message.answer(
         "🆘 <b>ПОМОЩЬ</b>\n\n"
-        "/start — главное меню\n"
+        "/start — начало работы\n"
+        "/status — статус системы\n"
+        "/services — сервисы\n"
         "/login — авторизация\n"
-        "/tests — список тестов"
+        "/complete_login — завершить авторизацию\n"
+        "/tests — список тестов\n"
+        "/start_test — начать тест"
     )
 
-@router.message(Command("status"))
-async def status_cmd(message: Message):
-    await message.answer("📊 <b>Система работает</b> 🟢")
-
-@router.message(Command("services"))
-async def services_cmd(message: Message):
+@dp.message(Command("status"))
+async def cmd_status(message: Message):
     await message.answer(
-        "🛠 <b>СЕРВИСЫ</b>\n\n"
-        "CORE — 🟢 8082\n"
-        "AUTH — 🟢 8081\n"
-        "WEB — 🟢 3000\n\n"
+        "📊 <b>СТАТУС СИСТЕМЫ</b>\n\n"
+        "Все сервисы работают 🟢"
+    )
+
+@dp.message(Command("services"))
+async def cmd_services(message: Message):
+    await message.answer(
+        "🛠 <b>СЕРВИСЫ СИСТЕМЫ</b>\n\n"
+        "<b>CORE-SERVICE</b>\n"
+        "Статус: 🟢 Онлайн\n"
+        "Порт: 8082\n\n"
+        "<b>AUTH-SERVICE</b>\n"
+        "Статус: 🟢 Онлайн\n"
+        "Порт: 8081\n\n"
+        "<b>WEB-CLIENT</b>\n"
+        "Статус: 🟢 Онлайн\n"
+        "Порт: 3000\n\n"
         "POSTGRES — 5432\n"
         "MONGODB — 27017\n"
         "REDIS — 6379"
     )
 
-@router.message(Command("login"))
-async def login_cmd(message: Message):
+@dp.message(Command("login"))
+async def cmd_login(message: Message):
     user = await get_user(message.chat.id)
 
-    if user.get("status") == "AUTHORIZED":
-        await message.answer("✅ <b>Вы уже авторизованы</b>")
+    if user and user.get("status") == "AUTHORIZED":
+        await message.answer(
+            "✅ <b>ВЫ УЖЕ АВТОРИЗОВАНЫ</b>\n\n"
+            "Дополнительных действий не требуется."
+        )
         return
 
-    code = str(int(time.time()))
+    code = str(int(time.time()))[-6:]
+
     await set_user(message.chat.id, {
         "status": "ANONYMOUS",
         "login_code": code
@@ -116,47 +152,58 @@ async def login_cmd(message: Message):
     await message.answer(
         "🔐 <b>АВТОРИЗАЦИЯ</b>\n\n"
         f"Ваш код: <code>{code}</code>\n\n"
-        "Введите код в веб-клиенте и выполните:\n/complete_login"
+        "Введите код в веб-клиенте и затем выполните:\n"
+        "/complete_login"
     )
 
-@router.message(Command("complete_login"))
-async def complete_login_cmd(message: Message):
+@dp.message(Command("complete_login"))
+async def cmd_complete_login(message: Message):
     user = await get_user(message.chat.id)
 
-    if user.get("status") != "ANONYMOUS":
-        await message.answer("❌ <b>Сессия не найдена</b>\nИспользуйте /login")
+    if not user or user.get("status") != "ANONYMOUS":
+        await message.answer(
+            "❌ <b>СЕССИЯ НЕ НАЙДЕНА</b>\n\n"
+            "Выполните /login и попробуйте снова."
+        )
         return
 
-    # заглушка (потом будет Auth API)
-    await set_user(message.chat.id, {"status": "AUTHORIZED"})
+    await message.answer(
+        "⏳ <b>ОЖИДАНИЕ ПОДТВЕРЖДЕНИЯ</b>\n\n"
+        "Завершите вход в веб-клиенте."
+    )
 
-    await message.answer("✅ <b>Авторизация успешна</b>")
-
-@router.message(Command("tests"))
-async def tests_cmd(message: Message):
+@dp.message(Command("tests"))
+async def cmd_tests(message: Message):
     if not await require_auth(message):
         return
 
-    await message.answer("🧪 <b>Тестов нет</b>")
+    await message.answer(
+        "🧪 <b>ТЕСТОВ НЕТ</b>\n\n"
+        "В данный момент доступных тестов нет."
+    )
 
-@router.message(Command("start_test"))
-async def start_test_cmd(message: Message):
+@dp.message(Command("start_test"))
+async def cmd_start_test(message: Message):
     if not await require_auth(message):
         return
 
-    await message.answer("🚀 <b>Сначала выберите тест</b>")
+    await message.answer(
+        "🚀 <b>ТЕСТ НЕ ДОСТУПЕН</b>\n\n"
+        "Сначала выберите тест через /tests."
+    )
 
-@router.message(F.text)
+@dp.message(F.text)
 async def unknown(message: Message):
-    await message.answer("❓ <b>Неизвестная команда</b>\n/help")
+    await message.answer(
+        "❓ <b>Неизвестная команда</b>\n\n"
+        "Используйте /help"
+    )
 
 # =========================
 # RUN
 # =========================
 
 async def main():
-    await bot.delete_webhook(drop_pending_updates=True)
-    dp.include_router(router)
     await dp.start_polling(bot)
 
 if __name__ == "__main__":
