@@ -336,45 +336,35 @@ func CreateTestHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(map[string]int{"id": id})
 }
-func AddQuestionToTest(testID int, questionID int) error {
-	// 1. Проверяем, были ли попытки
-	var count int
-	err := db.QueryRow("SELECT COUNT(*) FROM attempts WHERE test_id = $1", testID).Scan(&count)
+func AddQuestionToTest(testID, questionID int) error {
+	// 1. ПРОВЕРКА ПО ТЗ: Есть ли активные попытки?
+	var hasActiveAttempts bool
+	checkQuery := `SELECT EXISTS(SELECT 1 FROM attempts WHERE test_id = $1 AND status = 'in_progress')`
+	err := db.QueryRow(checkQuery, testID).Scan(&hasActiveAttempts)
 	if err != nil {
 		return err
 	}
-	if count > 0 {
-		return fmt.Errorf("нельзя изменять тест: студенты уже начали прохождение (попыток: %d)", count)
-	}
 
-	// 2. Добавляем вопрос в массив question_ids
-	// array_append добавит ID в конец массива, как требует ТЗ
-	_, err = db.Exec(`
-		UPDATE tests 
-		SET question_ids = array_append(question_ids, $1) 
-		WHERE id = $2 AND is_deleted = false`,
-		questionID, testID)
-
-	return err
-}
-func RemoveQuestionFromTest(testID int, questionID int) error {
-	// 1. Проверяем, были ли попытки
-	var count int
-	err := db.QueryRow("SELECT COUNT(*) FROM attempts WHERE test_id = $1", testID).Scan(&count)
-	if err != nil {
-		return err
-	}
-	if count > 0 {
+	if hasActiveAttempts {
+		// Возвращаем ошибку, которую хендлер превратит в 403
 		return fmt.Errorf("нельзя изменять тест: студенты уже начали прохождение")
 	}
 
-	// 2. Удаляем вопрос из массива
-	_, err = db.Exec(`
-		UPDATE tests 
-		SET question_ids = array_remove(question_ids, $1) 
-		WHERE id = $2 AND is_deleted = false`,
-		questionID, testID)
+	// 2. Если попыток нет, добавляем вопрос (твой существующий код)
+	_, err = db.Exec(`UPDATE tests SET question_ids = array_append(question_ids, $1) WHERE id = $2`, questionID, testID)
+	return err
+}
+func RemoveQuestionFromTest(testID, questionID int) error {
+	// Точно такая же проверка
+	var hasActiveAttempts bool
+	db.QueryRow(`SELECT EXISTS(SELECT 1 FROM attempts WHERE test_id = $1 AND status = 'in_progress')`, testID).Scan(&hasActiveAttempts)
 
+	if hasActiveAttempts {
+		return fmt.Errorf("нельзя изменять тест: студенты уже начали прохождение")
+	}
+
+	// Твой код удаления из массива
+	_, err := db.Exec(`UPDATE tests SET question_ids = array_remove(question_ids, $1) WHERE id = $2`, questionID, testID)
 	return err
 }
 
