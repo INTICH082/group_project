@@ -88,11 +88,16 @@ func CreateTest(courseID int, name string, questionIDs []int) (int, error) {
 	query := `
         INSERT INTO tests (course_id, name, question_ids, is_active) 
         VALUES ($1, $2, $3, false) 
-        RETURNING id` // ТЗ: "По умолчанию тест не активен"
+        RETURNING id`
 
 	var id int
+	// Используй "=", а не ":=" для id
 	err := db.QueryRow(query, courseID, name, pq.Array(questionIDs)).Scan(&id)
-	return id, err
+
+	if err != nil {
+		return 0, err
+	}
+	return id, nil
 }
 
 // ТЗ: Активация/Деактивация + авто-завершение попыток
