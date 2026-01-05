@@ -85,16 +85,13 @@ func DeleteQuestion(questionID int) error {
 // --- ЛОГИКА ТЕСТОВ ---
 
 func CreateTest(courseID int, name string, questionIDs []int) (int, error) {
-	query := `
-        INSERT INTO tests (course_id, name, question_ids, is_active) 
-        VALUES ($1, $2, $3, false) 
-        RETURNING id`
-
 	var id int
+	// Давай добавим логирование ошибки, чтобы она ТОЧНО появилась в Render Logs
+	query := `INSERT INTO tests (course_id, name, question_ids, is_active) VALUES ($1, $2, $3, false) RETURNING id`
+
 	err := db.QueryRow(query, courseID, name, pq.Array(questionIDs)).Scan(&id)
 	if err != nil {
-		// ЭТО КРИТИЧНО: выведи ошибку в консоль сервера
-		log.Printf("!!! ОШИБКА СОЗДАНИЯ ТЕСТА: %v", err)
+		log.Printf("!!! ОШИБКА В CreateTest: %v", err) // Ищи это в логах Render!
 		return 0, err
 	}
 	return id, nil
