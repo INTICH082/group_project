@@ -10,4 +10,3 @@ services:
       - .env
     depends_on:
       - redis
-    restart: always
