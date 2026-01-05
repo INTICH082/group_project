@@ -98,21 +98,26 @@ func UpdateQuestion(questionID int, text string, options []string, correct int) 
 		return fmt.Errorf("вопрос не найден: %v", err)
 	}
 
-	// 2. ТЗ: Проверка прав обычно в Middleware, но тут мы просто делаем INSERT
-	// Если в базе options это массив TEXT[], используй pq.Array(options)
-	// Если это JSONB, оставляй json.Marshal
 	optionsJSON, _ := json.Marshal(options)
 
+	// Добавляем title в INSERT и SELECT
 	query := `
-        INSERT INTO questions (id, version, text, options, correct_option, author_id, is_deleted) 
-        SELECT id, $2, $3, $4, $5, author_id, false 
+        INSERT INTO questions (id, version, title, text, options, correct_option, author_id, is_deleted) 
+        SELECT id, $2, title, $3, $4, $5, author_id, false 
         FROM questions 
         WHERE id = $1 AND version = $6
         RETURNING version`
 
 	var newVer int
+	// Обрати внимание: в SELECT мы берем 'title' из старой записи,
+	// а $3, $4, $5 — это новые данные (текст, опции, ответ)
 	err = db.QueryRow(query, questionID, currentVersion+1, text, optionsJSON, correct, currentVersion).Scan(&newVer)
-	return err
+
+	if err != nil {
+		return fmt.Errorf("ошибка при обновлении вопроса: %v", err)
+	}
+
+	return nil
 }
 
 func DeleteQuestion(questionID int) error {
