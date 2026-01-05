@@ -285,13 +285,21 @@ func StartAttempt(userID int, testID int) (int, error) {
 // --- ЛОГИКА ОТВЕТОВ ---
 
 func SubmitAnswer(attemptID int, questionID int, option int) error {
-	// Просто обновляем уже существующую строку, которую создала StartAttempt
-	_, err := db.Exec(`
+	res, err := db.Exec(`
         UPDATE student_answers 
         SET selected_option = $3 
         WHERE attempt_id = $1 AND question_id = $2`,
 		attemptID, questionID, option)
-	return err
+
+	if err != nil {
+		return err
+	}
+
+	rows, _ := res.RowsAffected()
+	if rows == 0 {
+		return fmt.Errorf("строка ответа не найдена (attempt: %d, question: %d)", attemptID, questionID)
+	}
+	return nil
 }
 
 func FinishAttempt(attemptID int) (float64, error) {
