@@ -149,66 +149,103 @@ func SetTestStatus(testID int, active bool) error {
 // --- ЛОГИКА ПОПЫТОК ---
 
 func StartAttempt(userID int, testID int) (int, error) {
-	// ТЗ: Проверка, активен ли тест
+	// 1. ТЗ: Проверка, активен ли тест и существует ли он
 	var isActive bool
 	err := db.QueryRow("SELECT is_active FROM tests WHERE id = $1 AND is_deleted = false", testID).Scan(&isActive)
 	if err != nil {
-		return 0, fmt.Errorf("тест не найден")
+		if err == sql.ErrNoRows {
+			return 0, fmt.Errorf("тест не найден")
+		}
+		return 0, err
 	}
 	if !isActive {
 		return 0, fmt.Errorf("тест не активен")
 	}
 
-	// 1. Замораживаем версии вопросов
+	// 2. ТЗ: Попытка всегда одна. Проверяем, не начал ли пользователь этот тест ранее.
+	var existingID int
+	err = db.QueryRow("SELECT id FROM attempts WHERE user_id = $1 AND test_id = $2", userID, testID).Scan(&existingID)
+	if err == nil {
+		return 0, fmt.Errorf("попытка для этого теста уже существует (ID: %d)", existingID)
+	}
+
+	// 3. ТЗ: Выбирается самая последняя версия вопроса.
+	// Берем актуальные версии для всех вопросов, входящих в массив теста.
 	queryVersions := `
-        SELECT q.id, MAX(q.version) 
-        FROM questions q
-        JOIN (SELECT unnest(question_ids) as qid FROM tests WHERE id = $1) t ON q.id = t.qid
-        WHERE q.is_deleted = false
-        GROUP BY q.id`
+		SELECT q.id, MAX(q.version) 
+		FROM questions q
+		WHERE q.id = ANY((SELECT question_ids FROM tests WHERE id = $1))
+		  AND q.is_deleted = false
+		GROUP BY q.id`
 
 	rows, err := db.Query(queryVersions, testID)
 	if err != nil {
-		return 0, err
+		return 0, fmt.Errorf("ошибка при получении версий вопросов: %v", err)
 	}
 	defer rows.Close()
 
 	versionsMap := make(map[int]int)
+	var questionIDs []int // Сохраним ID для создания пустых ответов
 	for rows.Next() {
 		var qid, v int
-		rows.Scan(&qid, &v)
+		if err := rows.Scan(&qid, &v); err != nil {
+			return 0, err
+		}
 		versionsMap[qid] = v
+		questionIDs = append(questionIDs, qid)
 	}
 	versionsJSON, _ := json.Marshal(versionsMap)
 
-	// 2. Создаем запись попытки
-	var attemptID int
-	err = db.QueryRow(`INSERT INTO attempts (user_id, test_id, question_versions, is_finished) 
-                       VALUES ($1, $2, $3, false) RETURNING id`,
-		userID, testID, versionsJSON).Scan(&attemptID)
+	// Начинаем транзакцию, так как нам нужно гарантированно создать и попытку, и ответы
+	tx, err := db.Begin()
+	if err != nil {
+		return 0, err
+	}
 
-	return attemptID, err
+	// 4. Создаем запись попытки
+	var attemptID int
+	queryInsertAttempt := `
+		INSERT INTO attempts (user_id, test_id, question_versions, is_finished) 
+		VALUES ($1, $2, $3, false) 
+		RETURNING id`
+
+	err = tx.QueryRow(queryInsertAttempt, userID, testID, versionsJSON).Scan(&attemptID)
+	if err != nil {
+		tx.Rollback()
+		return 0, fmt.Errorf("ошибка создания попытки: %v", err)
+	}
+
+	// 5. ТЗ: Ответ автоматически создаётся системой во время создания попытки.
+	// Значение по умолчанию -1.
+	for _, qid := range questionIDs {
+		_, err = tx.Exec(`
+			INSERT INTO student_answers (attempt_id, question_id, selected_option) 
+			VALUES ($1, $2, -1)`,
+			attemptID, qid)
+
+		if err != nil {
+			tx.Rollback()
+			return 0, fmt.Errorf("ошибка предсоздания ответа для вопроса %d: %v", qid, err)
+		}
+	}
+
+	// Фиксируем изменения в БД
+	if err := tx.Commit(); err != nil {
+		return 0, err
+	}
+
+	return attemptID, nil
 }
 
 // --- ЛОГИКА ОТВЕТОВ ---
 
-func SubmitAnswer(attemptID, questionID, selectedOption int) error {
-	var isFinished bool
-	err := db.QueryRow("SELECT is_finished FROM attempts WHERE id = $1", attemptID).Scan(&isFinished)
-	if err != nil {
-		return err
-	}
-	if isFinished {
-		return fmt.Errorf("попытка уже завершена")
-	}
-
-	query := `
-        INSERT INTO student_answers (attempt_id, question_id, selected_option) 
-        VALUES ($1, $2, $3)
-        ON CONFLICT (attempt_id, question_id) 
-        DO UPDATE SET selected_option = $3` // ТЗ: "изменяет значение ответа"
-
-	_, err = db.Exec(query, attemptID, questionID, selectedOption)
+func SubmitAnswer(attemptID int, questionID int, option int) error {
+	// Просто обновляем уже существующую строку, которую создала StartAttempt
+	_, err := db.Exec(`
+        UPDATE student_answers 
+        SET selected_option = $3 
+        WHERE attempt_id = $1 AND question_id = $2`,
+		attemptID, questionID, option)
 	return err
 }
 
