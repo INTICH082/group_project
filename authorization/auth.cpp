@@ -1,173 +1,211 @@
 #include "auth.h"
-#include "config.h"
-#include "utils.h"
 #include "database.h"
+#include "config.h"
+#include <curl/curl.h>
 #include <ctime>
 #include <sstream>
-#include <vector>
-
+#include <iostream>
+#include <algorithm>
 using namespace std;
 
-string Auth::createToken(int user_id, const string& email, const string& role) {
-    ostringstream payload;
-    payload << user_id << "|" << email << "|" << role << "|" 
-            << (time(nullptr) + Config::JWT_EXPIRE);
-    
-    string data = payload.str();
-    string signature = Utils::sha256(data + Config::JWT_SECRET);
-    
-    return Utils::base64_encode(data) + "." + signature.substr(0, 32);
+// Callback для curl
+static size_t writeCallback(void* data, size_t size, size_t nmemb, void* userp) {
+    string* str = (string*)userp;
+    str->append((char*)data, size * nmemb);
+    return size * nmemb;
 }
 
-bool Auth::parseToken(const string& token, int& user_id, string& email, string& role) {
-    size_t dot = token.find('.');
-    if (dot == string::npos) return false;
+bool Auth::init() {
+    curl_global_init(CURL_GLOBAL_ALL);
+    return Database::connect();
+}
+
+void Auth::cleanup() {
+    Database::close();
+    curl_global_cleanup();
+}
+
+string Auth::homePage() {
+    string url = "https://github.com/login/oauth/authorize?client_id=" + 
+                Config::GITHUB_CLIENT_ID + "&redirect_uri=http://localhost:" + 
+                to_string(Config::PORT) + "/auth/github/callback";
     
-    string data_b64 = token.substr(0, dot);
-    string signature = token.substr(dot + 1);
+    return "<!DOCTYPE html><html><head><title>Авторизация</title><style>"
+           "body{font-family:Arial;margin:40px;}"
+           ".btn{padding:12px 24px;background:#24292e;color:white;text-decoration:none;border-radius:6px;}"
+           ".box{background:#f5f5f5;padding:20px;margin:20px 0;border-radius:8px;}"
+           "</style></head><body>"
+           "<h1>🔐 Авторизация</h1>"
+           "<a href='" + url + "' class='btn'>Войти через GitHub</a>"
+           "<div class='box'><h3>Telegram API</h3><p><strong>POST /api/telegram</strong></p>"
+           "<p>Параметры: telegram_id, name</p></div>"
+           "<div class='box'><h3>Проверка токена</h3><p><strong>GET /api/verify?token=TOKEN</strong></p></div>"
+           "</body></html>";
+}
+
+string getGitHubToken(const string& code) {
+    CURL* curl = curl_easy_init();
+    string response;
     
-    string data = Utils::base64_decode(data_b64);
-    
-    // Проверка подписи
-    string check_sig = Utils::sha256(data + Config::JWT_SECRET).substr(0, 32);
-    if (check_sig != signature) return false;
-    
-    // Парсинг данных
-    vector<string> parts;
-    stringstream ss(data);
-    string part;
-    
-    while (getline(ss, part, '|')) {
-        parts.push_back(part);
+    if (curl) {
+        string data = "client_id=" + Config::GITHUB_CLIENT_ID +
+                     "&client_secret=" + Config::GITHUB_CLIENT_SECRET +
+                     "&code=" + code;
+        
+        curl_easy_setopt(curl, CURLOPT_URL, "https://github.com/login/oauth/access_token");
+        curl_easy_setopt(curl, CURLOPT_POSTFIELDS, data.c_str());
+        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, writeCallback);
+        curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response);
+        
+        curl_easy_perform(curl);
+        curl_easy_cleanup(curl);
     }
     
-    if (parts.size() != 4) return false;
+    size_t pos = response.find("access_token=");
+    if (pos != string::npos) {
+        size_t end = response.find('&', pos);
+        return response.substr(pos + 13, end - pos - 13);
+    }
     
-    // Проверка времени
-    long long exp_time = stoll(parts[3]);
-    if (exp_time < time(nullptr)) return false;
+    return "";
+}
+
+string getGitHubUser(const string& token) {
+    CURL* curl = curl_easy_init();
+    string response;
     
-    user_id = stoi(parts[0]);
-    email = parts[1];
-    role = parts[2];
+    if (curl) {
+        struct curl_slist* headers = nullptr;
+        headers = curl_slist_append(headers, ("Authorization: token " + token).c_str());
+        headers = curl_slist_append(headers, "User-Agent: StudentProject");
+        
+        curl_easy_setopt(curl, CURLOPT_URL, "https://api.github.com/user");
+        curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, writeCallback);
+        curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response);
+        
+        curl_easy_perform(curl);
+        curl_slist_free_all(headers);
+        curl_easy_cleanup(curl);
+    }
     
+    return response;
+}
+
+string parseJson(const string& json, const string& key) {
+    size_t pos = json.find("\"" + key + "\":");
+    if (pos == string::npos) return "";
+    
+    size_t start = json.find("\"", pos + key.length() + 3);
+    if (start == string::npos) return "";
+    
+    size_t end = json.find("\"", start + 1);
+    if (end == string::npos) return "";
+    
+    return json.substr(start + 1, end - start - 1);
+}
+
+string createToken(int user_id) {
+    long long timestamp = time(nullptr);
+    string data = to_string(user_id) + "|" + to_string(timestamp);
+    
+    // Простая подпись
+    unsigned long hash = 5381;
+    for (char c : data + Config::JWT_SECRET) {
+        hash = ((hash << 5) + hash) + c;
+    }
+    
+    return data + "|" + to_string(hash);
+}
+
+bool checkToken(const string& token, int& user_id) {
+    size_t pos1 = token.find('|');
+    size_t pos2 = token.find('|', pos1 + 1);
+    
+    if (pos1 == string::npos || pos2 == string::npos) return false;
+    
+    string id_str = token.substr(0, pos1);
+    string time_str = token.substr(pos1 + 1, pos2 - pos1 - 1);
+    string hash_str = token.substr(pos2 + 1);
+    
+    // 30 дней
+    long long timestamp = stoll(time_str);
+    if (time(nullptr) - timestamp > 2592000) return false;
+    
+    // Проверка подписи
+    string check_data = id_str + "|" + time_str;
+    unsigned long check_hash = 5381;
+    for (char c : check_data + Config::JWT_SECRET) {
+        check_hash = ((check_hash << 5) + check_hash) + c;
+    }
+    
+    if (to_string(check_hash) != hash_str) return false;
+    
+    user_id = stoi(id_str);
     return true;
 }
 
-bool Auth::validateToken(const string& token, int& user_id, string& email, string& role) {
-    return parseToken(token, user_id, email, role);
-}
-
-string Auth::registerUser(const string& fullname, const string& email,
-                         int course, const string& password, const string& role) {
-    Database db;
-    if (!db.connect()) return R"({"error":"DB connection failed"})";
-    
-    // Проверка email
-    if (db.getUserId("email", email) > 0) {
-        return R"({"error":"Email already exists"})";
+string Auth::githubAuth(const string& code) {
+    string token = getGitHubToken(code);
+    if (token.empty()) {
+        return "{\"error\":\"GitHub auth failed\"}";
     }
     
-    // Хэширование пароля
-    string hashed_pw = Utils::sha256(password);
+    string user_info = getGitHubUser(token);
+    string github_id = parseJson(user_info, "id");
+    string login = parseJson(user_info, "login");
+    string name = parseJson(user_info, "name");
     
-    // Создание пользователя
-    string query = "INSERT INTO Users (fullname, email, course, role, password) VALUES ('" +
-                  fullname + "', '" + email + "', " + to_string(course) + 
-                  ", '" + role + "', '" + hashed_pw + "')";
-    
-    int user_id = db.createUser(query);
-    if (user_id == 0) return R"({"error":"Registration failed"})";
-    
-    string token = createToken(user_id, email, role);
-    
-    return R"({"token":")" + token + R"(","user_id":)" + to_string(user_id) + "}";
-}
-
-string Auth::login(const string& email, const string& password) {
-    Database db;
-    if (!db.connect()) return R"({"error":"DB connection failed"})";
-    
-    // Получение пользователя
-    string query = "SELECT id, password, role FROM Users WHERE email = '" + email + "'";
-    if (!db.execute(query)) return R"({"error":"User not found"})";
-    
-    // Получаем данные (упрощенно)
-    query = "SELECT id, password, role FROM Users WHERE email = '" + email + "'";
-    string result = db.getSingleValue("SELECT CONCAT(id, '|', password, '|', role) FROM Users WHERE email = '" + email + "'");
-    
-    if (result.empty()) return R"({"error":"Invalid credentials"})";
-    
-    // Парсим результат
-    size_t pos1 = result.find('|');
-    size_t pos2 = result.find('|', pos1 + 1);
-    
-    if (pos1 == string::npos || pos2 == string::npos) {
-        return R"({"error":"Invalid data"})";
+    if (github_id.empty() || login.empty()) {
+        return "{\"error\":\"Invalid user info\"}";
     }
     
-    string id_str = result.substr(0, pos1);
-    string stored_hash = result.substr(pos1 + 1, pos2 - pos1 - 1);
-    string role = result.substr(pos2 + 1);
+    if (name.empty()) name = login;
     
-    // Проверка пароля
-    string input_hash = Utils::sha256(password);
-    if (input_hash != stored_hash) return R"({"error":"Invalid password"})";
-    
-    int user_id = stoi(id_str);
-    string token = createToken(user_id, email, role);
-    
-    return R"({"token":")" + token + R"(","user_id":)" + id_str + R"(,"role":")" + role + "\"}";
-}
-
-// Шаблон для OAuth авторизации
-template<typename T>
-string oauthAuth(const string& provider, T provider_id, const string& name) {
-    Database db;
-    if (!db.connect()) return R"({"error":"DB connection failed"})";
-    
-    string field = provider + "_id";
-    string id_str = to_string(provider_id);
-    
-    // Проверка существующего пользователя
-    int user_id = db.getUserId(field, id_str);
-    
-    if (user_id > 0) {
-        // Получаем email и роль
-        string query = "SELECT email, role FROM Users WHERE " + field + " = '" + id_str + "'";
-        string result = db.getSingleValue(query);
-        
-        if (result.empty()) return R"({"error":"User data not found"})";
-        
-        size_t pos = result.find('|');
-        string email = result.substr(0, pos);
-        string role = result.substr(pos + 1);
-        
-        string token = createToken(user_id, email, role);
-        return R"({"token":")" + token + R"(","user_id":)" + to_string(user_id) + "}";
+    int user_id = Database::getUserByGithubId(github_id);
+    if (user_id == 0) {
+        string email = login + "@github.user";
+        user_id = Database::createUser(name, email, github_id, 0);
     }
     
-    // Создание нового пользователя
-    string email = provider + "_" + id_str + "@" + provider + ".user";
-    string query = "INSERT INTO Users (fullname, email, course, role, " + field + 
-                  ") VALUES ('" + name + "', '" + email + "', 0, 'student', '" + id_str + "')";
+    if (user_id == 0) {
+        return "{\"error\":\"Database error\"}";
+    }
     
-    user_id = db.createUser(query);
-    if (user_id == 0) return R"({"error":"Registration failed"})";
+    string jwt = createToken(user_id);
+    return "{\"token\":\"" + jwt + "\",\"user_id\":" + to_string(user_id) + "}";
+}
+
+string Auth::telegramAuth(const string& telegram_id_str, const string& name) {
+    if (telegram_id_str.empty() || name.empty()) {
+        return "{\"error\":\"telegram_id and name required\"}";
+    }
     
-    string token = createToken(user_id, email, "student");
-    return R"({"token":")" + token + R"(","user_id":)" + to_string(user_id) + "}";
+    // Проверка что telegram_id - число
+    if (!all_of(telegram_id_str.begin(), telegram_id_str.end(), ::isdigit)) {
+        return "{\"error\":\"telegram_id must be a number\"}";
+    }
+    
+    long long telegram_id = stoll(telegram_id_str);
+    
+    int user_id = Database::getUserByTelegramId(telegram_id);
+    if (user_id == 0) {
+        string email = "tg" + to_string(telegram_id) + "@telegram.user";
+        user_id = Database::createUser(name, email, "", telegram_id);
+    }
+    
+    if (user_id == 0) {
+        return "{\"error\":\"Database error\"}";
+    }
+    
+    string jwt = createToken(user_id);
+    return "{\"token\":\"" + jwt + "\",\"user_id\":" + to_string(user_id) + "}";
 }
 
-string Auth::telegramAuth(long long telegram_id, const string& first_name, const string& last_name) {
-    string name = first_name + " " + last_name;
-    return oauthAuth<long long>("telegram", telegram_id, name);
-}
-
-string Auth::githubAuth(const string& github_id, const string& name) {
-    return oauthAuth<string>("github", github_id, name);
-}
-
-string Auth::yandexAuth(const string& yandex_id, const string& name) {
-    return oauthAuth<string>("yandex", yandex_id, name);
+string Auth::verifyToken(const string& token) {
+    int user_id = 0;
+    if (checkToken(token, user_id)) {
+        return "{\"valid\":true,\"user_id\":" + to_string(user_id) + "}";
+    }
+    return "{\"valid\":false}";
 }

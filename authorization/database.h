@@ -1,20 +1,16 @@
 #pragma once
-#include <mysql/mysql.h>
 #include <string>
-
 using namespace std;
 
 class Database {
 public:
-    Database();
-    ~Database();
+    static bool connect();
+    static void close();
     
-    bool connect();
-    bool execute(const string& query);
-    string getSingleValue(const string& query);
-    int getUserId(const string& field, const string& value);
-    int createUser(const string& query);
-    
-private:
-    MYSQL* conn;
+    static int getUserByGithubId(const string& github_id);
+    static int getUserByTelegramId(long long telegram_id);
+    static int createUser(const string& name, 
+                         const string& email,
+                         const string& github_id = "",
+                         long long telegram_id = 0);
 };
