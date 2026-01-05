@@ -297,37 +297,31 @@ func SubmitAnswer(attemptID int, questionID int, option int) error {
 func FinishAttempt(attemptID int) (float64, error) {
 	var score float64
 
-	// 1. Сначала просто закрываем попытку и получаем данные для расчета
-	// 2. Считаем баллы прямо в UPDATE, используя NULLIF для защиты от деления на 0
 	query := `
-        UPDATE attempts a
-        SET 
-            is_finished = true,
-            finished_at = NOW(),
-            score = (
-                SELECT 
-                    CASE 
-                        WHEN count_total = 0 THEN 0
-                        ELSE (count_correct::float / count_total::float) * 100
-                    END
-                FROM (
-                    SELECT 
-                        COUNT(*) as count_total,
-                        COUNT(CASE WHEN sa.selected_option = q.correct_option THEN 1 END) as count_correct
-                    FROM student_answers sa
-                    JOIN questions q ON sa.question_id = q.id
-                    WHERE sa.attempt_id = a.id
-                    AND q.version = (a.question_versions->>(q.id::text))::int
-                ) as stats
-            )
-        WHERE id = $1
-        RETURNING COALESCE(score, 0)`
+		UPDATE attempts a
+		SET 
+			is_finished = true,
+			finished_at = NOW(),
+			score = (
+				SELECT 
+					COALESCE((count_correct::float / NULLIF(count_total, 0)) * 100, 0)
+				FROM (
+					SELECT 
+						(SELECT count(*) FROM jsonb_object_keys(a.question_versions)) as count_total,
+						COUNT(*) as count_correct
+					FROM student_answers sa
+					JOIN questions q ON sa.question_id = q.id
+					WHERE sa.attempt_id = a.id
+					AND sa.selected_option = q.correct_option
+					-- Проверяем версию, сохраненную в попытке
+					AND q.version = (a.question_versions->>(q.id::text))::int
+				) as stats
+			)
+		WHERE id = $1
+		RETURNING score`
 
 	err := db.QueryRow(query, attemptID).Scan(&score)
-	if err != nil {
-		return 0, fmt.Errorf("ошибка финализации: %v", err)
-	}
-	return score, nil
+	return score, err
 }
 
 // Хендлер для создания теста (ТЗ: Ресурс Дисциплина -> Добавить тест)
