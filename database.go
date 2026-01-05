@@ -337,34 +337,33 @@ func CreateTestHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(map[string]int{"id": id})
 }
 func AddQuestionToTest(testID, questionID int) error {
-	// 1. ПРОВЕРКА ПО ТЗ: Есть ли активные попытки?
-	var hasActiveAttempts bool
-	checkQuery := `SELECT EXISTS(SELECT 1 FROM attempts WHERE test_id = $1 AND status = 'in_progress')`
-	err := db.QueryRow(checkQuery, testID).Scan(&hasActiveAttempts)
+	// ПРОВЕРКА ПО ТЗ: Есть ли начатые попытки?
+	var hasAttempts bool
+	err := db.QueryRow("SELECT EXISTS(SELECT 1 FROM attempts WHERE test_id = $1)", testID).Scan(&hasAttempts)
 	if err != nil {
 		return err
 	}
 
-	if hasActiveAttempts {
-		// Возвращаем ошибку, которую хендлер превратит в 403
-		return fmt.Errorf("нельзя изменять тест: студенты уже начали прохождение")
+	if hasAttempts {
+		// ТЗ: "Состав теста нельзя изменять, если есть хотя бы одна попытка"
+		return fmt.Errorf("forbidden: cannot modify test with existing attempts")
 	}
 
-	// 2. Если попыток нет, добавляем вопрос (твой существующий код)
-	_, err = db.Exec(`UPDATE tests SET question_ids = array_append(question_ids, $1) WHERE id = $2`, questionID, testID)
+	_, err = db.Exec("UPDATE tests SET question_ids = array_append(question_ids, $1) WHERE id = $2", questionID, testID)
 	return err
 }
 func RemoveQuestionFromTest(testID, questionID int) error {
-	// Точно такая же проверка
-	var hasActiveAttempts bool
-	db.QueryRow(`SELECT EXISTS(SELECT 1 FROM attempts WHERE test_id = $1 AND status = 'in_progress')`, testID).Scan(&hasActiveAttempts)
-
-	if hasActiveAttempts {
-		return fmt.Errorf("нельзя изменять тест: студенты уже начали прохождение")
+	var hasAttempts bool
+	err := db.QueryRow("SELECT EXISTS(SELECT 1 FROM attempts WHERE test_id = $1)", testID).Scan(&hasAttempts)
+	if err != nil {
+		return err
 	}
 
-	// Твой код удаления из массива
-	_, err := db.Exec(`UPDATE tests SET question_ids = array_remove(question_ids, $1) WHERE id = $2`, questionID, testID)
+	if hasAttempts {
+		return fmt.Errorf("forbidden: cannot modify test with existing attempts")
+	}
+
+	_, err = db.Exec("UPDATE tests SET question_ids = array_remove(question_ids, $1) WHERE id = $2", questionID, testID)
 	return err
 }
 
