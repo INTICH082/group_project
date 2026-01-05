@@ -217,13 +217,14 @@ func StartAttempt(userID int, testID int) (int, error) {
 	// 3. ТЗ: Выбирается самая последняя версия вопроса.
 	// Берем актуальные версии для всех вопросов, входящих в массив теста.
 	queryVersions := `
-		SELECT q.id, MAX(q.version) 
-		FROM questions q
-		WHERE q.id IN (SELECT unnest(question_ids) FROM tests WHERE id = $1)
-		  AND q.is_deleted = false
-		GROUP BY q.id`
+    	SELECT id, MAX(version) 
+    	FROM questions 
+   		WHERE id = ANY(SELECT unnest(question_ids) FROM tests WHERE id = $1)
+      	AND is_deleted = false
+    	GROUP BY id`
 
 	rows, err := db.Query(queryVersions, testID)
+
 	if err != nil {
 		return 0, fmt.Errorf("ошибка при получении версий вопросов: %v", err)
 	}
@@ -259,7 +260,11 @@ func StartAttempt(userID int, testID int) (int, error) {
 		tx.Rollback()
 		return 0, fmt.Errorf("ошибка создания попытки: %v", err)
 	}
-
+	// ... после цикла for rows.Next() ...
+	if len(questionIDs) == 0 {
+		return 0, fmt.Errorf("в тесте нет доступных вопросов (test_id: %d)", testID)
+	}
+	log.Printf("StartAttempt: создано %d ответов для попытки %d", len(questionIDs), attemptID)
 	// 5. ТЗ: Ответ автоматически создаётся системой во время создания попытки.
 	// Значение по умолчанию -1.
 	for _, qid := range questionIDs {
