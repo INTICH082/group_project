@@ -144,27 +144,47 @@ func FinishTestHandler(w http.ResponseWriter, r *http.Request) {
 	})
 }
 func SubmitAnswerHandler(w http.ResponseWriter, r *http.Request) {
+	// 1. Пробуем достать ID из URL Query
+	attID, _ := strconv.Atoi(r.URL.Query().Get("attempt_id"))
+	qID, _ := strconv.Atoi(r.URL.Query().Get("question_id"))
+
+	// 2. Читаем тело (там лежит выбранный вариант)
 	var req struct {
+		Option     int `json:"option"`
 		AttemptID  int `json:"attempt_id"`
 		QuestionID int `json:"question_id"`
-		Option     int `json:"option"`
 	}
 
-	// 1. Пытаемся прочитать из JSON
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		// 2. Если JSON пустой, берем из URL (для совместимости с твоим тестом)
-		req.AttemptID, _ = strconv.Atoi(r.URL.Query().Get("attempt_id"))
-		req.QuestionID, _ = strconv.Atoi(r.URL.Query().Get("question_id"))
+	bodyBytes, _ := io.ReadAll(r.Body)
+	if len(bodyBytes) > 0 {
+		json.Unmarshal(bodyBytes, &req)
 	}
 
-	// Вызываем функцию обновления
-	err := SubmitAnswer(req.AttemptID, req.QuestionID, req.Option)
-	if err != nil {
-		// Это та самая ошибка, которую ты видишь
-		http.Error(w, err.Error(), http.StatusBadRequest)
+	// 3. Если в URL было пусто, берем из JSON
+	if attID == 0 {
+		attID = req.AttemptID
+	}
+	if qID == 0 {
+		qID = req.QuestionID
+	}
+
+	log.Printf("📝 Ответ студента: Attempt=%d, Question=%d, Option=%d", attID, qID, req.Option)
+
+	if attID == 0 || qID == 0 {
+		log.Printf("⚠️ Ошибка парсинга: att:%d, q:%d", attID, qID)
+		http.Error(w, fmt.Sprintf("строка ответа не найдена (attempt: %d, question: %d)", attID, qID), http.StatusBadRequest)
 		return
 	}
 
+	// 4. Вызываем функцию из database.go
+	err := SubmitAnswer(attID, qID, req.Option)
+	if err != nil {
+		log.Printf("❌ Ошибка SubmitAnswer: %v", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
 	fmt.Fprint(w, "OK")
 }
 
