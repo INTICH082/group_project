@@ -298,22 +298,22 @@ func FinishAttempt(attemptID int) (float64, error) {
 	var score float64
 
 	query := `
-		UPDATE attempts a
-		SET 
-			is_finished = true,
-			finished_at = NOW(),
-			score = (
-				SELECT 
-					COALESCE((COUNT(CASE WHEN sa.selected_option = q.correct_option THEN 1 END)::float / 
-					NULLIF((SELECT count(*) FROM jsonb_each(a.question_versions)), 0)) * 100, 0)
-				FROM student_answers sa
-				JOIN questions q ON sa.question_id = q.id
-				WHERE sa.attempt_id = a.id
-				-- Ключевой момент: достаем версию именно для ЭТОГО вопроса из JSONB
-				AND q.version = (a.question_versions->>(q.id::text))::int
-			)
-		WHERE id = $1
-		RETURNING COALESCE(score, 0)`
+        UPDATE attempts a
+        SET 
+            is_finished = true,
+            finished_at = NOW(),
+            score = (
+                SELECT 
+                    (COUNT(CASE WHEN sa.selected_option = q.correct_option THEN 1 END)::float / 
+                    NULLIF((SELECT count(*) FROM jsonb_object_keys(a.question_versions)), 0)) * 100
+                FROM student_answers sa
+                JOIN questions q ON sa.question_id = q.id
+                WHERE sa.attempt_id = a.id
+                -- Сравниваем версию из вопроса с версией, записанной в попытке
+                AND q.version = (a.question_versions->>(q.id::text))::int
+            )
+        WHERE id = $1
+        RETURNING COALESCE(score, 0)`
 
 	err := db.QueryRow(query, attemptID).Scan(&score)
 	return score, err
