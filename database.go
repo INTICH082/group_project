@@ -174,7 +174,7 @@ func StartAttempt(userID int, testID int) (int, error) {
 	queryVersions := `
 		SELECT q.id, MAX(q.version) 
 		FROM questions q
-		WHERE q.id = ANY((SELECT question_ids FROM tests WHERE id = $1))
+		WHERE q.id IN (SELECT unnest(question_ids) FROM tests WHERE id = $1)
 		  AND q.is_deleted = false
 		GROUP BY q.id`
 
