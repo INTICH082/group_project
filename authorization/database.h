@@ -13,4 +13,7 @@ public:
                          const string& email,
                          const string& github_id = "",
                          long long telegram_id = 0);
+    
+    // НОВЫЙ МЕТОД - проверка пользователя по ID
+    static bool userExists(int user_id);
 };

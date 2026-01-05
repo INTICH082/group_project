@@ -108,3 +108,21 @@ int Database::createUser(const string& name,
     
     return mysql_insert_id(conn);
 }
+
+bool Database::userExists(int user_id) {
+    if (!conn) return false;
+    
+    string sql = "SELECT id FROM Users WHERE id = " + to_string(user_id);
+    
+    if (mysql_query(conn, sql.c_str())) {
+        return false;
+    }
+    
+    MYSQL_RES* res = mysql_store_result(conn);
+    if (!res) return false;
+    
+    bool exists = (mysql_fetch_row(res) != nullptr);
+    mysql_free_result(res);
+    
+    return exists;
+}

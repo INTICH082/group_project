@@ -6,6 +6,7 @@
 #include <sstream>
 #include <iostream>
 #include <algorithm>
+#include <cstdlib>
 using namespace std;
 
 // Callback для curl
@@ -28,7 +29,7 @@ void Auth::cleanup() {
 string Auth::homePage() {
     string url = "https://github.com/login/oauth/authorize?client_id=" + 
                 Config::GITHUB_CLIENT_ID + "&redirect_uri=http://localhost:" + 
-                to_string(Config::PORT) + "/auth/github/callback";
+                to_string(Config::PORT) + "/auth/callback";
     
     return R"(<!DOCTYPE html>
 <html>
@@ -72,11 +73,18 @@ string Auth::homePage() {
         <p>Пример:</p>
         <pre>curl "http://localhost:8081/api/verify?token=123|456|789"</pre>
     </div>
+    
+    <div class="box">
+        <h3>🆕 Новое API (для Web Client/Bot Logic)</h3>
+        <p><strong>GET /auth?login_token=TOKEN</strong> - Получить URL для OAuth</p>
+        <p><strong>POST /auth/refresh</strong> - Обновить токены (тело: refresh_token=TOKEN)</p>
+        <p><strong>GET /auth/verify?token=TOKEN</strong> - Проверить access token</p>
+    </div>
 </body>
 </html>)";
 }
 
-string getGitHubToken(const string& code) {
+string Auth::getGitHubToken(const string& code) {
     CURL* curl = curl_easy_init();
     string response;
     
@@ -97,13 +105,14 @@ string getGitHubToken(const string& code) {
     size_t pos = response.find("access_token=");
     if (pos != string::npos) {
         size_t end = response.find('&', pos);
+        if (end == string::npos) end = response.length();
         return response.substr(pos + 13, end - pos - 13);
     }
     
     return "";
 }
 
-string getGitHubUser(const string& token) {
+string Auth::getGitHubUser(const string& token) {
     CURL* curl = curl_easy_init();
     string response;
     
@@ -125,7 +134,7 @@ string getGitHubUser(const string& token) {
     return response;
 }
 
-string parseJson(const string& json, const string& key) {
+string Auth::parseJson(const string& json, const string& key) {
     size_t pos = json.find("\"" + key + "\":");
     if (pos == string::npos) return "";
     
@@ -138,75 +147,98 @@ string parseJson(const string& json, const string& key) {
     return json.substr(start + 1, end - start - 1);
 }
 
-string createToken(int user_id) {
-    long long timestamp = time(nullptr);
-    string data = to_string(user_id) + "|" + to_string(timestamp);
+string Auth::createToken(const string& data, int expire_seconds) {
+    // Добавляем timestamp
+    time_t now = time(nullptr);
+    string full_data = data + "|" + to_string(now);
     
     // Простая подпись
     unsigned long hash = 5381;
-    for (char c : data + Config::JWT_SECRET) {
+    for (char c : full_data + Config::JWT_SECRET) {
         hash = ((hash << 5) + hash) + c;
     }
     
-    return data + "|" + to_string(hash);
+    return full_data + "|" + to_string(hash);
 }
 
-bool checkToken(const string& token, int& user_id) {
+bool Auth::parseToken(const string& token, int& user_id, string& type, time_t& created_at) {
     size_t pos1 = token.find('|');
     size_t pos2 = token.find('|', pos1 + 1);
+    size_t pos3 = token.find('|', pos2 + 1);
     
-    if (pos1 == string::npos || pos2 == string::npos) return false;
+    if (pos1 == string::npos || pos2 == string::npos || pos3 == string::npos) {
+        return false;
+    }
     
     string id_str = token.substr(0, pos1);
-    string time_str = token.substr(pos1 + 1, pos2 - pos1 - 1);
-    string hash_str = token.substr(pos2 + 1);
-    
-    // 30 дней
-    long long timestamp = stoll(time_str);
-    if (time(nullptr) - timestamp > 2592000) return false;
+    type = token.substr(pos1 + 1, pos2 - pos1 - 1);
+    string time_str = token.substr(pos2 + 1, pos3 - pos2 - 1);
+    string hash_str = token.substr(pos3 + 1);
     
     // Проверка подписи
-    string check_data = id_str + "|" + time_str;
+    string check_data = id_str + "|" + type + "|" + time_str;
     unsigned long check_hash = 5381;
     for (char c : check_data + Config::JWT_SECRET) {
         check_hash = ((check_hash << 5) + check_hash) + c;
     }
     
-    if (to_string(check_hash) != hash_str) return false;
+    if (to_string(check_hash) != hash_str) {
+        return false;
+    }
     
-    user_id = stoi(id_str);
+    try {
+        user_id = stoi(id_str);
+        created_at = stoll(time_str);
+        return true;
+    } catch (...) {
+        return false;
+    }
+}
+
+bool checkToken(const string& token, int& user_id) {
+    string type;
+    time_t created_at = 0;
+    
+    if (!Auth::parseToken(token, user_id, type, created_at)) {
+        return false;
+    }
+    
+    // Проверяем тип токена (должен быть "access")
+    if (type != "access") {
+        return false;
+    }
+    
+    // Проверяем срок действия
+    if (time(nullptr) - created_at > Config::ACCESS_TOKEN_EXPIRE_SEC) {
+        return false;
+    }
+    
     return true;
 }
 
-string Auth::githubAuth(const string& code) {
-    string token = getGitHubToken(code);
-    if (token.empty()) {
-        return "{\"error\":\"GitHub auth failed\"}";
+string Auth::generateTokenPair(int user_id) {
+    time_t now = time(nullptr);
+    
+    // Access token (короткоживущий)
+    string access_data = to_string(user_id) + "|access|" + to_string(now);
+    string access_token = createToken(access_data, Config::ACCESS_TOKEN_EXPIRE_SEC);
+    
+    // Refresh token (долгоживущий)
+    string refresh_data = to_string(user_id) + "|refresh|" + to_string(now);
+    string refresh_token = createToken(refresh_data, Config::REFRESH_TOKEN_EXPIRE_SEC);
+    
+    return "{\"access_token\":\"" + access_token + 
+           "\",\"refresh_token\":\"" + refresh_token + 
+           "\",\"user_id\":" + to_string(user_id) + 
+           ",\"expires_in\":" + to_string(Config::ACCESS_TOKEN_EXPIRE_SEC) + "}";
+}
+
+string Auth::verifyToken(const string& token) {
+    int user_id = 0;
+    if (checkToken(token, user_id)) {
+        return "{\"valid\":true,\"user_id\":" + to_string(user_id) + "}";
     }
-    
-    string user_info = getGitHubUser(token);
-    string github_id = parseJson(user_info, "id");
-    string login = parseJson(user_info, "login");
-    string name = parseJson(user_info, "name");
-    
-    if (github_id.empty() || login.empty()) {
-        return "{\"error\":\"Invalid user info\"}";
-    }
-    
-    if (name.empty()) name = login;
-    
-    int user_id = Database::getUserByGithubId(github_id);
-    if (user_id == 0) {
-        string email = login + "@github.user";
-        user_id = Database::createUser(name, email, github_id, 0);
-    }
-    
-    if (user_id == 0) {
-        return "{\"error\":\"Database error\"}";
-    }
-    
-    string jwt = createToken(user_id);
-    return "{\"token\":\"" + jwt + "\",\"user_id\":" + to_string(user_id) + "}";
+    return "{\"valid\":false}";
 }
 
 string Auth::telegramAuth(const string& telegram_id_str, const string& name) {
@@ -231,14 +263,145 @@ string Auth::telegramAuth(const string& telegram_id_str, const string& name) {
         return "{\"error\":\"Database error\"}";
     }
     
-    string jwt = createToken(user_id);
-    return "{\"token\":\"" + jwt + "\",\"user_id\":" + to_string(user_id) + "}";
+    // Используем новую генерацию токенов
+    return generateTokenPair(user_id);
 }
 
-string Auth::verifyToken(const string& token) {
-    int user_id = 0;
-    if (checkToken(token, user_id)) {
-        return "{\"valid\":true,\"user_id\":" + to_string(user_id) + "}";
+// ========== TokenManager реализация ==========
+map<string, int> TokenManager::loginTokens;
+map<string, time_t> TokenManager::tokenExpiry;
+
+string TokenManager::createLoginToken(int user_id) {
+    cleanupExpiredTokens();
+    
+    // Генерируем случайный токен
+    srand(static_cast<unsigned int>(time(nullptr)));  // ИСПРАВЛЕНО: преобразование типа
+    string random_part = to_string(rand() % 1000000);
+    string token_str = "login_" + to_string(user_id) + "_" + random_part + "_" + to_string(time(nullptr));
+    
+    // Простой hash для уникальности
+    unsigned long hash = 5381;
+    for (char c : token_str) hash = ((hash << 5) + hash) + c;
+    token_str = to_string(hash);
+    
+    loginTokens[token_str] = user_id;
+    tokenExpiry[token_str] = time(nullptr) + Config::LOGIN_TOKEN_EXPIRE_SEC;
+    
+    return token_str;
+}
+
+int TokenManager::validateLoginToken(const string& token) {
+    cleanupExpiredTokens();
+    
+    auto it = loginTokens.find(token);
+    if (it != loginTokens.end()) {
+        int user_id = it->second;
+        loginTokens.erase(it);
+        tokenExpiry.erase(token);
+        return user_id;
     }
-    return "{\"valid\":false}";
+    return 0;
+}
+
+void TokenManager::cleanupExpiredTokens() {
+    time_t now = time(nullptr);
+    for (auto it = tokenExpiry.begin(); it != tokenExpiry.end(); ) {
+        if (it->second < now) {
+            loginTokens.erase(it->first);
+            it = tokenExpiry.erase(it);
+        } else {
+            ++it;
+        }
+    }
+}
+
+// ========== Новые методы Auth ==========
+
+string Auth::startOAuth(const string& login_token) {
+    if (login_token.empty()) {
+        return "{\"error\":\"login_token required\"}";
+    }
+    
+    // Проверяем, что токен существует
+    int user_id = 999; // Временный ID
+    
+    // Создаём новый токен для OAuth процесса
+    string state_token = TokenManager::createLoginToken(user_id);
+    
+    // ПРАВИЛЬНО СОБРАННЫЙ URL:
+    string url = "https://github.com/login/oauth/authorize?" +
+                 string("client_id=") + Config::GITHUB_CLIENT_ID +
+                 "&redirect_uri=http://localhost:" + to_string(Config::PORT) + "/auth/callback" +
+                 "&state=" + state_token +
+                 "&scope=user";
+    
+    return "{\"auth_url\":\"" + url + "\", \"state_token\":\"" + state_token + "\"}";
+}
+
+string Auth::handleGitHubCallback(const string& code, const string& state) {
+    // state = наш login_token
+    int user_id = TokenManager::validateLoginToken(state);
+    if (user_id == 0) {
+        return "{\"error\":\"Invalid or expired login token\"}";
+    }
+    
+    // Получаем access_token от GitHub
+    string gh_token = getGitHubToken(code);
+    if (gh_token.empty()) {
+        return "{\"error\":\"GitHub auth failed\"}";
+    }
+    
+    // Получаем данные пользователя от GitHub
+    string user_info = getGitHubUser(gh_token);
+    string github_id = parseJson(user_info, "id");
+    string login = parseJson(user_info, "login");
+    string name = parseJson(user_info, "name");
+    
+    if (github_id.empty()) {
+        return "{\"error\":\"Invalid user info from GitHub\"}";
+    }
+    
+    if (name.empty()) name = login;
+    
+    // Проверяем, есть ли уже пользователь с таким github_id
+    int existing_id = Database::getUserByGithubId(github_id);
+    if (existing_id == 0) {
+        // Создаём нового пользователя
+        string email = login + "@github.user";
+        existing_id = Database::createUser(name, email, github_id, 0);
+        
+        if (existing_id == 0) {
+            return "{\"error\":\"Database error creating user\"}";
+        }
+        user_id = existing_id;
+    } else {
+        user_id = existing_id;
+    }
+    
+    // Генерируем JWT пару
+    return generateTokenPair(user_id);
+}
+
+string Auth::refreshToken(const string& refresh_token) {
+    int user_id = 0;
+    string type;
+    time_t created_at = 0;
+    
+    // Парсим токен
+    if (!parseToken(refresh_token, user_id, type, created_at)) {
+        return "{\"error\":\"Invalid refresh token\"}";
+    }
+    
+    // Проверяем тип
+    if (type != "refresh") {
+        return "{\"error\":\"Not a refresh token\"}";
+    }
+    
+    // Проверяем срок действия
+    if (time(nullptr) - created_at > Config::REFRESH_TOKEN_EXPIRE_SEC) {
+        return "{\"error\":\"Refresh token expired\"}";
+    }
+    
+    // Генерируем новую пару
+    return generateTokenPair(user_id);
 }

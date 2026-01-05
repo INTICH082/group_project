@@ -19,4 +19,9 @@ namespace Config {
     
     // Секрет для токенов
     const string JWT_SECRET = "iplaygodotandclaimfun";
+    
+    // JWT настройки
+    const int ACCESS_TOKEN_EXPIRE_SEC = 900;    // 15 минут
+    const int REFRESH_TOKEN_EXPIRE_SEC = 2592000; // 30 дней
+    const int LOGIN_TOKEN_EXPIRE_SEC = 300;     // 5 минут для токена входа
 }
