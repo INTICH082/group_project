@@ -39,7 +39,7 @@ async def get_user(chat_id: int) -> dict:
 async def set_user(chat_id: int, data: dict):
     await redis_client.hset(rkey(chat_id), mapping=data)
 
-# =========================
+# ========================
 # AUTH CHECK
 # =========================
 
