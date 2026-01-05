@@ -3,7 +3,7 @@
 ## Прогресс проекта
 
 ### Общий прогресс
-![](https://geps.dev/progress/70?dangerColor=800000&warningColor=ff9900&successColor=006600)
+![](https://geps.dev/progress/80?dangerColor=800000&warningColor=ff9900&successColor=006600)
 
 **Статус:**
 - ✅ Завершено: 0 модулей
@@ -19,7 +19,7 @@
 | **Инфраструктура и БД** | Docker, Git, CI/CD, MySQL, PostgreSQL | Липко О., Кандауров М. | 🔄 **В разработке** | ![](https://geps.dev/progress/70?dangerColor=800000&warningColor=ff9900&successColor=006600) |
 | **Тестирование** | Go, Тесты | Кандауров М. | ⚙️ **Тестирование и доработка** | ![](https://geps.dev/progress/85?dangerColor=800000&warningColor=ff9900&successColor=006600) |
 | **Веб-клиент** | React, JavaScript | Первых Д. |  ⚙️ **Тестирование** | ![](https://geps.dev/progress/70?dangerColor=800000&warningColor=ff9900&successColor=006600) |
-| **Telegram бот** | Python, aiogram | Князев Р. | 🔄 **В разработке** | ![](https://geps.dev/progress/80?dangerColor=800000&warningColor=ff9900&successColor=006600) |
+| **Telegram бот** | Python, aiogram | Князев Р. | 🔄 **В разработке** | ![](https://geps.dev/progress/90?dangerColor=800000&warningColor=ff9900&successColor=006600) |
 | **Авторизация** | C++, OAuth, JWT | Липко О. | ⚙️ **Тестирование и доработка** | ![](https://geps.dev/progress/80?dangerColor=800000&warningColor=ff9900&successColor=006600) |
 
 
