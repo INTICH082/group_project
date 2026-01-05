@@ -399,22 +399,29 @@ func CreateTestHandler(w http.ResponseWriter, r *http.Request) {
 }
 func AddQuestionToTest(testID, questionID int) error {
 	var count int
-	// Считаем количество любых попыток для этого теста
+	// Проверяем наличие попыток
 	err := db.QueryRow("SELECT COUNT(*) FROM attempts WHERE test_id = $1", testID).Scan(&count)
 	if err != nil {
 		return err
 	}
-
 	if count > 0 {
-		// Если нашли хотя бы одну попытку — возвращаем ошибку
-		// Важно: текст ошибки может быть любым, хендлер всё равно отправит 403
-		return fmt.Errorf("состав теста заблокирован: найдено %d попыток", count)
+		return fmt.Errorf("forbidden: test locked")
 	}
 
-	// Если попыток 0 — выполняем обновление
-	_, err = db.Exec("UPDATE tests SET question_ids = array_append(question_ids, $1) WHERE id = $2", questionID, testID)
+	// СИСТЕМНОЕ ИСПРАВЛЕНИЕ:
+	// Используем array_append и явно приводим к типу int[]
+	query := `
+		UPDATE tests 
+		SET question_ids = array_append(COALESCE(question_ids, '{}'::int[]), $1) 
+		WHERE id = $2 AND is_deleted = false`
+
+	_, err = db.Exec(query, questionID, testID)
+	if err != nil {
+		log.Printf("❌ Ошибка при добавлении вопроса %d в тест %d: %v", questionID, testID, err)
+	}
 	return err
 }
+
 func RemoveQuestionFromTest(testID, questionID int) error {
 	var hasAttempts bool
 	err := db.QueryRow("SELECT EXISTS(SELECT 1 FROM attempts WHERE test_id = $1)", testID).Scan(&hasAttempts)
