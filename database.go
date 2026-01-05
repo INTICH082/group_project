@@ -82,16 +82,21 @@ func DeleteQuestion(questionID int) error {
 	return err
 }
 
-// --- ЛОГИКА ТЕСТОВ ---
-
 func CreateTest(courseID int, name string, questionIDs []int) (int, error) {
 	var id int
-	// Давай добавим логирование ошибки, чтобы она ТОЧНО появилась в Render Logs
-	query := `INSERT INTO tests (course_id, name, question_ids, is_active) VALUES ($1, $2, $3, false) RETURNING id`
+	// 1. В самом запросе добавь ::int[] для гарантии типа
+	query := `
+        INSERT INTO tests (course_id, name, question_ids, is_active) 
+        VALUES ($1, $2, $3::int[], false) 
+        RETURNING id`
 
+	// 2. В Scan передавай ПЕРЕМЕННУЮ, а не создавай новую через :=
+	// 3. Используй pq.Array(questionIDs)
 	err := db.QueryRow(query, courseID, name, pq.Array(questionIDs)).Scan(&id)
+
 	if err != nil {
-		log.Printf("!!! ОШИБКА В CreateTest: %v", err) // Ищи это в логах Render!
+		// ЭТО ОЧЕНЬ ВАЖНО: если тут ошибка, мы должны её увидеть
+		fmt.Printf("DATABASE ERROR: %v\n", err)
 		return 0, err
 	}
 	return id, nil
