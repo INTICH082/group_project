@@ -24,4 +24,9 @@ namespace Config {
     const int ACCESS_TOKEN_EXPIRE_SEC = 900;    // 15 минут
     const int REFRESH_TOKEN_EXPIRE_SEC = 2592000; // 30 дней
     const int LOGIN_TOKEN_EXPIRE_SEC = 300;     // 5 минут для токена входа
+    
+    // Дополнительные настройки
+    const int BCRYPT_COST = 12;                 // Сложность хэширования пароля
+    const int MAX_LOGIN_LENGTH = 50;
+    const int MAX_PASSWORD_LENGTH = 100;
 }

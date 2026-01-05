@@ -7,6 +7,9 @@
 #include <iostream>
 #include <algorithm>
 #include <cstdlib>
+#include <regex>
+#include <random>
+
 using namespace std;
 
 // Callback для curl
@@ -26,63 +29,100 @@ void Auth::cleanup() {
     curl_global_cleanup();
 }
 
-string Auth::homePage() {
-    string url = "https://github.com/login/oauth/authorize?client_id=" + 
-                Config::GITHUB_CLIENT_ID + "&redirect_uri=http://localhost:" + 
-                to_string(Config::PORT) + "/auth/callback";
+// ========== РАБОТА С ПАРОЛЯМИ ==========
+
+string Auth::hashPassword(const string& password) {
+    // Простая имитация хэширования (замените на реальное хэширование в продакшене)
+    // В реальном проекте используйте: BCrypt, Argon2 или SHA-256 с солью
+    unsigned long hash = 5381;
+    for (char c : password) {
+        hash = ((hash << 5) + hash) + c;
+    }
     
-    return R"(<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="UTF-8">
-    <title>Авторизация</title>
-    <style>
-        body { font-family: Arial, sans-serif; margin: 40px; }
-        .btn { padding: 12px 24px; background: #1d2125ff; color: white; 
-               text-decoration: none; border-radius: 6px; display: inline-block; }
-        .box { background: #f5f5f5; padding: 20px; margin: 20px 0; border-radius: 8px; }
-        pre { background: #2d2d2d; color: white; padding: 15px; border-radius: 5px; }
-        code { background: #e9ecef; padding: 2px 6px; border-radius: 4px; }
-    </style>
-</head>
-<body>
-    <h1>🔐 Авторизация</h1>
-    <p>Студенческий проект - GitHub OAuth + Telegram API</p>
+    // Добавляем соль из конфига
+    for (char c : Config::JWT_SECRET) {
+        hash = ((hash << 5) + hash) + c;
+    }
     
-    <div style="text-align: center; margin: 30px 0;">
-        <a href=")" + url + R"(" class="btn">Войти через GitHub</a>
-    </div>
-    
-    <div class="box">
-        <h3>🤖 Telegram API</h3>
-        <p><strong>POST /api/telegram</strong></p>
-        <p>Параметры (form-data):</p>
-        <ul>
-            <li><code>telegram_id</code> - ID пользователя в Telegram</li>
-            <li><code>name</code> - Имя пользователя</li>
-        </ul>
-        <p>Пример cURL:</p>
-        <pre>curl -X POST http://localhost:8081/api/telegram ^
-  -d "telegram_id=123456789" ^
-  -d "name=Иван Иванов"</pre>
-    </div>
-    
-    <div class="box">
-        <h3>🔍 Проверка токена</h3>
-        <p><strong>GET /api/verify?token=ВАШ_ТОКЕН</strong></p>
-        <p>Пример:</p>
-        <pre>curl "http://localhost:8081/api/verify?token=123|456|789"</pre>
-    </div>
-    
-    <div class="box">
-        <h3>🆕 Новое API (для Web Client/Bot Logic)</h3>
-        <p><strong>GET /auth?login_token=TOKEN</strong> - Получить URL для OAuth</p>
-        <p><strong>POST /auth/refresh</strong> - Обновить токены (тело: refresh_token=TOKEN)</p>
-        <p><strong>GET /auth/verify?token=TOKEN</strong> - Проверить access token</p>
-    </div>
-</body>
-</html>)";
+    return to_string(hash);
 }
+
+bool Auth::verifyPassword(const string& password, const string& hash) {
+    string new_hash = hashPassword(password);
+    return new_hash == hash;
+}
+
+// ========== НОВЫЙ МЕТОД: РЕГИСТРАЦИЯ ==========
+
+string Auth::registerUser(const string& login, const string& password, 
+                         const string& fullname, const string& email) {
+    
+    // Валидация входных данных
+    if (login.empty() || password.empty() || fullname.empty() || email.empty()) {
+        return "{\"error\":\"All fields are required\"}";
+    }
+    
+    if (login.length() > Config::MAX_LOGIN_LENGTH) {
+        return "{\"error\":\"Login too long\"}";
+    }
+    
+    if (password.length() < 6) {
+        return "{\"error\":\"Password must be at least 6 characters\"}";
+    }
+    
+    // Проверка формата email
+    regex email_regex(R"((\w+)(\.\w+)*@(\w+\.)+\w+)");
+    if (!regex_match(email, email_regex)) {
+        return "{\"error\":\"Invalid email format\"}";
+    }
+    
+    // Проверка, существует ли пользователь
+    if (Database::getUserByLogin(login) != 0) {
+        return "{\"error\":\"Login already exists\"}";
+    }
+    
+    // Хэшируем пароль
+    string password_hash = hashPassword(password);
+    if (password_hash.empty()) {
+        return "{\"error\":\"Password hashing failed\"}";
+    }
+    
+    // Создаем пользователя
+    int user_id = Database::createUserWithPassword(login, password_hash, fullname, email);
+    if (user_id == 0) {
+        return "{\"error\":\"Database error\"}";
+    }
+    
+    // Генерируем токены для автоматического входа
+    return generateTokenPair(user_id);
+}
+
+// ========== НОВЫЙ МЕТОД: АВТОРИЗАЦИЯ ПО ЛОГИНУ/ПАРОЛЮ ==========
+
+string Auth::loginUser(const string& login, const string& password) {
+    if (login.empty() || password.empty()) {
+        return "{\"error\":\"Login and password required\"}";
+    }
+    
+    // Получаем пользователя из БД
+    pair<int, string> user_data = Database::getUserWithPasswordHash(login);
+    int user_id = user_data.first;
+    string password_hash = user_data.second;
+    
+    if (user_id == 0) {
+        return "{\"error\":\"Invalid login or password\"}";
+    }
+    
+    // Проверяем пароль
+    if (!verifyPassword(password, password_hash)) {
+        return "{\"error\":\"Invalid login or password\"}";
+    }
+    
+    // Генерируем токены
+    return generateTokenPair(user_id);
+}
+
+// ========== СУЩЕСТВУЮЩИЕ МЕТОДЫ ==========
 
 string Auth::getGitHubToken(const string& code) {
     CURL* curl = curl_easy_init();
@@ -93,20 +133,27 @@ string Auth::getGitHubToken(const string& code) {
                      "&client_secret=" + Config::GITHUB_CLIENT_SECRET +
                      "&code=" + code;
         
+        struct curl_slist* headers = nullptr;
+        headers = curl_slist_append(headers, "Accept: application/json");
+        
         curl_easy_setopt(curl, CURLOPT_URL, "https://github.com/login/oauth/access_token");
         curl_easy_setopt(curl, CURLOPT_POSTFIELDS, data.c_str());
+        curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
         curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, writeCallback);
         curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response);
         
         curl_easy_perform(curl);
+        curl_slist_free_all(headers);
         curl_easy_cleanup(curl);
     }
     
-    size_t pos = response.find("access_token=");
+    size_t pos = response.find("\"access_token\":\"");
     if (pos != string::npos) {
-        size_t end = response.find('&', pos);
-        if (end == string::npos) end = response.length();
-        return response.substr(pos + 13, end - pos - 13);
+        size_t start = pos + 16;
+        size_t end = response.find('\"', start);
+        if (end != string::npos) {
+            return response.substr(start, end - start);
+        }
     }
     
     return "";
@@ -120,6 +167,7 @@ string Auth::getGitHubUser(const string& token) {
         struct curl_slist* headers = nullptr;
         headers = curl_slist_append(headers, ("Authorization: token " + token).c_str());
         headers = curl_slist_append(headers, "User-Agent: StudentProject");
+        headers = curl_slist_append(headers, "Accept: application/json");
         
         curl_easy_setopt(curl, CURLOPT_URL, "https://api.github.com/user");
         curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
@@ -253,17 +301,28 @@ string Auth::telegramAuth(const string& telegram_id_str, const string& name) {
     
     long long telegram_id = stoll(telegram_id_str);
     
+    // Пытаемся найти пользователя по telegram_id
     int user_id = Database::getUserByTelegramId(telegram_id);
+    
     if (user_id == 0) {
-        string email = "tg" + to_string(telegram_id) + "@telegram.user";
-        user_id = Database::createUser(name, email, "", telegram_id);
+        // Создаем временный логин и email для Telegram пользователя
+        string login = "tg_" + to_string(telegram_id);
+        string email = to_string(telegram_id) + "@telegram.user";
+        
+        // Проверяем, не занят ли такой login
+        if (Database::getUserByLogin(login) != 0) {
+            login = "tg_" + to_string(telegram_id) + "_" + to_string(time(nullptr));
+        }
+        
+        // Создаем пользователя с пустым паролем (специальный режим для Telegram)
+        user_id = Database::createTelegramUser(login, name, email, telegram_id);
     }
     
     if (user_id == 0) {
         return "{\"error\":\"Database error\"}";
     }
     
-    // Используем новую генерацию токенов
+    // Генерируем токены
     return generateTokenPair(user_id);
 }
 
@@ -275,8 +334,11 @@ string TokenManager::createLoginToken(int user_id) {
     cleanupExpiredTokens();
     
     // Генерируем случайный токен
-    srand(static_cast<unsigned int>(time(nullptr)));  // ИСПРАВЛЕНО: преобразование типа
-    string random_part = to_string(rand() % 1000000);
+    random_device rd;
+    mt19937 gen(rd());
+    uniform_int_distribution<> distrib(0, 999999);
+    string random_part = to_string(distrib(gen));
+    
     string token_str = "login_" + to_string(user_id) + "_" + random_part + "_" + to_string(time(nullptr));
     
     // Простой hash для уникальности
@@ -315,7 +377,7 @@ void TokenManager::cleanupExpiredTokens() {
     }
 }
 
-// ========== Новые методы Auth ==========
+// ========== Новые методы OAuth ==========
 
 string Auth::startOAuth(const string& login_token) {
     if (login_token.empty()) {
@@ -328,7 +390,6 @@ string Auth::startOAuth(const string& login_token) {
     // Создаём новый токен для OAuth процесса
     string state_token = TokenManager::createLoginToken(user_id);
     
-    // ПРАВИЛЬНО СОБРАННЫЙ URL:
     string url = "https://github.com/login/oauth/authorize?" +
                  string("client_id=") + Config::GITHUB_CLIENT_ID +
                  "&redirect_uri=http://localhost:" + to_string(Config::PORT) + "/auth/callback" +
@@ -356,19 +417,26 @@ string Auth::handleGitHubCallback(const string& code, const string& state) {
     string github_id = parseJson(user_info, "id");
     string login = parseJson(user_info, "login");
     string name = parseJson(user_info, "name");
+    string email = parseJson(user_info, "email");
     
     if (github_id.empty()) {
         return "{\"error\":\"Invalid user info from GitHub\"}";
     }
     
     if (name.empty()) name = login;
+    if (email.empty()) email = login + "@github.user";
     
     // Проверяем, есть ли уже пользователь с таким github_id
     int existing_id = Database::getUserByGithubId(github_id);
+    
     if (existing_id == 0) {
-        // Создаём нового пользователя
-        string email = login + "@github.user";
-        existing_id = Database::createUser(name, email, github_id, 0);
+        // Проверяем, не занят ли login
+        if (Database::getUserByLogin(login) != 0) {
+            login = login + "_gh_" + github_id;
+        }
+        
+        // Создаём нового пользователя (без пароля - можно будет установить позже)
+        existing_id = Database::createGitHubUser(login, name, email, github_id);
         
         if (existing_id == 0) {
             return "{\"error\":\"Database error creating user\"}";

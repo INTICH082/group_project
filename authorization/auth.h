@@ -19,33 +19,28 @@ public:
     static bool init();
     static void cleanup();
     
-    static string homePage();
-    
-    // Старт OAuth процесса
+    // Основные API методы
     static string startOAuth(const string& login_token);
-    
-    // Обработка callback от GitHub
     static string handleGitHubCallback(const string& code, const string& state);
-    
-    // Обновление токенов
     static string refreshToken(const string& refresh_token);
-    
-    // Проверка access token
     static string verifyToken(const string& token);
-    
-    // Прямая авторизация Telegram (старый метод, оставить для обратной совместимости)
     static string telegramAuth(const string& telegram_id_str, const string& name);
     
-    // Генерация пары токенов (для внутреннего использования)
+    // НОВЫЕ МЕТОДЫ: авторизация по логину/паролю
+    static string loginUser(const string& login, const string& password);
+    static string registerUser(const string& login, const string& password, 
+                              const string& fullname, const string& email);
+    
+    // Вспомогательные методы
     static string generateTokenPair(int user_id);
-
     static bool parseToken(const string& token, int& user_id, string& type, time_t& created_at);
-
     static string getGitHubToken(const string& code);
-
     static string getGitHubUser(const string& token);
-
     static string parseJson(const string& json, const string& key);
+    
+    // Методы для работы с паролями
+    static string hashPassword(const string& password);
+    static bool verifyPassword(const string& password, const string& hash);
     
 private:
     static string createToken(const string& data, int expire_seconds);
