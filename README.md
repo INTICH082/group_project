@@ -3,7 +3,7 @@
 ## Прогресс проекта
 
 ### Общий прогресс
-![](https://geps.dev/progress/80?dangerColor=800000&warningColor=ff9900&successColor=006600)
+![](https://geps.dev/progress/85?dangerColor=800000&warningColor=ff9900&successColor=006600)
 
 **Статус:**
 - ✅ Завершено: 0 модулей
