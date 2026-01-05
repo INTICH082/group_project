@@ -298,19 +298,40 @@ func FinishAttempt(attemptID int) (float64, error) {
 	var score float64
 
 	query := `
-        UPDATE attempts
+        UPDATE attempts a
         SET 
             is_finished = true,
             finished_at = NOW(),
             score = (
                 SELECT 
                     (COUNT(CASE WHEN sa.selected_option = q.correct_option THEN 1 END)::float / 
-                    NULLIF((SELECT array_length(question_ids, 1) FROM tests WHERE id = attempts.test_id), 0)) * 100
+                    NULLIF(jsonb_func_count_keys(a.question_versions), 0)) * 100
                 FROM student_answers sa
                 JOIN questions q ON sa.question_id = q.id
-                WHERE sa.attempt_id = attempts.id
-                -- ВАЖНО: Считаем по последним версиям на момент создания попытки
-                AND q.version = (SELECT (question_versions->>(q.id::text))::int FROM attempts WHERE id = $1)
+                WHERE sa.attempt_id = a.id
+                -- Сравниваем версию напрямую из JSONB текущей строки
+                AND q.version = (a.question_versions->>(q.id::text))::int
+            )
+        WHERE id = $1
+        RETURNING COALESCE(score, 0)`
+
+	// Если функция jsonb_func_count_keys не создана, используй более универсальный способ:
+	// (SELECT count(*) FROM jsonb_each(a.question_versions))
+
+	// Давай применим самый надежный вариант подсчета общего кол-ва вопросов:
+	query = `
+        UPDATE attempts a
+        SET 
+            is_finished = true,
+            finished_at = NOW(),
+            score = (
+                SELECT 
+                    (COUNT(CASE WHEN sa.selected_option = q.correct_option THEN 1 END)::float / 
+                    (SELECT count(*) FROM jsonb_each(a.question_versions))) * 100
+                FROM student_answers sa
+                JOIN questions q ON sa.question_id = q.id
+                WHERE sa.attempt_id = a.id
+                AND q.version = (a.question_versions->>(q.id::text))::int
             )
         WHERE id = $1
         RETURNING COALESCE(score, 0)`
