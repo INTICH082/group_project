@@ -213,9 +213,16 @@ func SetTestStatus(testID int, active bool) error {
 // --- ЛОГИКА ПОПЫТОК ---
 
 func StartAttempt(userID int, testID int) (int, error) {
-	// 1. ТЗ: Проверка, активен ли тест и существует ли он
+	// 1. Проверка существования и активности теста + получение списка ID вопросов
 	var isActive bool
-	err := db.QueryRow("SELECT is_active FROM tests WHERE id = $1 AND is_deleted = false", testID).Scan(&isActive)
+	var qIds pq.Int64Array // Используем pq для корректной работы с массивами Postgres
+
+	err := db.QueryRow(`
+		SELECT is_active, question_ids 
+		FROM tests 
+		WHERE id = $1 AND is_deleted = false`,
+		testID).Scan(&isActive, &qIds)
+
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return 0, fmt.Errorf("тест не найден")
@@ -226,35 +233,37 @@ func StartAttempt(userID int, testID int) (int, error) {
 		return 0, fmt.Errorf("тест не активен")
 	}
 
-	// 2. ТЗ: Попытка всегда одна. Проверяем, не начал ли пользователь этот тест ранее.
+	// 2. Проверка состава теста
+	if len(qIds) == 0 {
+		return 0, fmt.Errorf("в тесте нет доступных вопросов (массив question_ids пуст)")
+	}
+
+	// 3. Проверка на существующую попытку (ТЗ: Попытка всегда одна)
 	var existingID int
 	err = db.QueryRow("SELECT id FROM attempts WHERE user_id = $1 AND test_id = $2", userID, testID).Scan(&existingID)
 	if err == nil {
 		return 0, fmt.Errorf("попытка для этого теста уже существует (ID: %d)", existingID)
 	}
 
-	// 3. ТЗ: Выбирается самая последняя версия вопроса.
-	// Берем актуальные версии для всех вопросов, входящих в массив теста.
-	// Берем самую свежую версию для каждого ID из массива теста,
-	// игнорируя только те строки, которые удалены окончательно.
+	// 4. Получение самых свежих версий вопросов, которые не удалены
 	queryVersions := `
-    SELECT id, version 
-    FROM (
-        SELECT id, version, 
-               ROW_NUMBER() OVER (PARTITION BY id ORDER BY version DESC) as rn
-        FROM questions 
-        WHERE id = ANY(SELECT unnest(question_ids) FROM tests WHERE id = $1)
-    ) t 
-    WHERE rn = 1`
-	rows, err := db.Query(queryVersions, testID)
+		SELECT id, version 
+		FROM (
+			SELECT id, version, 
+			       ROW_NUMBER() OVER (PARTITION BY id ORDER BY version DESC) as rn
+			FROM questions 
+			WHERE id = ANY($1) AND is_deleted = false
+		) t 
+		WHERE rn = 1`
 
+	rows, err := db.Query(queryVersions, qIds)
 	if err != nil {
 		return 0, fmt.Errorf("ошибка при получении версий вопросов: %v", err)
 	}
 	defer rows.Close()
 
 	versionsMap := make(map[int]int)
-	var questionIDs []int // Сохраним ID для создания пустых ответов
+	var questionIDs []int
 	for rows.Next() {
 		var qid, v int
 		if err := rows.Scan(&qid, &v); err != nil {
@@ -263,33 +272,32 @@ func StartAttempt(userID int, testID int) (int, error) {
 		versionsMap[qid] = v
 		questionIDs = append(questionIDs, qid)
 	}
+
+	// Проверка: нашли ли мы в таблице questions те ID, которые указаны в тесте
+	if len(questionIDs) == 0 {
+		return 0, fmt.Errorf("в тесте нет доступных вопросов (test_id: %d)", testID)
+	}
+
 	versionsJSON, _ := json.Marshal(versionsMap)
 
-	// Начинаем транзакцию, так как нам нужно гарантированно создать и попытку, и ответы
+	// 5. Транзакция: Создание попытки и пустых ответов
 	tx, err := db.Begin()
 	if err != nil {
 		return 0, err
 	}
 
-	// 4. Создаем запись попытки
 	var attemptID int
-	queryInsertAttempt := `
+	err = tx.QueryRow(`
 		INSERT INTO attempts (user_id, test_id, question_versions, is_finished) 
 		VALUES ($1, $2, $3, false) 
-		RETURNING id`
+		RETURNING id`,
+		userID, testID, versionsJSON).Scan(&attemptID)
 
-	err = tx.QueryRow(queryInsertAttempt, userID, testID, versionsJSON).Scan(&attemptID)
 	if err != nil {
 		tx.Rollback()
 		return 0, fmt.Errorf("ошибка создания попытки: %v", err)
 	}
-	// ... после цикла for rows.Next() ...
-	if len(questionIDs) == 0 {
-		return 0, fmt.Errorf("в тесте нет доступных вопросов (test_id: %d)", testID)
-	}
-	log.Printf("StartAttempt: создано %d ответов для попытки %d", len(questionIDs), attemptID)
-	// 5. ТЗ: Ответ автоматически создаётся системой во время создания попытки.
-	// Значение по умолчанию -1.
+
 	for _, qid := range questionIDs {
 		_, err = tx.Exec(`
 			INSERT INTO student_answers (attempt_id, question_id, selected_option) 
@@ -302,15 +310,13 @@ func StartAttempt(userID int, testID int) (int, error) {
 		}
 	}
 
-	// Фиксируем изменения в БД
 	if err := tx.Commit(); err != nil {
 		return 0, err
 	}
 
+	log.Printf("🚀 StartAttempt Success: Попытка %d создана, вопросов: %d", attemptID, len(questionIDs))
 	return attemptID, nil
 }
-
-// --- ЛОГИКА ОТВЕТОВ ---
 
 func SubmitAnswer(attemptID int, questionID int, option int) error {
 	res, err := db.Exec(`
