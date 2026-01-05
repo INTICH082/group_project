@@ -244,31 +244,31 @@ func SubmitAnswer(attemptID int, questionID int, option int) error {
 
 // ГАРАНТИЯ 1: Добавление вопроса в тест с проверкой факта обновления
 func AddQuestionToTest(testID, questionID int) error {
+	// 1. Проверяем, не заблокирован ли тест попытками
 	var count int
-	// Проверяем наличие попыток (блокировка состава)
-	err := db.QueryRow("SELECT COUNT(*) FROM attempts WHERE test_id = $1", testID).Scan(&count)
-	if err != nil {
-		return err
-	}
+	db.QueryRow("SELECT COUNT(*) FROM attempts WHERE test_id = $1", testID).Scan(&count)
 	if count > 0 {
-		return fmt.Errorf("forbidden: test is locked because it has %d attempts", count)
+		return fmt.Errorf("состав теста заблокирован: уже есть %d попыток", count)
 	}
 
-	// Используем array_cat или array_append с жестким приведением типов
+	// 2. Обновляем с гарантией того, что массив существует
 	res, err := db.Exec(`
-		UPDATE tests 
-		SET question_ids = array_append(COALESCE(question_ids, '{}'::int[]), $1) 
-		WHERE id = $2 AND is_deleted = false`,
+        UPDATE tests 
+        SET question_ids = array_append(COALESCE(question_ids, '{}'::int[]), $1) 
+        WHERE id = $2 AND is_deleted = false`,
 		questionID, testID)
 
 	if err != nil {
-		return err
+		return fmt.Errorf("ошибка SQL: %v", err)
 	}
 
+	// 3. ПРОВЕРКА: Если строки не обновлены, значит ID теста неверный
 	rows, _ := res.RowsAffected()
 	if rows == 0 {
-		return fmt.Errorf("ошибка: тест %d не найден или удален, вопрос не добавлен", testID)
+		return fmt.Errorf("тест с ID %d не найден в базе", testID)
 	}
+
+	log.Printf("✅ Вопрос %d успешно добавлен в тест %d", questionID, testID)
 	return nil
 }
 

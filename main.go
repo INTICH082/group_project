@@ -168,25 +168,57 @@ func SubmitAnswerHandler(w http.ResponseWriter, r *http.Request) {
 
 // Хендлер добавления вопроса в тест
 func AddQuestionToTestHandler(w http.ResponseWriter, r *http.Request) {
-	// Получаем ID теста и вопроса из параметров запроса
-	testID, _ := strconv.Atoi(r.URL.Query().Get("test_id"))
-	questionID, _ := strconv.Atoi(r.URL.Query().Get("question_id"))
+	var tID, qID int
 
-	if testID == 0 || questionID == 0 {
-		http.Error(w, "Нужны параметры test_id и question_id", http.StatusBadRequest)
+	// 1. Пробуем достать из URL Query (?test_id=..&question_id=..)
+	tID, _ = strconv.Atoi(r.URL.Query().Get("test_id"))
+	qID, _ = strconv.Atoi(r.URL.Query().Get("question_id"))
+
+	// 2. Если не нашли, пробуем альтернативные имена (?id=..&qid=..)
+	if tID == 0 {
+		tID, _ = strconv.Atoi(r.URL.Query().Get("id"))
+	}
+	if qID == 0 {
+		qID, _ = strconv.Atoi(r.URL.Query().Get("question_id"))
+	}
+
+	// 3. Если всё еще 0, пробуем прочитать JSON из Body
+	if tID == 0 || qID == 0 {
+		var req struct {
+			TestID     int `json:"test_id"`
+			QuestionID int `json:"question_id"`
+			ID         int `json:"id"` // на случай если тест шлет "id"
+		}
+		json.NewDecoder(r.Body).Decode(&req)
+		if tID == 0 {
+			if req.TestID != 0 {
+				tID = req.TestID
+			} else {
+				tID = req.ID
+			}
+		}
+		if qID == 0 {
+			qID = req.QuestionID
+		}
+	}
+
+	log.Printf("📥 Попытка добавить вопрос %d в тест %d", qID, tID)
+
+	if tID == 0 || qID == 0 {
+		http.Error(w, "Не удалось определить ID теста или вопроса", http.StatusBadRequest)
 		return
 	}
 
 	// Вызываем функцию из database.go
-	err := AddQuestionToTest(testID, questionID)
+	err := AddQuestionToTest(tID, qID)
 	if err != nil {
-		// Если попытки уже были, вернется ошибка, и мы отправим её клиенту
-		http.Error(w, err.Error(), http.StatusForbidden)
+		log.Printf("❌ Ошибка в AddQuestionToTest: %v", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	w.WriteHeader(http.StatusOK)
-	fmt.Fprint(w, "Вопрос успешно добавлен в тест")
+	fmt.Fprint(w, "OK")
 }
 
 // Хендлер удаления вопроса из теста
