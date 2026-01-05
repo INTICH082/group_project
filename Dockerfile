@@ -2,13 +2,28 @@
 FROM alpine:latest
 
 # Устанавливаем зависимости для MySQL Connector/C
-RUN apk update && apk add --no-cache \
+RUN apk add --no-cache \
     g++ \
     make \
     cmake \
     curl-dev \
-    mysql-client \
-    mysql-dev
+    openssl-dev \
+    zlib-dev \
+    linux-headers \
+    musl-dev \
+    wget \
+    tar \
+    && \
+    # Скачиваем и распаковываем исходники
+    wget https://dev.mysql.com/get/Downloads/Connector-C/mysql-connector-c-6.1.11-src.tar.gz && \
+    tar -xzf mysql-connector-c-6.1.11-src.tar.gz && \
+    cd mysql-connector-c-6.1.11-src && \
+    # Собираем и устанавливаем
+    cmake . && \
+    make && \
+    make install && \
+    cd .. && \
+    rm -rf mysql-connector-c-6.1.11-src*
 
 # Альтернатива: используем MySQL Connector/C из исходников
 RUN apk add --no-cache wget tar && \
