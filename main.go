@@ -142,20 +142,23 @@ func FinishTestHandler(w http.ResponseWriter, r *http.Request) {
 	})
 }
 func SubmitAnswerHandler(w http.ResponseWriter, r *http.Request) {
-	attemptID, _ := strconv.Atoi(r.URL.Query().Get("attempt_id"))
-	questionID, _ := strconv.Atoi(r.URL.Query().Get("question_id"))
-
 	var req struct {
-		Option int `json:"option"`
-	}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Bad JSON", http.StatusBadRequest)
-		return
+		AttemptID  int `json:"attempt_id"`
+		QuestionID int `json:"question_id"`
+		Option     int `json:"option"`
 	}
 
-	// Вызываем функцию из твоего database.go
-	err := SubmitAnswer(attemptID, questionID, req.Option)
+	// 1. Пытаемся прочитать из JSON
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		// 2. Если JSON пустой, берем из URL (для совместимости с твоим тестом)
+		req.AttemptID, _ = strconv.Atoi(r.URL.Query().Get("attempt_id"))
+		req.QuestionID, _ = strconv.Atoi(r.URL.Query().Get("question_id"))
+	}
+
+	// Вызываем функцию обновления
+	err := SubmitAnswer(req.AttemptID, req.QuestionID, req.Option)
 	if err != nil {
+		// Это та самая ошибка, которую ты видишь
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -292,7 +295,36 @@ func GetTestsHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(tests)
 }
+func UpdateTestHandler(w http.ResponseWriter, r *http.Request) {
+	// Если ты используешь стандартный mux, ID можно брать из Query или параметров
+	testID, _ := strconv.Atoi(r.URL.Query().Get("id"))
+	if testID == 0 {
+		// Попробуй достать из URL, если у тебя роутинг вида /tests/{id}
+		// testID = ...
+	}
 
+	var req struct {
+		Name        string `json:"name"`
+		QuestionIDs []int  `json:"question_ids"`
+		IsActive    bool   `json:"is_active"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Bad JSON", http.StatusBadRequest)
+		return
+	}
+
+	log.Printf("📥 Обновление теста %d: вопросов пришло %d", testID, len(req.QuestionIDs))
+
+	err := UpdateTest(testID, req.Name, req.QuestionIDs, req.IsActive)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	fmt.Fprint(w, "OK")
+}
 func main() {
 	InitDB()
 	mux := http.NewServeMux()
@@ -302,6 +334,7 @@ func main() {
 	mux.HandleFunc("/teacher/question/create", AuthMiddleware("quest:create", CreateQuestionHandler))
 	mux.HandleFunc("/teacher/question/update", AuthMiddleware("quest:update", UpdateQuestionHandler))
 	mux.HandleFunc("/teacher/question/delete", AuthMiddleware("quest:del", DeleteQuestionHandler))
+	mux.HandleFunc("/test/update", UpdateTestHandler)
 
 	// --- РЕСУРС: ТЕСТЫ (Управление и Состав) ---
 	// Создать тест (course:test:add), Статус/Автозакрытие (course:test:write)

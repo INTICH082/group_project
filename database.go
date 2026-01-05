@@ -89,7 +89,19 @@ func CreateQuestion(title string, text string, options []string, correct int, au
 
 	return id, nil
 }
+func UpdateTest(testID int, name string, questionIDs []int, isActive bool) error {
+	// ТЗ требует обновлять имя, состав вопросов и статус активности
+	query := `
+		UPDATE tests 
+		SET name = $2, question_ids = $3, is_active = $4 
+		WHERE id = $1 AND is_deleted = false`
 
+	_, err := db.Exec(query, testID, name, pq.Array(questionIDs), isActive)
+	if err != nil {
+		return fmt.Errorf("ошибка обновления теста: %v", err)
+	}
+	return nil
+}
 func UpdateQuestion(questionID int, text string, options []string, correct int) error {
 	// 1. Находим текущую максимальную версию
 	var currentVersion int
