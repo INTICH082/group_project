@@ -91,9 +91,10 @@ func CreateTest(courseID int, name string, questionIDs []int) (int, error) {
         RETURNING id`
 
 	var id int
-	// ВНИМАНИЕ: Обязательно добавь pq.Array(questionIDs)
 	err := db.QueryRow(query, courseID, name, pq.Array(questionIDs)).Scan(&id)
 	if err != nil {
+		// ЭТО КРИТИЧНО: выведи ошибку в консоль сервера
+		log.Printf("!!! ОШИБКА СОЗДАНИЯ ТЕСТА: %v", err)
 		return 0, err
 	}
 	return id, nil
