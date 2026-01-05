@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.15)
-project(auth LANGUAGES CXX)
+project(authorization LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 
@@ -10,22 +10,25 @@ endif()
 find_package(Crow CONFIG REQUIRED)
 find_package(OpenSSL REQUIRED)
 find_package(nlohmann_json CONFIG REQUIRED)
+find_package(jwt-cpp CONFIG REQUIRED)
+find_package(cpr CONFIG REQUIRED)
+find_package(libmysql CONFIG REQUIRED)  # ← Это правильный пакет
 
-# НЕ используем find_package для MySQL — он не предоставляет config
-# Вместо этого вручную включаем директории и линкуем библиотеку
+add_executable(authorization main.cpp handlers.cpp utils.cpp jwt.cpp mysql.cpp)
 
-include_directories("C:/tools/vcpkg/installed/x64-windows/include")
-link_directories("C:/tools/vcpkg/installed/x64-windows/lib")
+include_directories(C:/mysql-headers)
 
-add_executable(auth main.cpp utils.cpp)
-
-target_link_libraries(auth PRIVATE
+target_link_libraries(authorization PRIVATE
     Crow::Crow
-    libmysql                              # ← Просто имя библиотеки
+    unofficial::libmysql::libmysql  # ← Таргет из vcpkg (unofficial — нормально)
     OpenSSL::SSL OpenSSL::Crypto
     nlohmann_json::nlohmann_json
+    jwt-cpp::jwt-cpp
+    cpr::cpr
 )
 
+target_compile_definitions(authorization PRIVATE NOMINMAX _HAS_STD_BYTE=0)
+
 if(WIN32)
-    target_link_libraries(auth PRIVATE ws2_32 wsock32 mswsock)
+    target_link_libraries(authorization PRIVATE ws2_32 wsock32 mswsock)
 endif()

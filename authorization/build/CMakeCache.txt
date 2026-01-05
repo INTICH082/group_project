@@ -14,9 +14,6 @@
 # EXTERNAL cache entries
 ########################
 
-//Path to a file.
-ASIO_INCLUDE_DIR:PATH=C:/tools/vcpkg/installed/x64-windows/include
-
 //Path to a program.
 CMAKE_AR:FILEPATH=C:/Program Files (x86)/Microsoft Visual Studio/2022/BuildTools/VC/Tools/MSVC/14.44.35207/bin/Hostx64/x64/lib.exe
 
@@ -62,7 +59,7 @@ CMAKE_EXE_LINKER_FLAGS_RELWITHDEBINFO:STRING=/debug /INCREMENTAL
 CMAKE_FIND_PACKAGE_REDIRECTS_DIR:STATIC=C:/Users/KSK-SHOP/projects/group_project/group_project/authorization/build/CMakeFiles/pkgRedirects
 
 //Install path prefix, prepended onto install directories.
-CMAKE_INSTALL_PREFIX:PATH=C:/Program Files (x86)/auth
+CMAKE_INSTALL_PREFIX:PATH=C:/Program Files (x86)/authorization
 
 //Path to a program.
 CMAKE_LINKER:FILEPATH=C:/Program Files (x86)/Microsoft Visual Studio/2022/BuildTools/VC/Tools/MSVC/14.44.35207/bin/Hostx64/x64/link.exe
@@ -100,7 +97,7 @@ CMAKE_PROJECT_DESCRIPTION:STATIC=
 CMAKE_PROJECT_HOMEPAGE_URL:STATIC=
 
 //Value Computed by CMake
-CMAKE_PROJECT_NAME:STATIC=auth
+CMAKE_PROJECT_NAME:STATIC=authorization
 
 //Value Computed by CMake
 CMAKE_PROJECT_SPDX_LICENSE:STATIC=
@@ -170,8 +167,7 @@ CMAKE_STATIC_LINKER_FLAGS_RELEASE:STRING=
 // during RELWITHDEBINFO builds.
 CMAKE_STATIC_LINKER_FLAGS_RELWITHDEBINFO:STRING=
 
-//No help, variable specified on the command line.
-CMAKE_TOOLCHAIN_FILE:UNINITIALIZED=C:/tools/vcpkg/scripts/buildsystems/vcpkg.cmake
+CMAKE_TOOLCHAIN_FILE:STRING=C:/tools/vcpkg/scripts/buildsystems/vcpkg.cmake
 
 //If this value is on, makefiles will be generated without the
 // .SILENT directive, and all commands will be echoed to the console
@@ -180,94 +176,22 @@ CMAKE_TOOLCHAIN_FILE:UNINITIALIZED=C:/tools/vcpkg/scripts/buildsystems/vcpkg.cma
 CMAKE_VERBOSE_MAKEFILE:BOOL=FALSE
 
 //The directory containing a CMake configuration file for Crow.
-Crow_DIR:PATH=C:/tools/vcpkg/installed/x64-windows/share/crow
-
-//Path to a library.
-LIB_EAY_DEBUG:FILEPATH=C:/tools/vcpkg/installed/x64-windows/debug/lib/libcrypto.lib
-
-//Path to a library.
-LIB_EAY_RELEASE:FILEPATH=C:/tools/vcpkg/installed/x64-windows/lib/libcrypto.lib
-
-//Path to a file.
-OPENSSL_APPLINK_SOURCE:FILEPATH=C:/tools/vcpkg/installed/x64-windows/include/openssl/applink.c
-
-//Path to a file.
-OPENSSL_INCLUDE_DIR:PATH=C:/tools/vcpkg/installed/x64-windows/include
-
-//Path to a library.
-SSL_EAY_DEBUG:FILEPATH=C:/tools/vcpkg/installed/x64-windows/debug/lib/libssl.lib
-
-//Path to a library.
-SSL_EAY_RELEASE:FILEPATH=C:/tools/vcpkg/installed/x64-windows/lib/libssl.lib
-
-//Automatically copy dependencies into the output directory for
-// executables.
-VCPKG_APPLOCAL_DEPS:BOOL=ON
-
-//The directory which contains the installed libraries for each
-// triplet
-VCPKG_INSTALLED_DIR:PATH=C:/tools/vcpkg/installed
-
-//The path to the vcpkg manifest directory.
-VCPKG_MANIFEST_DIR:PATH=
-
-//Use manifest mode, as opposed to classic mode.
-VCPKG_MANIFEST_MODE:BOOL=OFF
-
-//Appends the vcpkg paths to CMAKE_PREFIX_PATH, CMAKE_LIBRARY_PATH
-// and CMAKE_FIND_ROOT_PATH so that vcpkg libraries/packages are
-// found after toolchain/system libraries/packages.
-VCPKG_PREFER_SYSTEM_LIBS:BOOL=OFF
-
-//Enable the setup of CMAKE_PROGRAM_PATH to vcpkg paths
-VCPKG_SETUP_CMAKE_PROGRAM_PATH:BOOL=ON
-
-//Vcpkg target triplet (ex. x86-windows)
-VCPKG_TARGET_TRIPLET:STRING=x64-windows
-
-//Trace calls to find_package()
-VCPKG_TRACE_FIND_PACKAGE:BOOL=OFF
-
-//Enables messages from the VCPKG toolchain for debugging purposes.
-VCPKG_VERBOSE:BOOL=OFF
-
-//(experimental) Automatically copy dependencies into the install
-// target directory for executables. Requires CMake 3.14.
-X_VCPKG_APPLOCAL_DEPS_INSTALL:BOOL=OFF
-
-//(experimental) Add USES_TERMINAL to VCPKG_APPLOCAL_DEPS to force
-// serialization.
-X_VCPKG_APPLOCAL_DEPS_SERIALIZED:BOOL=OFF
-
-//Path to a program.
-Z_VCPKG_PWSH_PATH:FILEPATH=C:/Program Files/PowerShell/7/pwsh.exe
-
-//The directory which contains the installed libraries for each
-// triplet
-_VCPKG_INSTALLED_DIR:PATH=C:/tools/vcpkg/installed
+Crow_DIR:PATH=Crow_DIR-NOTFOUND
 
 //Value Computed by CMake
-auth_BINARY_DIR:STATIC=C:/Users/KSK-SHOP/projects/group_project/group_project/authorization/build
+authorization_BINARY_DIR:STATIC=C:/Users/KSK-SHOP/projects/group_project/group_project/authorization/build
 
 //Value Computed by CMake
-auth_IS_TOP_LEVEL:STATIC=ON
+authorization_IS_TOP_LEVEL:STATIC=ON
 
 //Value Computed by CMake
-auth_SOURCE_DIR:STATIC=C:/Users/KSK-SHOP/projects/group_project/group_project/authorization
-
-//The directory containing a CMake configuration file for mysql-connector-cpp.
-mysql-connector-cpp_DIR:PATH=mysql-connector-cpp_DIR-NOTFOUND
-
-//The directory containing a CMake configuration file for nlohmann_json.
-nlohmann_json_DIR:PATH=C:/tools/vcpkg/installed/x64-windows/share/nlohmann_json
+authorization_SOURCE_DIR:STATIC=C:/Users/KSK-SHOP/projects/group_project/group_project/authorization
 
 
 ########################
 # INTERNAL cache entries
 ########################
 
-//ADVANCED property for variable: ASIO_INCLUDE_DIR
-ASIO_INCLUDE_DIR-ADVANCED:INTERNAL=1
 //ADVANCED property for variable: CMAKE_AR
 CMAKE_AR-ADVANCED:INTERNAL=1
 //This is the directory where this CMakeCache.txt was created
@@ -318,12 +242,6 @@ CMAKE_GENERATOR_INSTANCE:INTERNAL=C:/Program Files (x86)/Microsoft Visual Studio
 CMAKE_GENERATOR_PLATFORM:INTERNAL=
 //Name of generator toolset.
 CMAKE_GENERATOR_TOOLSET:INTERNAL=
-//Test CMAKE_HAVE_LIBC_PTHREAD
-CMAKE_HAVE_LIBC_PTHREAD:INTERNAL=
-//Have library pthreads
-CMAKE_HAVE_PTHREADS_CREATE:INTERNAL=
-//Have library pthread
-CMAKE_HAVE_PTHREAD_CREATE:INTERNAL=
 //Source directory with the top level CMakeLists.txt file for this
 // project
 CMAKE_HOME_DIRECTORY:INTERNAL=C:/Users/KSK-SHOP/projects/group_project/group_project/authorization
@@ -388,30 +306,6 @@ CMAKE_STATIC_LINKER_FLAGS_MINSIZEREL-ADVANCED:INTERNAL=1
 CMAKE_STATIC_LINKER_FLAGS_RELEASE-ADVANCED:INTERNAL=1
 //ADVANCED property for variable: CMAKE_STATIC_LINKER_FLAGS_RELWITHDEBINFO
 CMAKE_STATIC_LINKER_FLAGS_RELWITHDEBINFO-ADVANCED:INTERNAL=1
-//ADVANCED property for variable: CMAKE_TOOLCHAIN_FILE
-CMAKE_TOOLCHAIN_FILE-ADVANCED:INTERNAL=1
 //ADVANCED property for variable: CMAKE_VERBOSE_MAKEFILE
 CMAKE_VERBOSE_MAKEFILE-ADVANCED:INTERNAL=1
-//Details about finding OpenSSL
-FIND_PACKAGE_MESSAGE_DETAILS_OpenSSL:INTERNAL=[optimized;C:/tools/vcpkg/installed/x64-windows/lib/libcrypto.lib;debug;C:/tools/vcpkg/installed/x64-windows/debug/lib/libcrypto.lib][C:/tools/vcpkg/installed/x64-windows/include][ ][v3.6.0()]
-//Details about finding asio
-FIND_PACKAGE_MESSAGE_DETAILS_asio:INTERNAL=[C:/tools/vcpkg/installed/x64-windows/include][v()]
-//Details about finding nlohmann_json
-FIND_PACKAGE_MESSAGE_DETAILS_nlohmann_json:INTERNAL=[C:/tools/vcpkg/installed/x64-windows/share/nlohmann_json/nlohmann_jsonConfig.cmake][v3.12.0()]
-//ADVANCED property for variable: OPENSSL_INCLUDE_DIR
-OPENSSL_INCLUDE_DIR-ADVANCED:INTERNAL=1
-//Install the dependencies listed in your manifest:
-//\n    If this is off, you will have to manually install your dependencies.
-//\n    See https://github.com/microsoft/vcpkg/tree/master/docs/specifications/manifests.md
-// for more info.
-//\n
-VCPKG_MANIFEST_INSTALL:INTERNAL=OFF
-//ADVANCED property for variable: VCPKG_VERBOSE
-VCPKG_VERBOSE-ADVANCED:INTERNAL=1
-//Making sure VCPKG_MANIFEST_MODE doesn't change
-Z_VCPKG_CHECK_MANIFEST_MODE:INTERNAL=OFF
-//The path to the PowerShell implementation to use.
-Z_VCPKG_POWERSHELL_PATH:INTERNAL=C:/Program Files/PowerShell/7/pwsh.exe
-//Vcpkg root directory
-Z_VCPKG_ROOT_DIR:INTERNAL=C:/tools/vcpkg
 

@@ -1,40 +1,24 @@
 #include <crow.h>
-#include <mysql_driver.h>
-#include <mysql_connection.h>
-#include <cppconn/prepared_statement.h>
 #include <nlohmann/json.hpp>
 #include <iostream>
 #include "config.hpp"
+#include "handlers.hpp"
+#include "mysql.hpp"
+#include "utils.hpp"
 
 using namespace std;
 using json = nlohmann::json;
 
 Config cfg;
 
-string sha256(const string&);
-string generate_token();
+MySQLDB db(cfg.mysql_host, cfg.mysql_user, cfg.mysql_password, cfg.mysql_db, cfg.mysql_port);
 
 int main() {
     crow::SimpleApp app;
 
-    sql::mysql::MySQL_Driver* driver;
-    unique_ptr<sql::Connection> con;
-
-    try {
-        driver = sql::mysql::get_mysql_driver_instance();
-        con.reset(driver->connect("tcp://" + cfg.mysql_host + ":" + to_string(cfg.mysql_port),
-                                  cfg.mysql_user, cfg.mysql_password));
-        con->setSchema(cfg.mysql_db);
-        cout << "Подключено к MySQL (база: " << cfg.mysql_db << ")" << endl;
-    } catch (sql::SQLException& e) {
-        cerr << "Ошибка подключения к MySQL: " << e.what() << endl;
-        return 1;
-    }
-
-    // Регистрация: POST /register
-    // JSON: { "fullname", "course", "role", "password" }
+    // Регистрация: POST /register { fullname, course, role, password }
     CROW_ROUTE(app, "/register").methods("POST"_method)
-    ([&con](const crow::request& req) {
+    ([](const crow::request& req) {
         try {
             auto body = json::parse(req.body);
 
@@ -49,29 +33,21 @@ int main() {
 
             string hash = sha256(password);
 
-            unique_ptr<sql::PreparedStatement> pstmt(con->prepareStatement(
-                "INSERT INTO users (fullname, course, role, password) VALUES (?, ?, ?, ?)"));
-            pstmt->setString(1, fullname);
-            pstmt->setInt(2, course);
-            pstmt->setString(3, role);
-            pstmt->setString(4, hash);
-            pstmt->executeUpdate();
+            string query = "INSERT INTO users (fullname, course, role, password) VALUES ('" + fullname + "', " + to_string(course) + ", '" + role + "', '" + hash + "')";
 
-            return crow::response(200, "Пользователь успешно зарегистрирован");
-        } catch (sql::SQLException& e) {
-            if (e.getErrorCode() == 1062) {  // дубликат fullname
+            if (db.execute(query)) {
+                return crow::response(200, "Пользователь успешно зарегистрирован");
+            } else {
                 return crow::response(409, "Пользователь с таким fullname уже существует");
             }
-            return crow::response(500, "Ошибка базы данных: " + string(e.what()));
         } catch (...) {
             return crow::response(400, "Неверный JSON");
         }
     });
 
-    // Авторизация: POST /login
-    // JSON: { "fullname", "password" }
+    // Авторизация: POST /login { fullname, password }
     CROW_ROUTE(app, "/login").methods("POST"_method)
-    ([&con](const crow::request& req) {
+    ([](const crow::request& req) {
         try {
             auto body = json::parse(req.body);
             string fullname = body["fullname"];
@@ -79,28 +55,19 @@ int main() {
 
             string hash = sha256(password);
 
-            unique_ptr<sql::PreparedStatement> pstmt(con->prepareStatement(
-                "SELECT id, fullname, course, role FROM users WHERE fullname = ? AND password = ?"));
-            pstmt->setString(1, fullname);
-            pstmt->setString(2, hash);
+            string query = "SELECT id, fullname, course, role FROM users WHERE fullname = '" + fullname + "' AND password = '" + hash + "'";
+            auto res = db.fetch_all(query);
 
-            unique_ptr<sql::ResultSet> res(pstmt->executeQuery());
-
-            if (res->next()) {
+            if (!res.empty()) {
                 string token = generate_token();
 
-                // Сохраняем токен
-                unique_ptr<sql::PreparedStatement> update(con->prepareStatement(
-                    "UPDATE users SET token = ? WHERE id = ?"));
-                update->setString(1, token);
-                update->setInt(2, res->getInt("id"));
-                update->executeUpdate();
+                db.execute("UPDATE users SET token = '" + token + "' WHERE id = " + res[0]["id"]);
 
                 json response;
                 response["token"] = token;
-                response["fullname"] = res->getString("fullname");
-                response["course"] = res->getInt("course");
-                response["role"] = res->getString("role");
+                response["fullname"] = res[0]["fullname"];
+                response["course"] = stoi(res[0]["course"]);
+                response["role"] = res[0]["role"];
 
                 return crow::response(200, response.dump());
             } else {
@@ -111,28 +78,26 @@ int main() {
         }
     });
 
-    // Проверка текущего пользователя: GET /me?token=...
-    CROW_ROUTE(app, "/me")
-    ([&con](const crow::request& req) {
+    // Проверка токена: GET /me?token=...
+    CROW_ROUTE(app, "/me").methods("GET"_method)
+    ([](const crow::request& req) {
         string token = req.url_params.get("token");
-        if (token.empty()) {
-            return crow::response(400, "Токен обязателен");
-        }
+        if (token.empty()) return crow::response(400, "token обязателен");
 
-        unique_ptr<sql::PreparedStatement> pstmt(con->prepareStatement(
-            "SELECT fullname, course, role FROM users WHERE token = ?"));
-        pstmt->setString(1, token);
-        unique_ptr<sql::ResultSet> res(pstmt->executeQuery());
+        string query = "SELECT fullname, course, role FROM users WHERE token = '" + token + "'";
+        auto res = db.fetch_all(query);
 
-        if (res->next()) {
+        if (!res.empty()) {
             json response;
-            response["fullname"] = res->getString("fullname");
-            response["course"] = res->getInt("course");
-            response["role"] = res->getString("role");
+            response["fullname"] = res[0]["fullname"];
+            response["course"] = stoi(res[0]["course"]);
+            response["role"] = res[0]["role"];
             return crow::response(200, response.dump());
         }
-        return crow::response(401, "Неверный или просроченный токен");
+        return crow::response(401, "Неверный токен");
     });
+
+    register_routes(app);
 
     cout << "Сервер запущен на http://localhost:" << cfg.server_port << endl;
     app.port(cfg.server_port).multithreaded().run();

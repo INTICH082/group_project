@@ -1,3 +1,0 @@
-C:/Users/KSK-SHOP/projects/group_project/group_project/authorization/build/CMakeFiles/auth.dir
-C:/Users/KSK-SHOP/projects/group_project/group_project/authorization/build/CMakeFiles/ALL_BUILD.dir
-C:/Users/KSK-SHOP/projects/group_project/group_project/authorization/build/CMakeFiles/ZERO_CHECK.dir
