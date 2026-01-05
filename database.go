@@ -91,33 +91,52 @@ func CreateQuestion(title string, text string, options []string, correct int, au
 }
 
 func UpdateQuestion(questionID int, text string, options []string, correct int) error {
-	// 1. Находим текущую макс. версию
+	// 1. Находим текущую максимальную версию
 	var currentVersion int
-	err := db.QueryRow("SELECT MAX(version) FROM questions WHERE id = $1", questionID).Scan(&currentVersion)
+	var title string
+	var authorID int
+
+	// Сразу достаем title и author_id, чтобы сохранить их в новой версии
+	err := db.QueryRow(`
+		SELECT title, author_id, MAX(version) 
+		FROM questions 
+		WHERE id = $1 
+		GROUP BY title, author_id`,
+		questionID).Scan(&title, &authorID, &currentVersion)
+
 	if err != nil {
-		return fmt.Errorf("вопрос не найден: %v", err)
+		return fmt.Errorf("вопрос с ID %d не найден: %v", questionID, err)
 	}
 
 	optionsJSON, _ := json.Marshal(options)
 
-	// Добавляем title в INSERT и SELECT
-	query := `
-        INSERT INTO questions (id, version, title, text, options, correct_option, author_id, is_deleted) 
-        SELECT id, $2, title, $3, $4, $5, author_id, false 
-        FROM questions 
-        WHERE id = $1 AND version = $6
-        RETURNING version`
-
-	var newVer int
-	// Обрати внимание: в SELECT мы берем 'title' из старой записи,
-	// а $3, $4, $5 — это новые данные (текст, опции, ответ)
-	err = db.QueryRow(query, questionID, currentVersion+1, text, optionsJSON, correct, currentVersion).Scan(&newVer)
-
+	// --- СИСТЕМНОЕ ИСПРАВЛЕНИЕ ---
+	// 2. Начинаем транзакцию, чтобы обновление было атомарным
+	tx, err := db.Begin()
 	if err != nil {
-		return fmt.Errorf("ошибка при обновлении вопроса: %v", err)
+		return err
 	}
 
-	return nil
+	// 3. Помечаем ВСЕ предыдущие версии как удаленные (архивируем)
+	_, err = tx.Exec("UPDATE questions SET is_deleted = true WHERE id = $1", questionID)
+	if err != nil {
+		tx.Rollback()
+		return fmt.Errorf("ошибка архивации старых версий: %v", err)
+	}
+
+	// 4. Вставляем НОВУЮ версию (is_deleted = false по умолчанию)
+	queryInsert := `
+		INSERT INTO questions (id, version, title, text, options, correct_option, author_id, is_deleted) 
+		VALUES ($1, $2, $3, $4, $5, $6, $7, false)`
+
+	_, err = tx.Exec(queryInsert, questionID, currentVersion+1, title, text, optionsJSON, correct, authorID)
+	if err != nil {
+		tx.Rollback()
+		return fmt.Errorf("ошибка вставки новой версии: %v", err)
+	}
+
+	// Фиксируем изменения
+	return tx.Commit()
 }
 
 func DeleteQuestion(questionID int) error {
@@ -216,13 +235,17 @@ func StartAttempt(userID int, testID int) (int, error) {
 
 	// 3. ТЗ: Выбирается самая последняя версия вопроса.
 	// Берем актуальные версии для всех вопросов, входящих в массив теста.
+	// Берем самую свежую версию для каждого ID из массива теста,
+	// игнорируя только те строки, которые удалены окончательно.
 	queryVersions := `
-    	SELECT id, MAX(version) 
-    	FROM questions 
-   		WHERE id = ANY(SELECT unnest(question_ids) FROM tests WHERE id = $1)
-      	AND is_deleted = false
-    	GROUP BY id`
-
+    SELECT id, version 
+    FROM (
+        SELECT id, version, 
+               ROW_NUMBER() OVER (PARTITION BY id ORDER BY version DESC) as rn
+        FROM questions 
+        WHERE id = ANY(SELECT unnest(question_ids) FROM tests WHERE id = $1)
+    ) t 
+    WHERE rn = 1`
 	rows, err := db.Query(queryVersions, testID)
 
 	if err != nil {
