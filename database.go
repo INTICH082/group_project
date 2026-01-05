@@ -397,7 +397,8 @@ func IsUserEnrolled(courseID int, userID int) (bool, error) {
 	return exists, err
 }
 func GetTestsByCourse(courseID int) ([]map[string]interface{}, error) {
-	rows, err := db.Query("SELECT id, title, is_active FROM tests WHERE course_id = $1 AND is_deleted = false", courseID)
+	// ЗАМЕНЕНО: title -> name
+	rows, err := db.Query("SELECT id, name, is_active FROM tests WHERE course_id = $1 AND is_deleted = false", courseID)
 	if err != nil {
 		return nil, err
 	}
@@ -406,11 +407,13 @@ func GetTestsByCourse(courseID int) ([]map[string]interface{}, error) {
 	var results []map[string]interface{}
 	for rows.Next() {
 		var id int
-		var title string
+		var name string // Поменял имя переменной для ясности
 		var active bool
-		rows.Scan(&id, &title, &active)
+		if err := rows.Scan(&id, &name, &active); err != nil {
+			return nil, err
+		}
 		results = append(results, map[string]interface{}{
-			"id": id, "title": title, "is_active": active,
+			"id": id, "title": name, "is_active": active, // Оставляем ключ "title" для фронтенда/теста
 		})
 	}
 	return results, nil
