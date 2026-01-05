@@ -2,14 +2,23 @@ services:
   telegram-bot:
     build: .
     container_name: telegram-bot
+    restart: unless-stopped
     env_file:
       - .env
     depends_on:
       - redis
-    restart: unless-stopped
+    networks:
+      - bot-net
 
   redis:
     image: redis:7
     container_name: redis
+    restart: unless-stopped
     ports:
       - "6379:6379"
+    networks:
+      - bot-net
+
+networks:
+  bot-net:
+    driver: bridge
