@@ -1,10 +1,11 @@
 import os
 import time
+import asyncio
+
 from aiogram import Bot, Dispatcher, types
-import aiogram.utils
-from django.db.migrations import executor
+from aiogram.utils import executor
 from dotenv import load_dotenv
-import redis
+import redis.asyncio as redis
 
 # =========================
 # INIT
@@ -13,14 +14,18 @@ import redis
 load_dotenv()
 
 BOT_TOKEN = os.getenv("BOT_TOKEN")
-REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
+REDIS_URL = os.getenv("REDIS_URL", "redis://redis:6379/0")
 
 if not BOT_TOKEN:
     raise RuntimeError("BOT_TOKEN is not set")
 
 bot = Bot(token=BOT_TOKEN, parse_mode="HTML")
 dp = Dispatcher(bot)
-redis_client = redis.from_url(REDIS_URL, decode_responses=True)
+
+redis_client = redis.from_url(
+    REDIS_URL,
+    decode_responses=True
+)
 
 # =========================
 # REDIS HELPERS
@@ -29,7 +34,7 @@ redis_client = redis.from_url(REDIS_URL, decode_responses=True)
 def rkey(chat_id: int) -> str:
     return f"user:{chat_id}"
 
-async def get_user(chat_id: int):
+async def get_user(chat_id: int) -> dict:
     return await redis_client.hgetall(rkey(chat_id))
 
 async def set_user(chat_id: int, data: dict):
@@ -44,6 +49,7 @@ async def delete_user(chat_id: int):
 
 async def require_auth(message: types.Message) -> bool:
     user = await get_user(message.chat.id)
+
     if not user or user.get("status") != "AUTHORIZED":
         await message.answer(
             "❌ <b>ДОСТУП ЗАПРЕЩЁН</b>\n\n"
@@ -52,6 +58,7 @@ async def require_auth(message: types.Message) -> bool:
             "/login"
         )
         return False
+
     return True
 
 # =========================
@@ -135,6 +142,7 @@ async def login_cmd(message: types.Message):
         return
 
     code = str(int(time.time()))
+
     await set_user(message.chat.id, {
         "status": "ANONYMOUS",
         "login_code": code
