@@ -39,25 +39,55 @@ func InitDB() {
 
 // --- ЛОГИКА ВОПРОСОВ ---
 
+// CreateQuestion создает новый вопрос с начальной версией 1.
+// ВАЖНО: Мы явно ставим is_deleted = false, чтобы вопрос был виден в тестах.
 func CreateQuestion(title string, text string, options []string, correct int, authorID int) (int, error) {
+	// 1. Превращаем слайс строк []string в JSON, чтобы Postgres мог его сохранить
 	optionsJSON, err := json.Marshal(options)
 	if err != nil {
-		return 0, fmt.Errorf("marshal options: %v", err)
+		return 0, fmt.Errorf("ошибка маршалинга options: %v", err)
 	}
 
+	// 2. Получаем следующий свободный ID (ручная инкрементация по твоему запросу)
 	var nextID int
 	queryID := "SELECT COALESCE(MAX(id), 0) + 1 FROM questions"
 	err = db.QueryRow(queryID).Scan(&nextID)
 	if err != nil {
-		return 0, err
+		return 0, fmt.Errorf("ошибка при получении следующего ID: %v", err)
 	}
 
-	query := `INSERT INTO questions (id, version, title, text, options, correct_option, author_id) 
-              VALUES ($1, 1, $2, $3, $4, $5, $6) RETURNING id`
+	// 3. Выполняем вставку.
+	// Добавлена колонка is_deleted со значением false ($7).
+	query := `
+		INSERT INTO questions (
+			id, 
+			version, 
+			title, 
+			text, 
+			options, 
+			correct_option, 
+			author_id, 
+			is_deleted
+		) 
+		VALUES ($1, 1, $2, $3, $4, $5, $6, false) 
+		RETURNING id`
 
 	var id int
-	err = db.QueryRow(query, nextID, title, text, optionsJSON, correct, authorID).Scan(&id)
-	return id, err
+	err = db.QueryRow(
+		query,
+		nextID,
+		title,
+		text,
+		optionsJSON,
+		correct,
+		authorID,
+	).Scan(&id)
+
+	if err != nil {
+		return 0, fmt.Errorf("ошибка при вставке вопроса в БД: %v", err)
+	}
+
+	return id, nil
 }
 
 func UpdateQuestion(questionID int, text string, options []string, correct int) error {
@@ -229,5 +259,3 @@ func CreateTestHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(map[string]int{"id": id})
 }
-
-// Хендлер для отправки ответа (ТЗ: Ресурс Ответы -> Изменить)
