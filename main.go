@@ -130,18 +130,17 @@ func StartTestHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func FinishTestHandler(w http.ResponseWriter, r *http.Request) {
-	attemptID, _ := strconv.Atoi(r.URL.Query().Get("attempt_id"))
-	score, err := FinishAttempt(attemptID)
+	attID, _ := strconv.Atoi(r.URL.Query().Get("attempt_id"))
+
+	score, err := FinishAttempt(attID)
 	if err != nil {
+		log.Printf("❌ Finish Error: %v", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
-		"status": "finished",
-		"score":  fmt.Sprintf("%.2f%%", score),
-	})
+	// Возвращаем просто число или JSON, тест ожидает увидеть результат
+	fmt.Fprintf(w, "%.2f%%", score)
 }
 func SubmitAnswerHandler(w http.ResponseWriter, r *http.Request) {
 	// 1. Пробуем достать ID из URL Query
