@@ -1,58 +1,53 @@
-# Dockerfile
-FROM alpine:latest
+FROM alpine:3.19
 
-# Устанавливаем зависимости для MySQL Connector/C
-RUN apk add --no-cache \
+# 1. Устанавливаем все необходимые зависимости
+RUN apk update && apk add --no-cache \
+    # Компилятор и инструменты сборки
     g++ \
     make \
     cmake \
+    # MySQL зависимости
+    mysql-dev \
+    mariadb-dev \
+    mariadb-connector-c-dev \
+    # Сетевые библиотеки
     curl-dev \
+    # Системные библиотеки
+    musl-dev \
     openssl-dev \
     zlib-dev \
-    linux-headers \
-    musl-dev \
-    wget \
-    tar \
-    && \
-    # Скачиваем и распаковываем исходники
-    wget https://dev.mysql.com/get/Downloads/Connector-C/mysql-connector-c-6.1.11-src.tar.gz && \
-    tar -xzf mysql-connector-c-6.1.11-src.tar.gz && \
-    cd mysql-connector-c-6.1.11-src && \
-    # Собираем и устанавливаем
-    cmake . && \
-    make && \
-    make install && \
-    cd .. && \
-    rm -rf mysql-connector-c-6.1.11-src*
+    # Для работы с сервером
+    linux-headers
 
-# Альтернатива: используем MySQL Connector/C из исходников
-RUN apk add --no-cache wget tar && \
-    wget https://dev.mysql.com/get/Downloads/Connector-C/mysql-connector-c-8.0.33-linux-glibc2.28-x86_64.tar.gz && \
-    tar -xzf mysql-connector-c-8.0.33-linux-glibc2.28-x86_64.tar.gz && \
-    mv mysql-connector-c-8.0.33-linux-glibc2.28-x86_64 /usr/local/mysql && \
-    rm mysql-connector-c-8.0.33-linux-glibc2.28-x86_64.tar.gz
-
-# Устанавливаем переменные окружения для компиляции
-ENV MYSQL_INCLUDE_DIR=/usr/include/mariadb
-ENV MYSQL_LIB_DIR=/usr/lib
-
-# Создаем рабочую директорию
+# 2. Устанавливаем рабочую директорию
 WORKDIR /app
 
-# Копируем исходники
-COPY authorization/ ./authorization/
+# 3. Копируем ТОЛЬКО нужные файлы (минимизируем кэш)
+# Сначала копируем заголовочные файлы и CMakeLists.txt (если есть)
+COPY CMakeLists.txt ./
+COPY *.h ./
+COPY *.cpp ./
+# Копируем скрипт сборки (если нужен)
+COPY build.ps1 ./
 
-# Компилируем с правильными путями
-RUN cd authorization && \
-    g++ -c database.cpp -I. -I/usr/include/mariadb -std=c++11 && \
-    g++ -c auth.cpp -I. -I/usr/include/mariadb -std=c++11 && \
-    g++ -c server.cpp -I. -I/usr/include/mariadb -std=c++11 && \
-    g++ -c main.cpp -I. -I/usr/include/mariadb -std=c++11 && \
-    g++ database.o auth.o server.o main.o -o auth.exe \
-        -L/usr/lib -lmariadb -lcurl
+# 4. Создаем папку build и компилируем проект
+RUN mkdir -p build && \
+    cd build && \
+    # Если есть CMakeLists.txt в корне
+    cmake .. -DCMAKE_BUILD_TYPE=Release && \
+    make -j$(nproc)
 
-# Открываем порт
-EXPOSE 8081
+# 5. Проверяем, что бинарник создан
+RUN ls -la /app/build/
 
-# Запускаем сервер
-CMD ["/group_project/authorization/auth.exe"]
+# 6. Устанавливаем рабочую директорию для запуска
+WORKDIR /app/build
+
+# 7. Проверяем зависимости бинарника
+RUN ldd auth.exe 2>/dev/null || echo "Binary check completed"
+
+# 8. Открываем порт (уточните какой порт использует ваше приложение)
+EXPOSE 8080
+
+# 9. Команда запуска сервера
+CMD ["./auth.exe"]
