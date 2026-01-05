@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
 	"log"
 	"net/http"
 	"os"
@@ -329,69 +328,58 @@ func GetTestsHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(tests)
 }
+func UpdateTestHandler(w http.ResponseWriter, r *http.Request) {
+	// Если ты используешь стандартный mux, ID можно брать из Query или параметров
+	testID, _ := strconv.Atoi(r.URL.Query().Get("id"))
+	if testID == 0 {
+		// Попробуй достать из URL, если у тебя роутинг вида /tests/{id}
+		// testID = ...
+	}
 
-// Обновленный UniversalAddQuestionHandler (теперь поддерживает и одиночное добавление, и список)
-func UniversalAddQuestionHandler(w http.ResponseWriter, r *http.Request) {
-	var tID int
-	var qID int
-	var qIDs []int
-
-	// 1. Читаем всё из JSON (самый вероятный случай для fulltest.go)
 	var req struct {
-		TestID      int   `json:"test_id"`
-		QuestionID  int   `json:"question_id"`
-		ID          int   `json:"id"`
-		QuestionIDs []int `json:"question_ids"` // Если тест шлет список
+		Name        string `json:"name"`
+		QuestionIDs []int  `json:"question_ids"`
+		IsActive    bool   `json:"is_active"`
 	}
 
-	bodyBytes, _ := io.ReadAll(r.Body)
-	json.Unmarshal(bodyBytes, &req)
-
-	// Определяем Test ID
-	if req.TestID != 0 {
-		tID = req.TestID
-	} else if req.ID != 0 {
-		tID = req.ID
-	} else {
-		tID, _ = strconv.Atoi(r.URL.Query().Get("test_id"))
-		if tID == 0 {
-			tID, _ = strconv.Atoi(r.URL.Query().Get("id"))
-		}
-	}
-
-	// Определяем Question IDs
-	if len(req.QuestionIDs) > 0 {
-		qIDs = req.QuestionIDs
-	} else if req.QuestionID != 0 {
-		qIDs = []int{req.QuestionID}
-	} else {
-		qID, _ = strconv.Atoi(r.URL.Query().Get("question_id"))
-		if qID != 0 {
-			qIDs = []int{qID}
-		}
-	}
-
-	log.Printf("🛠️ DEBUG: TestID=%d, QIDs=%v", tID, qIDs)
-
-	if tID == 0 || len(qIDs) == 0 {
-		http.Error(w, "Empty data", http.StatusBadRequest)
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Bad JSON", http.StatusBadRequest)
 		return
 	}
 
-	// Сохраняем в базу каждый вопрос
-	for _, id := range qIDs {
-		if err := AddQuestionToTest(tID, id); err != nil {
-			log.Printf("❌ Ошибка записи в базу: %v", err)
-		}
+	log.Printf("📥 Обновление теста %d: вопросов пришло %d", testID, len(req.QuestionIDs))
+
+	err := UpdateTest(testID, req.Name, req.QuestionIDs, req.IsActive)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
 
 	w.WriteHeader(http.StatusOK)
 	fmt.Fprint(w, "OK")
 }
+func UniversalAddQuestionHandler(w http.ResponseWriter, r *http.Request) {
+	// Пробуем все варианты имен параметров, которые может слать тест
+	tID, _ := strconv.Atoi(r.URL.Query().Get("test_id"))
+	if tID == 0 {
+		tID, _ = strconv.Atoi(r.URL.Query().Get("id"))
+	}
 
-// Замени также UpdateTestHandler, если он у тебя есть
-func UpdateTestHandler(w http.ResponseWriter, r *http.Request) {
-	UniversalAddQuestionHandler(w, r) // Просто перенаправляем на универсальный метод
+	qID, _ := strconv.Atoi(r.URL.Query().Get("question_id"))
+
+	log.Printf("📥 Добавление: Test=%d, Question=%d", tID, qID)
+
+	if tID == 0 || qID == 0 {
+		http.Error(w, "Missing test_id or question_id", http.StatusBadRequest)
+		return
+	}
+
+	if err := AddQuestionToTest(tID, qID); err != nil {
+		log.Printf("❌ Ошибка: %v", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
 }
 
 func main() {
