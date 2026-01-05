@@ -30,17 +30,50 @@ string Auth::homePage() {
                 Config::GITHUB_CLIENT_ID + "&redirect_uri=http://localhost:" + 
                 to_string(Config::PORT) + "/auth/github/callback";
     
-    return "<!DOCTYPE html><html><head><title>Авторизация</title><style>"
-           "body{font-family:Arial;margin:40px;}"
-           ".btn{padding:12px 24px;background:#24292e;color:white;text-decoration:none;border-radius:6px;}"
-           ".box{background:#f5f5f5;padding:20px;margin:20px 0;border-radius:8px;}"
-           "</style></head><body>"
-           "<h1>🔐 Авторизация</h1>"
-           "<a href='" + url + "' class='btn'>Войти через GitHub</a>"
-           "<div class='box'><h3>Telegram API</h3><p><strong>POST /api/telegram</strong></p>"
-           "<p>Параметры: telegram_id, name</p></div>"
-           "<div class='box'><h3>Проверка токена</h3><p><strong>GET /api/verify?token=TOKEN</strong></p></div>"
-           "</body></html>";
+    return R"(<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Авторизация</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; }
+        .btn { padding: 12px 24px; background: #1d2125ff; color: white; 
+               text-decoration: none; border-radius: 6px; display: inline-block; }
+        .box { background: #f5f5f5; padding: 20px; margin: 20px 0; border-radius: 8px; }
+        pre { background: #2d2d2d; color: white; padding: 15px; border-radius: 5px; }
+        code { background: #e9ecef; padding: 2px 6px; border-radius: 4px; }
+    </style>
+</head>
+<body>
+    <h1>🔐 Авторизация</h1>
+    <p>Студенческий проект - GitHub OAuth + Telegram API</p>
+    
+    <div style="text-align: center; margin: 30px 0;">
+        <a href=")" + url + R"(" class="btn">Войти через GitHub</a>
+    </div>
+    
+    <div class="box">
+        <h3>🤖 Telegram API</h3>
+        <p><strong>POST /api/telegram</strong></p>
+        <p>Параметры (form-data):</p>
+        <ul>
+            <li><code>telegram_id</code> - ID пользователя в Telegram</li>
+            <li><code>name</code> - Имя пользователя</li>
+        </ul>
+        <p>Пример cURL:</p>
+        <pre>curl -X POST http://localhost:8081/api/telegram ^
+  -d "telegram_id=123456789" ^
+  -d "name=Иван Иванов"</pre>
+    </div>
+    
+    <div class="box">
+        <h3>🔍 Проверка токена</h3>
+        <p><strong>GET /api/verify?token=ВАШ_ТОКЕН</strong></p>
+        <p>Пример:</p>
+        <pre>curl "http://localhost:8081/api/verify?token=123|456|789"</pre>
+    </div>
+</body>
+</html>)";
 }
 
 string getGitHubToken(const string& code) {

@@ -11,8 +11,9 @@ using namespace std;
 
 void sendResponse(int client, const string& content, bool json = false) {
     string response = "HTTP/1.1 200 OK\r\n";
-    response += "Content-Type: " + string(json ? "application/json" : "text/html") + "\r\n";
+    response += "Content-Type: " + string(json ? "application/json" : "text/html; charset=utf-8") + "\r\n";
     response += "Access-Control-Allow-Origin: *\r\n";
+    response += "Connection: close\r\n";
     response += "\r\n" + content;
     
     send(client, response.c_str(), response.length(), 0);
@@ -39,11 +40,23 @@ void handleClient(int client) {
         string code = path.substr(28);
         string result = Auth::githubAuth(code);
         
-        string html = "<html><body style='padding:40px;font-family:Arial;'>"
-                     "<h2>✅ Авторизация успешна</h2>"
-                     "<pre>" + result + "</pre>"
-                     "<p><a href='/'>На главную</a></p>"
-                     "</body></html>";
+        string html = R"(<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Успешная авторизация</title>
+    <style>
+        body { padding: 40px; font-family: Arial; text-align: center; }
+        pre { background: #f0f0f0; padding: 20px; margin: 20px; border-radius: 5px; }
+    </style>
+</head>
+<body>
+    <h2>✅ Авторизация прошла успешно!</h2>
+    <pre>)" + result + R"(</pre>
+    <p><a href="/">Вернуться на главную</a></p>
+</body>
+</html>)";
+        
         sendResponse(client, html);
         return;
     }
