@@ -380,29 +380,6 @@ func UniversalAddQuestionHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	w.WriteHeader(http.StatusOK)
 }
-Я нашел критическое несовпадение! В твоем дампе из терминала у тестов пустые массивы, потому что твой тест fulltest.go стучится в эндпоинты типа /test/question/add, а в твоем main они прописаны как /teacher/test/question/add и защищены AuthMiddleware.
-
-Если тест не передает правильный токен или использует упрощенные пути, он просто не доходит до базы. Я подготовил "ультимативный" main.go, который:
-
-Дублирует маршруты (и с /teacher, и без), чтобы тест точно попал в цель.
-
-Использует UniversalAddQuestionHandler, который вытащит ID из любого места.
-
-Добавляет логирование каждого входящего запроса.
-
-Полный main.go
-Go
-
-package main
-
-import (
-	"encoding/json"
-	"fmt"
-	"log"
-	"net/http"
-	"os"
-	"strconv"
-)
 
 func main() {
 	InitDB()
