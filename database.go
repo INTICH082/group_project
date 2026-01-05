@@ -297,6 +297,8 @@ func SubmitAnswer(attemptID int, questionID int, option int) error {
 func FinishAttempt(attemptID int) (float64, error) {
 	var score float64
 
+	// 1. Сначала просто закрываем попытку и получаем данные для расчета
+	// 2. Считаем баллы прямо в UPDATE, используя NULLIF для защиты от деления на 0
 	query := `
         UPDATE attempts a
         SET 
@@ -304,40 +306,28 @@ func FinishAttempt(attemptID int) (float64, error) {
             finished_at = NOW(),
             score = (
                 SELECT 
-                    (COUNT(CASE WHEN sa.selected_option = q.correct_option THEN 1 END)::float / 
-                    NULLIF(jsonb_func_count_keys(a.question_versions), 0)) * 100
-                FROM student_answers sa
-                JOIN questions q ON sa.question_id = q.id
-                WHERE sa.attempt_id = a.id
-                -- Сравниваем версию напрямую из JSONB текущей строки
-                AND q.version = (a.question_versions->>(q.id::text))::int
-            )
-        WHERE id = $1
-        RETURNING COALESCE(score, 0)`
-
-	// Если функция jsonb_func_count_keys не создана, используй более универсальный способ:
-	// (SELECT count(*) FROM jsonb_each(a.question_versions))
-
-	// Давай применим самый надежный вариант подсчета общего кол-ва вопросов:
-	query = `
-        UPDATE attempts a
-        SET 
-            is_finished = true,
-            finished_at = NOW(),
-            score = (
-                SELECT 
-                    (COUNT(CASE WHEN sa.selected_option = q.correct_option THEN 1 END)::float / 
-                    (SELECT count(*) FROM jsonb_each(a.question_versions))) * 100
-                FROM student_answers sa
-                JOIN questions q ON sa.question_id = q.id
-                WHERE sa.attempt_id = a.id
-                AND q.version = (a.question_versions->>(q.id::text))::int
+                    CASE 
+                        WHEN count_total = 0 THEN 0
+                        ELSE (count_correct::float / count_total::float) * 100
+                    END
+                FROM (
+                    SELECT 
+                        COUNT(*) as count_total,
+                        COUNT(CASE WHEN sa.selected_option = q.correct_option THEN 1 END) as count_correct
+                    FROM student_answers sa
+                    JOIN questions q ON sa.question_id = q.id
+                    WHERE sa.attempt_id = a.id
+                    AND q.version = (a.question_versions->>(q.id::text))::int
+                ) as stats
             )
         WHERE id = $1
         RETURNING COALESCE(score, 0)`
 
 	err := db.QueryRow(query, attemptID).Scan(&score)
-	return score, err
+	if err != nil {
+		return 0, fmt.Errorf("ошибка финализации: %v", err)
+	}
+	return score, nil
 }
 
 // Хендлер для создания теста (ТЗ: Ресурс Дисциплина -> Добавить тест)
