@@ -1,55 +1,46 @@
 FROM alpine:3.19
 
-# 1. Устанавливаем все необходимые зависимости
+# 1. Устанавливаем компилятор и зависимости
 RUN apk update && apk add --no-cache \
     g++ \
     make \
-    cmake \
     mysql-dev \
-    mariadb-dev \
-    mariadb-connector-c-dev \
     curl-dev \
     musl-dev \
-    openssl-dev \
-    zlib-dev \
-    linux-headers
+    openssl-dev
 
 # 2. Устанавливаем рабочую директорию
 WORKDIR /app
 
-# 3. Копируем папку authorization со всеми файлами
+# 3. Копируем исходники из папки authorization
 COPY authorization/ ./authorization/
 
-# 4. Переходим в папку authorization
+# 4. Переходим в папку с исходниками
 WORKDIR /app/authorization
 
-# 5. Собираем проект (без использования build.ps1 - используем нативные команды)
-RUN mkdir -p build && \
-    cd build && \
-    cmake .. && \
-    make -j$(nproc)
+# 5. Компилируем напрямую через g++
+# Предполагаемая структура компиляции (адаптируйте под ваш проект):
+RUN g++ -o auth.exe \
+    auth.cpp \
+    database.cpp \
+    server.cpp \
+    main.cpp \
+    -I/usr/include/mysql \
+    -lmysqlclient \
+    -lcurl \
+    -lssl \
+    -lcrypto \
+    -pthread \
+    -std=c++17 \
+    -O2
 
 # 6. Проверяем сборку
-RUN ls -la build/
+RUN ls -la auth.exe && \
+    file auth.exe && \
+    ldd auth.exe 2>/dev/null || echo "Binary compiled successfully"
 
-# 7. Устанавливаем рабочую директорию для запуска
-WORKDIR /app/authorization/build
-
-# 8. Проверяем бинарник
-RUN if [ -f "auth.exe" ]; then \
-    echo "Build successful!"; \
-    echo "Binary size:"; \
-    ls -lh auth.exe; \
-    else \
-    echo "Available files:"; \
-    ls -la; \
-    echo "Trying to find binary..."; \
-    find . -name "*.exe" -o -name "auth*" -type f; \
-    exit 1; \
-    fi
-
-# 9. Открываем порт (укажите правильный порт из вашего кода)
+# 7. Открываем порт (укажите ваш порт из server.cpp)
 EXPOSE 8081
 
-# 10. Команда запуска сервера
+# 8. Запускаем сервер
 CMD ["./auth.exe"]
