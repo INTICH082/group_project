@@ -304,19 +304,21 @@ func FinishAttempt(attemptID int) (float64, error) {
             finished_at = NOW(),
             score = (
                 SELECT 
-                    (COUNT(CASE WHEN sa.selected_option = q.correct_option THEN 1 END)::float / 
-                    NULLIF((SELECT count(*) FROM jsonb_object_keys(a.question_versions)), 0)) * 100
+                    COALESCE((COUNT(CASE WHEN sa.selected_option = q.correct_option THEN 1 END)::float / 
+                    NULLIF(COUNT(*), 0)) * 100, 0)
                 FROM student_answers sa
                 JOIN questions q ON sa.question_id = q.id
                 WHERE sa.attempt_id = a.id
-                -- Сравниваем версию из вопроса с версией, записанной в попытке
-                AND q.version = (a.question_versions->>(q.id::text))::int
+                -- ВРЕМЕННО УБРАЛИ проверку q.version для диагностики
             )
         WHERE id = $1
-        RETURNING COALESCE(score, 0)`
+        RETURNING score`
 
 	err := db.QueryRow(query, attemptID).Scan(&score)
-	return score, err
+	if err != nil {
+		return 0, fmt.Errorf("DB Error: %v", err)
+	}
+	return score, nil
 }
 
 // Хендлер для создания теста (ТЗ: Ресурс Дисциплина -> Добавить тест)
