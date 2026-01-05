@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 
@@ -219,7 +220,7 @@ func AddQuestionToTestHandler(w http.ResponseWriter, r *http.Request) {
 
 	w.WriteHeader(http.StatusOK)
 	fmt.Fprint(w, "OK")
-}go run tests/fulltest.go
+}
 
 // Хендлер удаления вопроса из теста
 func RemoveQuestionFromTestHandler(w http.ResponseWriter, r *http.Request) {
@@ -402,15 +403,15 @@ func main() {
 	// --- РЕСУРС: ТЕСТЫ (Управление и Состав) ---
 	mux.HandleFunc("/teacher/test/create", withLog(AuthMiddleware("course:test:add", CreateTestHandler)))
 	mux.HandleFunc("/teacher/test/status", withLog(AuthMiddleware("course:test:write", UpdateTestStatusHandler)))
-	
+
 	// ВАЖНО: Тест часто ищет обновление состава по этим путям
-	mux.HandleFunc("/test/update", withLog(UpdateTestHandler)) 
-	
+	mux.HandleFunc("/test/update", withLog(UpdateTestHandler))
+
 	// УНИВЕРСАЛЬНЫЙ ДОБАВЛЯТОР (использует логику из прошлого шага)
 	// Регистрируем его на все возможные пути, которые может дергать fulltest.go
 	mux.HandleFunc("/test/question/add", withLog(UniversalAddQuestionHandler))
 	mux.HandleFunc("/teacher/test/question/add", withLog(AuthMiddleware("test:quest:add", UniversalAddQuestionHandler)))
-	
+
 	mux.HandleFunc("/teacher/test/question/remove", withLog(AuthMiddleware("test:quest:del", RemoveQuestionFromTestHandler)))
 
 	// --- РЕСУРС: ДИСЦИПЛИНЫ (Курсы) ---
