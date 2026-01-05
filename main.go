@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"os"
@@ -237,29 +238,45 @@ func RemoveQuestionFromTestHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprint(w, "Вопрос удален из теста")
 }
 func UpdateQuestionHandler(w http.ResponseWriter, r *http.Request) {
-	// Структура для приема данных
+	// 1. Пробуем взять ID из URL (?id=65)
+	idStr := r.URL.Query().Get("id")
+	qID, _ := strconv.Atoi(idStr)
+
 	var req struct {
 		ID            int      `json:"id"`
+		Title         string   `json:"title"`
 		Text          string   `json:"text"`
 		Options       []string `json:"options"`
-		CorrectOption int      `json:"correct_option"`
+		CorrectOption int      `json:"correct"` // Проверь, чтобы это совпадало с JSON теста
 	}
 
-	// Декодируем JSON из тела запроса
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Некорректный JSON", http.StatusBadRequest)
+	// 2. Декодируем JSON
+	bodyBytes, _ := io.ReadAll(r.Body)
+	json.Unmarshal(bodyBytes, &req)
+
+	// 3. Если в URL не было ID, берем из JSON
+	if qID == 0 {
+		qID = req.ID
+	}
+
+	log.Printf("🔄 Обновление вопроса ID: %d", qID)
+
+	if qID == 0 {
+		http.Error(w, "ID вопроса не указан", http.StatusBadRequest)
 		return
 	}
 
-	// Вызываем твою функцию (которая делает INSERT новой версии)
-	err := UpdateQuestion(req.ID, req.Text, req.Options, req.CorrectOption)
+	// 4. Вызываем функцию из database.go
+	// Передай те поля, которые требует твоя функция UpdateQuestion
+	err := UpdateQuestion(qID, req.Text, req.Options, req.CorrectOption)
 	if err != nil {
+		log.Printf("❌ Ошибка в UpdateQuestion: %v", err)
 		http.Error(w, "Ошибка при обновлении вопроса: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	w.WriteHeader(http.StatusOK)
-	fmt.Fprintf(w, "Создана новая версия вопроса для ID %d", req.ID)
+	fmt.Fprint(w, "OK")
 }
 
 // Добавим сразу и хендлер удаления (с проверкой на использование в тестах)
