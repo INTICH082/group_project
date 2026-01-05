@@ -96,7 +96,7 @@ async def status_cmd(m: types.Message):
 
     text = (
         "📊 СТАТУС СИСТЕМЫ\n\n"
-        f"🕒 Время (МСК): {moscow_time().strftime('%Y-%m-%d %H:%M:%S')}\n"
+        f"🕒 Время (МСК): {moscow_time().strftime('%H:%M:%S')}\n"
         f"⏱ Время работы: {uptime_minutes} мин\n\n"
 
         "Сервисы:\n"
