@@ -9,7 +9,7 @@ from dotenv import load_dotenv
 from aiogram import Bot, Dispatcher, types, F
 from aiogram.filters import Command
 from aiogram.fsm.storage.memory import MemoryStorage
-from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+from aiogram.fsm.state import StatesGroup, State
 
 # ================= INIT =================
 load_dotenv()
@@ -32,12 +32,12 @@ def rds():
 # ================= SYSTEM =================
 START_TIME = datetime.now()
 
-def uptime_minutes() -> int:
+def uptime_minutes():
     return (datetime.now() - START_TIME).seconds // 60
 
 # ================= AUTH =================
-def get_user_token(user_id: int) -> Optional[str]:
-    return rds().get(f"user_token:{user_id}")
+def is_authorized(user_id: int) -> bool:
+    return bool(rds().get(f"user_token:{user_id}"))
 
 AUTH_REQUIRED_TEXT = (
     "❌ <b>ДОСТУП ЗАПРЕЩЁН</b>\n\n"
@@ -46,40 +46,43 @@ AUTH_REQUIRED_TEXT = (
     "/login"
 )
 
+# ================= FSM =================
+class LoginFSM(StatesGroup):
+    login = State()
+    password = State()
+
 # ================= /start =================
 @dp.message(Command("start"))
-async def cmd_start(message: types.Message):
-    keyboard = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="📊 Статус", callback_data="status")],
-        [InlineKeyboardButton(text="🛠 Сервисы", callback_data="services")],
-        [InlineKeyboardButton(text="🆘 Помощь", callback_data="help")],
-        [InlineKeyboardButton(text="🔐 Авторизация", callback_data="login")],
-    ])
-
+async def start(message: types.Message):
     await message.reply(
         f"👋 <b>Привет, {message.from_user.first_name}!</b>\n\n"
         "🤖 Я — бот системы тестирования.\n"
         "Система находится в стадии активной разработки.\n\n"
         "📊 <b>Что уже работает:</b>\n"
-        "• Docker-контейнеры\n"
+        "• Docker контейнеры\n"
         "• Базы данных\n"
         "• Web-интерфейс\n"
         "• API-сервисы\n"
-        "• Авторизация через web\n\n"
+        "• Базовая авторизация\n\n"
         "🧩 <b>Основные команды:</b>\n"
+        "/start — начало работы\n"
         "/status — статус системы\n"
         "/services — сервисы\n"
-        "/help — справка\n"
+        "/help — помощь\n"
         "/login — авторизация\n"
+        "/complete_login — завершить авторизацию\n"
         "/tests — список тестов\n"
-        "/start_test — начать тест\n",
-        parse_mode="HTML",
-        reply_markup=keyboard
+        "/start_test — начать тест\n\n"
+        "🌐 <b>Ссылки:</b>\n"
+        "• Web: http://localhost:3000\n"
+        "• Core API: http://core-service:8082\n"
+        "• Auth API: http://auth-service:8081",
+        parse_mode="HTML"
     )
 
 # ================= /help =================
 @dp.message(Command("help"))
-async def cmd_help(message: types.Message):
+async def help_cmd(message: types.Message):
     await message.reply(
         "🆘 <b>ПОМОЩЬ</b>\n\n"
         "/start — начало работы\n"
@@ -94,7 +97,7 @@ async def cmd_help(message: types.Message):
 
 # ================= /status =================
 @dp.message(Command("status"))
-async def cmd_status(message: types.Message):
+async def status(message: types.Message):
     await message.reply(
         "📊 <b>СТАТУС СИСТЕМЫ</b>\n\n"
         f"Время: {datetime.now().strftime('%H:%M:%S')}\n"
@@ -110,52 +113,89 @@ async def cmd_status(message: types.Message):
 
 # ================= /services =================
 @dp.message(Command("services"))
-async def cmd_services(message: types.Message):
+async def services(message: types.Message):
     await message.reply(
         "🛠 <b>СЕРВИСЫ СИСТЕМЫ</b>\n\n"
-        "CORE-SERVICE — 8082\n"
-        "AUTH-SERVICE — 8081\n"
-        "WEB-CLIENT — 3000\n"
-        "POSTGRES — 5432\n"
-        "MONGODB — 27017\n"
-        "REDIS — 6379",
+        "<b>CORE-SERVICE</b>\n"
+        "Статус: 🟢 Онлайн\n"
+        "Порт: 8082\n\n"
+        "<b>AUTH-SERVICE</b>\n"
+        "Статус: 🟢 Онлайн\n"
+        "Порт: 8081\n\n"
+        "<b>WEB-CLIENT</b>\n"
+        "Статус: 🟢 Онлайн\n"
+        "Порт: 3000\n\n"
+        "<b>POSTGRES</b> — 5432\n"
+        "<b>MONGODB</b> — 27017\n"
+        "<b>REDIS</b> — 6379",
         parse_mode="HTML"
     )
 
 # ================= /login =================
 @dp.message(Command("login"))
-async def cmd_login(message: types.Message):
-    # ПОКА мок, дальше будет БД
-    login = "roman"
-    password = "481DA6D0"
-
+async def login(message: types.Message, state):
+    await state.set_state(LoginFSM.login)
     await message.reply(
         "🔐 <b>АВТОРИЗАЦИЯ</b>\n\n"
-        f"Логин: <code>{login}</code>\n"
-        f"Пароль: <code>{password}</code>\n\n"
-        "Введите данные в веб-клиенте и затем выполните:\n"
-        "/complete_login",
+        "Введите логин:",
         parse_mode="HTML"
     )
+
+@dp.message(LoginFSM.login)
+async def login_step(message: types.Message, state):
+    await state.update_data(login=message.text)
+    await state.set_state(LoginFSM.password)
+    await message.reply(
+        "Введите пароль:",
+        parse_mode="HTML"
+    )
+
+@dp.message(LoginFSM.password)
+async def password_step(message: types.Message, state):
+    data = await state.get_data()
+
+    # ==== МОК ПРОВЕРКИ (ЗАМЕНИШЬ НА БД) ====
+    if data["login"] == "roman" and message.text == "481DA6D0":
+        rds().set(f"user_token:{message.from_user.id}", "ok", ex=3600)
+        await message.reply(
+            "🔑 <b>ДАННЫЕ ПРИНЯТЫ</b>\n\n"
+            "Для завершения авторизации выполните:\n"
+            "/complete_login",
+            parse_mode="HTML"
+        )
+    else:
+        await message.reply(
+            "❌ <b>НЕВЕРНЫЕ ДАННЫЕ</b>\n\n"
+            "Попробуйте снова: /login",
+            parse_mode="HTML"
+        )
+
+    await state.clear()
 
 # ================= /complete_login =================
 @dp.message(Command(commands=["complete_login", "completelogin"]))
-async def cmd_complete_login(message: types.Message):
-    # backend ещё не подтвердил вход
-    await message.reply(
-        "❌ <b>СЕССИЯ НЕ НАЙДЕНА</b>\n\n"
-        "Завершите авторизацию в веб-клиенте и попробуйте снова.",
-        parse_mode="HTML"
-    )
+async def complete_login(message: types.Message):
+    if is_authorized(message.from_user.id):
+        await message.reply(
+            "🎉 <b>АВТОРИЗАЦИЯ ЗАВЕРШЕНА</b>\n\n"
+            "Вы успешно вошли в систему.",
+            parse_mode="HTML"
+        )
+    else:
+        await message.reply(
+            "❌ <b>АВТОРИЗАЦИЯ НЕ ЗАВЕРШЕНА</b>\n\n"
+            "Сначала выполните /login",
+            parse_mode="HTML"
+        )
 
 # ================= /tests =================
 @dp.message(Command("tests"))
-async def cmd_tests(message: types.Message):
-    if not get_user_token(message.from_user.id):
+async def tests(message: types.Message):
+    if not is_authorized(message.from_user.id):
         await message.reply(AUTH_REQUIRED_TEXT, parse_mode="HTML")
         return
 
-    tests = []  # будет БД
+    tests = []
 
     if not tests:
         await message.reply(
@@ -163,24 +203,19 @@ async def cmd_tests(message: types.Message):
             "В данный момент доступных тестов нет.",
             parse_mode="HTML"
         )
-        return
 
 # ================= /start_test =================
-@dp.message(Command(commands=["start_test", "starttest"]))
-async def cmd_start_test(message: types.Message):
-    if not get_user_token(message.from_user.id):
+@dp.message(Command("start_test"))
+async def start_test(message: types.Message):
+    if not is_authorized(message.from_user.id):
         await message.reply(AUTH_REQUIRED_TEXT, parse_mode="HTML")
         return
 
-    tests = []  # будет БД
-
-    if not tests:
-        await message.reply(
-            "❌ <b>НЕТ ДОСТУПНЫХ ТЕСТОВ</b>\n\n"
-            "Запуск невозможен.",
-            parse_mode="HTML"
-        )
-        return
+    await message.reply(
+        "❌ <b>НЕТ ДОСТУПНЫХ ТЕСТОВ</b>\n\n"
+        "Запуск невозможен.",
+        parse_mode="HTML"
+    )
 
 # ================= UNKNOWN =================
 @dp.message(F.text.startswith("/"))
