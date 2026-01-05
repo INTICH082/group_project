@@ -162,7 +162,7 @@ async def help_cmd(m: types.Message):
         "/logout — выход"
     )
 
-# ================== LOGIN / TESTS (НЕ ТРОГАЕМ) ==================
+# ================= LOGIN / TESTS (НЕ ТРОГАЕМ) ==================
 # ⬇️ логика 그대로, как ты сказал — идеальна
 
 @dp.message_handler(commands=["login"])
