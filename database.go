@@ -337,18 +337,20 @@ func CreateTestHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(map[string]int{"id": id})
 }
 func AddQuestionToTest(testID, questionID int) error {
-	// ПРОВЕРКА ПО ТЗ: Есть ли начатые попытки?
-	var hasAttempts bool
-	err := db.QueryRow("SELECT EXISTS(SELECT 1 FROM attempts WHERE test_id = $1)", testID).Scan(&hasAttempts)
+	var count int
+	// Считаем количество любых попыток для этого теста
+	err := db.QueryRow("SELECT COUNT(*) FROM attempts WHERE test_id = $1", testID).Scan(&count)
 	if err != nil {
 		return err
 	}
 
-	if hasAttempts {
-		// ТЗ: "Состав теста нельзя изменять, если есть хотя бы одна попытка"
-		return fmt.Errorf("forbidden: cannot modify test with existing attempts")
+	if count > 0 {
+		// Если нашли хотя бы одну попытку — возвращаем ошибку
+		// Важно: текст ошибки может быть любым, хендлер всё равно отправит 403
+		return fmt.Errorf("состав теста заблокирован: найдено %d попыток", count)
 	}
 
+	// Если попыток 0 — выполняем обновление
 	_, err = db.Exec("UPDATE tests SET question_ids = array_append(question_ids, $1) WHERE id = $2", questionID, testID)
 	return err
 }
