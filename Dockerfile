@@ -1,14 +1,16 @@
 # Dockerfile
 FROM alpine:latest
 
-# Устанавливаем ВСЕ необходимые зависимости
+# Устанавливаем зависимости для MySQL Connector/C
 RUN apk add --no-cache \
     g++ \
     make \
     cmake \
-    libcurl-dev \
-    mariadb-dev \
-    mariadb-connector-c-dev \
+    curl-dev \
+    mysql-client \
+    mysql-dev \
+    mysql-connector-c \
+    mysql-connector-c-dev \
     musl-dev
 
 # Альтернатива: используем MySQL Connector/C из исходников
