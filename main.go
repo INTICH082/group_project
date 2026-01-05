@@ -423,7 +423,6 @@ func main() {
 	mux := http.NewServeMux()
 
 	// --- МИДЛВАРИ И ЛОГИРОВАНИЕ ---
-	// Обертка для логирования всех запросов (поможет увидеть, куда бьет тест)
 	withLog := func(next http.HandlerFunc) http.HandlerFunc {
 		return func(w http.ResponseWriter, r *http.Request) {
 			log.Printf("➡️ [%s] %s", r.Method, r.URL.String())
@@ -436,21 +435,15 @@ func main() {
 	mux.HandleFunc("/teacher/question/update", withLog(AuthMiddleware("quest:update", UpdateQuestionHandler)))
 	mux.HandleFunc("/teacher/question/delete", withLog(AuthMiddleware("quest:del", DeleteQuestionHandler)))
 
-	// --- РЕСУРС: ТЕСТЫ (Управление и Состав) ---
+	// --- РЕСУРС: ТЕСТЫ ---
 	mux.HandleFunc("/teacher/test/create", withLog(AuthMiddleware("course:test:add", CreateTestHandler)))
 	mux.HandleFunc("/teacher/test/status", withLog(AuthMiddleware("course:test:write", UpdateTestStatusHandler)))
-
-	// ВАЖНО: Тест часто ищет обновление состава по этим путям
 	mux.HandleFunc("/test/update", withLog(UpdateTestHandler))
-
-	// УНИВЕРСАЛЬНЫЙ ДОБАВЛЯТОР (использует логику из прошлого шага)
-	// Регистрируем его на все возможные пути, которые может дергать fulltest.go
 	mux.HandleFunc("/test/question/add", withLog(UniversalAddQuestionHandler))
 	mux.HandleFunc("/teacher/test/question/add", withLog(AuthMiddleware("test:quest:add", UniversalAddQuestionHandler)))
-
 	mux.HandleFunc("/teacher/test/question/remove", withLog(AuthMiddleware("test:quest:del", RemoveQuestionFromTestHandler)))
 
-	// --- РЕСУРС: ДИСЦИПЛИНЫ (Курсы) ---
+	// --- РЕСУРС: КУРСЫ ---
 	mux.HandleFunc("/course/tests", withLog(AuthMiddleware("course:read", GetTestsHandler)))
 	mux.HandleFunc("/teacher/course/enroll", withLog(AuthMiddleware("course:user:add", EnrollHandler)))
 	mux.HandleFunc("/teacher/course/kick", withLog(AuthMiddleware("course:user:del", func(w http.ResponseWriter, r *http.Request) {
@@ -465,25 +458,30 @@ func main() {
 	mux.HandleFunc("/test/answer", withLog(AuthMiddleware("", SubmitAnswerHandler)))
 	mux.HandleFunc("/test/finish", withLog(AuthMiddleware("", FinishTestHandler)))
 
-	// --- CORS И ЗАПУСК ---
+	// --- ГЛОБАЛЬНЫЙ CORS HANDLER ---
+	// Это позволит твоему HTML-файлу делать запросы к API
+	finalHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Разрешаем запросы с любого домена (для разработки)
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+
+		// Если это предварительный запрос (Preflight), сразу отвечаем 200
+		if r.Method == "OPTIONS" {
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+
+		mux.ServeHTTP(w, r)
+	})
+
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8080"
 	}
 
-	finalHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Access-Control-Allow-Origin", "*")
-		w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
-		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
-		if r.Method == "OPTIONS" {
-			w.WriteHeader(http.StatusOK)
-			return
-		}
-		mux.ServeHTTP(w, r)
-	})
-
 	log.Printf("🚀 API Server started on :%s", port)
-	log.Println("Secret: iplaygodotandclaimfun")
+	log.Println("Secret verified: iplaygodotandclaimfun")
 
 	if err := http.ListenAndServe(":"+port, finalHandler); err != nil {
 		log.Fatal(err)
