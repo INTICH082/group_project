@@ -4,16 +4,7 @@
     <ClCompile Include="C:\Users\KSK-SHOP\projects\group_project\group_project\authorization\main.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="C:\Users\KSK-SHOP\projects\group_project\group_project\authorization\handlers.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="C:\Users\KSK-SHOP\projects\group_project\group_project\authorization\utils.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="C:\Users\KSK-SHOP\projects\group_project\group_project\authorization\jwt.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="C:\Users\KSK-SHOP\projects\group_project\group_project\authorization\mongo.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

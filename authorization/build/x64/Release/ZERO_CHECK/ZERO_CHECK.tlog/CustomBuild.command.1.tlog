@@ -1,6 +1,6 @@
 ^C:\USERS\KSK-SHOP\PROJECTS\GROUP_PROJECT\GROUP_PROJECT\AUTHORIZATION\BUILD\CMAKEFILES\F2C4E45017349D71713D8DEB63E13C27\GENERATE.STAMP.RULE
 setlocal
-"C:\Program Files\CMake\bin\cmake.exe" -SC:/Users/KSK-SHOP/projects/group_project/group_project/authorization -BC:/Users/KSK-SHOP/projects/group_project/group_project/authorization/build --check-stamp-list CMakeFiles/generate.stamp.list --vs-solution-file C:/Users/KSK-SHOP/projects/group_project/group_project/authorization/build/authorization.sln
+"C:\Program Files\CMake\bin\cmake.exe" -SC:/Users/KSK-SHOP/projects/group_project/group_project/authorization -BC:/Users/KSK-SHOP/projects/group_project/group_project/authorization/build --check-stamp-list CMakeFiles/generate.stamp.list --vs-solution-file C:/Users/KSK-SHOP/projects/group_project/group_project/authorization/build/auth.sln
 if %errorlevel% neq 0 goto :cmEnd
 :cmEnd
 endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone

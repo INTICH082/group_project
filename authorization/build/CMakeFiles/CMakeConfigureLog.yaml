@@ -82,7 +82,7 @@ events:
       The output was:
       0
       ╨Т╨╡╤А╤Б╨╕╤П MSBuild 17.14.23+b0019275e ╨┤╨╗╤П .NET Framework
-      ╨б╨▒╨╛╤А╨║╨░ ╨╜╨░╤З╨░╤В╨░ 05.01.2026 1:33:48.
+      ╨б╨▒╨╛╤А╨║╨░ ╨╜╨░╤З╨░╤В╨░ 05.01.2026 3:21:25.
       
       ╨Я╤А╨╛╨╡╨║╤В "C:\\Users\\KSK-SHOP\\projects\\group_project\\group_project\\authorization\\build\\CMakeFiles\\4.2.1\\CompilerIdCXX\\CompilerIdCXX.vcxproj" ╨▓ ╤Г╨╖╨╗╨╡ 1 (╤Ж╨╡╨╗╨╡╨▓╤Л╨╡ ╨╛╨▒╤К╨╡╨║╤В╤Л ╨┐╨╛ ╤Г╨╝╨╛╨╗╤З╨░╨╜╨╕╤О).
       PrepareForBuild:
@@ -116,7 +116,7 @@ events:
           ╨Я╤А╨╡╨┤╤Г╨┐╤А╨╡╨╢╨┤╨╡╨╜╨╕╨╣: 0
           ╨Ю╤И╨╕╨▒╨╛╨║: 0
       
-      ╨Я╤А╨╛╤И╨╗╨╛ ╨▓╤А╨╡╨╝╨╡╨╜╨╕ 00:00:02.38
+      ╨Я╤А╨╛╤И╨╗╨╛ ╨▓╤А╨╡╨╝╨╡╨╜╨╕ 00:00:01.11
       
       
       Compilation of the CXX compiler identification source "CMakeCXXCompilerId.cpp" produced "CompilerIdCXX.exe"
@@ -352,6 +352,9 @@ events:
     search_context:
       CMAKE_PROGRAM_PATH:
         - "C:/tools/vcpkg/installed/x64-windows/tools"
+        - "C:/tools/vcpkg/installed/x64-windows/tools/libmysql"
+        - "C:/tools/vcpkg/installed/x64-windows/tools/protobuf"
+        - "C:/tools/vcpkg/installed/x64-windows/tools/curl/bin"
       CMAKE_PREFIX_PATH:
         - "C:/tools/vcpkg/installed/x64-windows/debug"
         - "C:/tools/vcpkg/installed/x64-windows"
@@ -675,6 +678,9 @@ events:
     search_context:
       CMAKE_PROGRAM_PATH:
         - "C:/tools/vcpkg/installed/x64-windows/tools"
+        - "C:/tools/vcpkg/installed/x64-windows/tools/libmysql"
+        - "C:/tools/vcpkg/installed/x64-windows/tools/protobuf"
+        - "C:/tools/vcpkg/installed/x64-windows/tools/curl/bin"
       CMAKE_PREFIX_PATH:
         - "C:/tools/vcpkg/installed/x64-windows/debug"
         - "C:/tools/vcpkg/installed/x64-windows"
@@ -931,6 +937,9 @@ events:
     search_context:
       CMAKE_PROGRAM_PATH:
         - "C:/tools/vcpkg/installed/x64-windows/tools"
+        - "C:/tools/vcpkg/installed/x64-windows/tools/libmysql"
+        - "C:/tools/vcpkg/installed/x64-windows/tools/protobuf"
+        - "C:/tools/vcpkg/installed/x64-windows/tools/curl/bin"
       CMAKE_PREFIX_PATH:
         - "C:/tools/vcpkg/installed/x64-windows/debug"
         - "C:/tools/vcpkg/installed/x64-windows"
@@ -1252,6 +1261,9 @@ events:
     search_context:
       CMAKE_PROGRAM_PATH:
         - "C:/tools/vcpkg/installed/x64-windows/tools"
+        - "C:/tools/vcpkg/installed/x64-windows/tools/libmysql"
+        - "C:/tools/vcpkg/installed/x64-windows/tools/protobuf"
+        - "C:/tools/vcpkg/installed/x64-windows/tools/curl/bin"
       CMAKE_PREFIX_PATH:
         - "C:/tools/vcpkg/installed/x64-windows/debug"
         - "C:/tools/vcpkg/installed/x64-windows"
@@ -1508,6 +1520,9 @@ events:
     search_context:
       CMAKE_PROGRAM_PATH:
         - "C:/tools/vcpkg/installed/x64-windows/tools"
+        - "C:/tools/vcpkg/installed/x64-windows/tools/libmysql"
+        - "C:/tools/vcpkg/installed/x64-windows/tools/protobuf"
+        - "C:/tools/vcpkg/installed/x64-windows/tools/curl/bin"
       CMAKE_PREFIX_PATH:
         - "C:/tools/vcpkg/installed/x64-windows/debug"
         - "C:/tools/vcpkg/installed/x64-windows"
@@ -1570,6 +1585,9 @@ events:
       - "C:/tools/vcpkg/installed/x64-windows/debug/tools/vcpkg/installed/x64-windows/sbin/"
       - "C:/tools/vcpkg/installed/x64-windows/debug/tools/vcpkg/installed/x64-windows/"
       - "C:/tools/vcpkg/installed/x64-windows/debug/tools/vcpkg/installed/x64-windows/tools/"
+      - "C:/tools/vcpkg/installed/x64-windows/debug/tools/vcpkg/installed/x64-windows/tools/libmysql/"
+      - "C:/tools/vcpkg/installed/x64-windows/debug/tools/vcpkg/installed/x64-windows/tools/protobuf/"
+      - "C:/tools/vcpkg/installed/x64-windows/debug/tools/vcpkg/installed/x64-windows/tools/curl/bin/"
       - "C:/tools/vcpkg/installed/x64-windows/debug/Program Files/PowerShell/7/"
       - "C:/tools/vcpkg/installed/x64-windows/debug/Windows/System32/"
       - "C:/tools/vcpkg/installed/x64-windows/debug/Windows/"
@@ -1600,9 +1618,9 @@ events:
       - "C:/tools/vcpkg/installed/x64-windows/debug/Program Files/CMake/bin/"
       - "C:/tools/vcpkg/installed/x64-windows/debug/Program Files/CMake/sbin/"
       - "C:/tools/vcpkg/installed/x64-windows/debug/Program Files/CMake/"
-      - "C:/tools/vcpkg/installed/x64-windows/debug/Program Files (x86)/authorization/bin/"
-      - "C:/tools/vcpkg/installed/x64-windows/debug/Program Files (x86)/authorization/sbin/"
-      - "C:/tools/vcpkg/installed/x64-windows/debug/Program Files (x86)/authorization/"
+      - "C:/tools/vcpkg/installed/x64-windows/debug/Program Files (x86)/auth/bin/"
+      - "C:/tools/vcpkg/installed/x64-windows/debug/Program Files (x86)/auth/sbin/"
+      - "C:/tools/vcpkg/installed/x64-windows/debug/Program Files (x86)/auth/"
       - "C:/tools/vcpkg/installed/x64-windows/debug/bin/"
       - "C:/tools/vcpkg/installed/x64-windows/debug/sbin/"
       - "C:/tools/vcpkg/installed/x64-windows/debug/"
@@ -1610,6 +1628,9 @@ events:
       - "C:/tools/vcpkg/installed/x64-windows/sbin/"
       - "C:/tools/vcpkg/installed/x64-windows/"
       - "C:/tools/vcpkg/installed/x64-windows/tools/"
+      - "C:/tools/vcpkg/installed/x64-windows/tools/libmysql/"
+      - "C:/tools/vcpkg/installed/x64-windows/tools/protobuf/"
+      - "C:/tools/vcpkg/installed/x64-windows/tools/curl/bin/"
       - "C:/tools/vcpkg/installed/x64-windows/Program Files/PowerShell/7/"
       - "C:/tools/vcpkg/installed/x64-windows/Windows/System32/"
       - "C:/tools/vcpkg/installed/x64-windows/Windows/"
@@ -1640,9 +1661,9 @@ events:
       - "C:/tools/vcpkg/installed/x64-windows/Program Files/CMake/bin/"
       - "C:/tools/vcpkg/installed/x64-windows/Program Files/CMake/sbin/"
       - "C:/tools/vcpkg/installed/x64-windows/Program Files/CMake/"
-      - "C:/tools/vcpkg/installed/x64-windows/Program Files (x86)/authorization/bin/"
-      - "C:/tools/vcpkg/installed/x64-windows/Program Files (x86)/authorization/sbin/"
-      - "C:/tools/vcpkg/installed/x64-windows/Program Files (x86)/authorization/"
+      - "C:/tools/vcpkg/installed/x64-windows/Program Files (x86)/auth/bin/"
+      - "C:/tools/vcpkg/installed/x64-windows/Program Files (x86)/auth/sbin/"
+      - "C:/tools/vcpkg/installed/x64-windows/Program Files (x86)/auth/"
       - "C:/tools/vcpkg/installed/x64-windows/debug/bin/"
       - "C:/tools/vcpkg/installed/x64-windows/debug/sbin/"
       - "C:/tools/vcpkg/installed/x64-windows/debug/"
@@ -1650,6 +1671,9 @@ events:
       - "C:/tools/vcpkg/installed/x64-windows/sbin/"
       - "C:/tools/vcpkg/installed/x64-windows/"
       - "C:/tools/vcpkg/installed/x64-windows/tools/"
+      - "C:/tools/vcpkg/installed/x64-windows/tools/libmysql/"
+      - "C:/tools/vcpkg/installed/x64-windows/tools/protobuf/"
+      - "C:/tools/vcpkg/installed/x64-windows/tools/curl/bin/"
       - "C:/Program Files/PowerShell/7/"
       - "C:/Windows/System32/"
       - "C:/Windows/"
@@ -1680,9 +1704,9 @@ events:
       - "C:/Program Files/CMake/bin/"
       - "C:/Program Files/CMake/sbin/"
       - "C:/Program Files/CMake/"
-      - "C:/Program Files (x86)/authorization/bin/"
-      - "C:/Program Files (x86)/authorization/sbin/"
-      - "C:/Program Files (x86)/authorization/"
+      - "C:/Program Files (x86)/auth/bin/"
+      - "C:/Program Files (x86)/auth/sbin/"
+      - "C:/Program Files (x86)/auth/"
     searched_directories:
       - "C:/tools/vcpkg/installed/x64-windows/debug/bin/rc.com"
       - "C:/tools/vcpkg/installed/x64-windows/debug/bin/rc.exe"
@@ -1705,6 +1729,15 @@ events:
       - "C:/tools/vcpkg/installed/x64-windows/debug/tools/vcpkg/installed/x64-windows/tools/rc.com"
       - "C:/tools/vcpkg/installed/x64-windows/debug/tools/vcpkg/installed/x64-windows/tools/rc.exe"
       - "C:/tools/vcpkg/installed/x64-windows/debug/tools/vcpkg/installed/x64-windows/tools/rc"
+      - "C:/tools/vcpkg/installed/x64-windows/debug/tools/vcpkg/installed/x64-windows/tools/libmysql/rc.com"
+      - "C:/tools/vcpkg/installed/x64-windows/debug/tools/vcpkg/installed/x64-windows/tools/libmysql/rc.exe"
+      - "C:/tools/vcpkg/installed/x64-windows/debug/tools/vcpkg/installed/x64-windows/tools/libmysql/rc"
+      - "C:/tools/vcpkg/installed/x64-windows/debug/tools/vcpkg/installed/x64-windows/tools/protobuf/rc.com"
+      - "C:/tools/vcpkg/installed/x64-windows/debug/tools/vcpkg/installed/x64-windows/tools/protobuf/rc.exe"
+      - "C:/tools/vcpkg/installed/x64-windows/debug/tools/vcpkg/installed/x64-windows/tools/protobuf/rc"
+      - "C:/tools/vcpkg/installed/x64-windows/debug/tools/vcpkg/installed/x64-windows/tools/curl/bin/rc.com"
+      - "C:/tools/vcpkg/installed/x64-windows/debug/tools/vcpkg/installed/x64-windows/tools/curl/bin/rc.exe"
+      - "C:/tools/vcpkg/installed/x64-windows/debug/tools/vcpkg/installed/x64-windows/tools/curl/bin/rc"
       - "C:/tools/vcpkg/installed/x64-windows/debug/Program Files/PowerShell/7/rc.com"
       - "C:/tools/vcpkg/installed/x64-windows/debug/Program Files/PowerShell/7/rc.exe"
       - "C:/tools/vcpkg/installed/x64-windows/debug/Program Files/PowerShell/7/rc"
@@ -1795,15 +1828,15 @@ events:
       - "C:/tools/vcpkg/installed/x64-windows/debug/Program Files/CMake/rc.com"
       - "C:/tools/vcpkg/installed/x64-windows/debug/Program Files/CMake/rc.exe"
       - "C:/tools/vcpkg/installed/x64-windows/debug/Program Files/CMake/rc"
-      - "C:/tools/vcpkg/installed/x64-windows/debug/Program Files (x86)/authorization/bin/rc.com"
-      - "C:/tools/vcpkg/installed/x64-windows/debug/Program Files (x86)/authorization/bin/rc.exe"
-      - "C:/tools/vcpkg/installed/x64-windows/debug/Program Files (x86)/authorization/bin/rc"
-      - "C:/tools/vcpkg/installed/x64-windows/debug/Program Files (x86)/authorization/sbin/rc.com"
-      - "C:/tools/vcpkg/installed/x64-windows/debug/Program Files (x86)/authorization/sbin/rc.exe"
-      - "C:/tools/vcpkg/installed/x64-windows/debug/Program Files (x86)/authorization/sbin/rc"
-      - "C:/tools/vcpkg/installed/x64-windows/debug/Program Files (x86)/authorization/rc.com"
-      - "C:/tools/vcpkg/installed/x64-windows/debug/Program Files (x86)/authorization/rc.exe"
-      - "C:/tools/vcpkg/installed/x64-windows/debug/Program Files (x86)/authorization/rc"
+      - "C:/tools/vcpkg/installed/x64-windows/debug/Program Files (x86)/auth/bin/rc.com"
+      - "C:/tools/vcpkg/installed/x64-windows/debug/Program Files (x86)/auth/bin/rc.exe"
+      - "C:/tools/vcpkg/installed/x64-windows/debug/Program Files (x86)/auth/bin/rc"
+      - "C:/tools/vcpkg/installed/x64-windows/debug/Program Files (x86)/auth/sbin/rc.com"
+      - "C:/tools/vcpkg/installed/x64-windows/debug/Program Files (x86)/auth/sbin/rc.exe"
+      - "C:/tools/vcpkg/installed/x64-windows/debug/Program Files (x86)/auth/sbin/rc"
+      - "C:/tools/vcpkg/installed/x64-windows/debug/Program Files (x86)/auth/rc.com"
+      - "C:/tools/vcpkg/installed/x64-windows/debug/Program Files (x86)/auth/rc.exe"
+      - "C:/tools/vcpkg/installed/x64-windows/debug/Program Files (x86)/auth/rc"
       - "C:/tools/vcpkg/installed/x64-windows/debug/bin/rc.com"
       - "C:/tools/vcpkg/installed/x64-windows/debug/bin/rc.exe"
       - "C:/tools/vcpkg/installed/x64-windows/debug/bin/rc"
@@ -1825,6 +1858,15 @@ events:
       - "C:/tools/vcpkg/installed/x64-windows/tools/rc.com"
       - "C:/tools/vcpkg/installed/x64-windows/tools/rc.exe"
       - "C:/tools/vcpkg/installed/x64-windows/tools/rc"
+      - "C:/tools/vcpkg/installed/x64-windows/tools/libmysql/rc.com"
+      - "C:/tools/vcpkg/installed/x64-windows/tools/libmysql/rc.exe"
+      - "C:/tools/vcpkg/installed/x64-windows/tools/libmysql/rc"
+      - "C:/tools/vcpkg/installed/x64-windows/tools/protobuf/rc.com"
+      - "C:/tools/vcpkg/installed/x64-windows/tools/protobuf/rc.exe"
+      - "C:/tools/vcpkg/installed/x64-windows/tools/protobuf/rc"
+      - "C:/tools/vcpkg/installed/x64-windows/tools/curl/bin/rc.com"
+      - "C:/tools/vcpkg/installed/x64-windows/tools/curl/bin/rc.exe"
+      - "C:/tools/vcpkg/installed/x64-windows/tools/curl/bin/rc"
       - "C:/tools/vcpkg/installed/x64-windows/Program Files/PowerShell/7/rc.com"
       - "C:/tools/vcpkg/installed/x64-windows/Program Files/PowerShell/7/rc.exe"
       - "C:/tools/vcpkg/installed/x64-windows/Program Files/PowerShell/7/rc"
@@ -1915,15 +1957,15 @@ events:
       - "C:/tools/vcpkg/installed/x64-windows/Program Files/CMake/rc.com"
       - "C:/tools/vcpkg/installed/x64-windows/Program Files/CMake/rc.exe"
       - "C:/tools/vcpkg/installed/x64-windows/Program Files/CMake/rc"
-      - "C:/tools/vcpkg/installed/x64-windows/Program Files (x86)/authorization/bin/rc.com"
-      - "C:/tools/vcpkg/installed/x64-windows/Program Files (x86)/authorization/bin/rc.exe"
-      - "C:/tools/vcpkg/installed/x64-windows/Program Files (x86)/authorization/bin/rc"
-      - "C:/tools/vcpkg/installed/x64-windows/Program Files (x86)/authorization/sbin/rc.com"
-      - "C:/tools/vcpkg/installed/x64-windows/Program Files (x86)/authorization/sbin/rc.exe"
-      - "C:/tools/vcpkg/installed/x64-windows/Program Files (x86)/authorization/sbin/rc"
-      - "C:/tools/vcpkg/installed/x64-windows/Program Files (x86)/authorization/rc.com"
-      - "C:/tools/vcpkg/installed/x64-windows/Program Files (x86)/authorization/rc.exe"
-      - "C:/tools/vcpkg/installed/x64-windows/Program Files (x86)/authorization/rc"
+      - "C:/tools/vcpkg/installed/x64-windows/Program Files (x86)/auth/bin/rc.com"
+      - "C:/tools/vcpkg/installed/x64-windows/Program Files (x86)/auth/bin/rc.exe"
+      - "C:/tools/vcpkg/installed/x64-windows/Program Files (x86)/auth/bin/rc"
+      - "C:/tools/vcpkg/installed/x64-windows/Program Files (x86)/auth/sbin/rc.com"
+      - "C:/tools/vcpkg/installed/x64-windows/Program Files (x86)/auth/sbin/rc.exe"
+      - "C:/tools/vcpkg/installed/x64-windows/Program Files (x86)/auth/sbin/rc"
+      - "C:/tools/vcpkg/installed/x64-windows/Program Files (x86)/auth/rc.com"
+      - "C:/tools/vcpkg/installed/x64-windows/Program Files (x86)/auth/rc.exe"
+      - "C:/tools/vcpkg/installed/x64-windows/Program Files (x86)/auth/rc"
       - "C:/tools/vcpkg/installed/x64-windows/debug/bin/rc.com"
       - "C:/tools/vcpkg/installed/x64-windows/debug/bin/rc.exe"
       - "C:/tools/vcpkg/installed/x64-windows/debug/bin/rc"
@@ -1945,6 +1987,15 @@ events:
       - "C:/tools/vcpkg/installed/x64-windows/tools/rc.com"
       - "C:/tools/vcpkg/installed/x64-windows/tools/rc.exe"
       - "C:/tools/vcpkg/installed/x64-windows/tools/rc"
+      - "C:/tools/vcpkg/installed/x64-windows/tools/libmysql/rc.com"
+      - "C:/tools/vcpkg/installed/x64-windows/tools/libmysql/rc.exe"
+      - "C:/tools/vcpkg/installed/x64-windows/tools/libmysql/rc"
+      - "C:/tools/vcpkg/installed/x64-windows/tools/protobuf/rc.com"
+      - "C:/tools/vcpkg/installed/x64-windows/tools/protobuf/rc.exe"
+      - "C:/tools/vcpkg/installed/x64-windows/tools/protobuf/rc"
+      - "C:/tools/vcpkg/installed/x64-windows/tools/curl/bin/rc.com"
+      - "C:/tools/vcpkg/installed/x64-windows/tools/curl/bin/rc.exe"
+      - "C:/tools/vcpkg/installed/x64-windows/tools/curl/bin/rc"
       - "C:/Program Files/PowerShell/7/rc.com"
       - "C:/Program Files/PowerShell/7/rc.exe"
       - "C:/Program Files/PowerShell/7/rc"
@@ -2035,19 +2086,22 @@ events:
       - "C:/Program Files/CMake/rc.com"
       - "C:/Program Files/CMake/rc.exe"
       - "C:/Program Files/CMake/rc"
-      - "C:/Program Files (x86)/authorization/bin/rc.com"
-      - "C:/Program Files (x86)/authorization/bin/rc.exe"
-      - "C:/Program Files (x86)/authorization/bin/rc"
-      - "C:/Program Files (x86)/authorization/sbin/rc.com"
-      - "C:/Program Files (x86)/authorization/sbin/rc.exe"
-      - "C:/Program Files (x86)/authorization/sbin/rc"
-      - "C:/Program Files (x86)/authorization/rc.com"
-      - "C:/Program Files (x86)/authorization/rc.exe"
-      - "C:/Program Files (x86)/authorization/rc"
+      - "C:/Program Files (x86)/auth/bin/rc.com"
+      - "C:/Program Files (x86)/auth/bin/rc.exe"
+      - "C:/Program Files (x86)/auth/bin/rc"
+      - "C:/Program Files (x86)/auth/sbin/rc.com"
+      - "C:/Program Files (x86)/auth/sbin/rc.exe"
+      - "C:/Program Files (x86)/auth/sbin/rc"
+      - "C:/Program Files (x86)/auth/rc.com"
+      - "C:/Program Files (x86)/auth/rc.exe"
+      - "C:/Program Files (x86)/auth/rc"
     found: false
     search_context:
       CMAKE_PROGRAM_PATH:
         - "C:/tools/vcpkg/installed/x64-windows/tools"
+        - "C:/tools/vcpkg/installed/x64-windows/tools/libmysql"
+        - "C:/tools/vcpkg/installed/x64-windows/tools/protobuf"
+        - "C:/tools/vcpkg/installed/x64-windows/tools/curl/bin"
       CMAKE_PREFIX_PATH:
         - "C:/tools/vcpkg/installed/x64-windows/debug"
         - "C:/tools/vcpkg/installed/x64-windows"
@@ -2079,12 +2133,12 @@ events:
         - "C:\\msys64\\ucrt64\\bin"
         - "C:\\Users\\KSK-SHOP\\go\\bin"
         - "C:\\tools\\vcpkg"
-      CMAKE_INSTALL_PREFIX: "C:/Program Files (x86)/authorization"
+      CMAKE_INSTALL_PREFIX: "C:/Program Files (x86)/auth"
       CMAKE_SYSTEM_PREFIX_PATH:
         - "C:/Program Files"
         - "C:/Program Files (x86)"
         - "C:/Program Files/CMake"
-        - "C:/Program Files (x86)/authorization"
+        - "C:/Program Files (x86)/auth"
       CMAKE_FIND_ROOT_PATH: "C:/tools/vcpkg/installed/x64-windows/debug;C:/tools/vcpkg/installed/x64-windows"
   -
     kind: "try_compile-v1"
@@ -2095,8 +2149,8 @@ events:
     checks:
       - "Detecting CXX compiler ABI info"
     directories:
-      source: "C:/Users/KSK-SHOP/projects/group_project/group_project/authorization/build/CMakeFiles/CMakeScratch/TryCompile-th3lnz"
-      binary: "C:/Users/KSK-SHOP/projects/group_project/group_project/authorization/build/CMakeFiles/CMakeScratch/TryCompile-th3lnz"
+      source: "C:/Users/KSK-SHOP/projects/group_project/group_project/authorization/build/CMakeFiles/CMakeScratch/TryCompile-8nnyzs"
+      binary: "C:/Users/KSK-SHOP/projects/group_project/group_project/authorization/build/CMakeFiles/CMakeScratch/TryCompile-8nnyzs"
     cmakeVariables:
       CMAKE_CXX_FLAGS: "/DWIN32 /D_WINDOWS /GR /EHsc"
       CMAKE_CXX_FLAGS_DEBUG: "/Zi /Ob0 /Od /RTC1"
@@ -2110,39 +2164,39 @@ events:
       variable: "CMAKE_CXX_ABI_COMPILED"
       cached: true
       stdout: |
-        Change Dir: 'C:/Users/KSK-SHOP/projects/group_project/group_project/authorization/build/CMakeFiles/CMakeScratch/TryCompile-th3lnz'
+        Change Dir: 'C:/Users/KSK-SHOP/projects/group_project/group_project/authorization/build/CMakeFiles/CMakeScratch/TryCompile-8nnyzs'
         
-        Run Build Command(s): "C:/Program Files (x86)/Microsoft Visual Studio/2022/BuildTools/MSBuild/Current/Bin/amd64/MSBuild.exe" cmTC_24af2.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:VisualStudioVersion=17.0 /v:n
+        Run Build Command(s): "C:/Program Files (x86)/Microsoft Visual Studio/2022/BuildTools/MSBuild/Current/Bin/amd64/MSBuild.exe" cmTC_39065.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:VisualStudioVersion=17.0 /v:n
         ╨Т╨╡╤А╤Б╨╕╤П MSBuild 17.14.23+b0019275e ╨┤╨╗╤П .NET Framework
-        ╨б╨▒╨╛╤А╨║╨░ ╨╜╨░╤З╨░╤В╨░ 05.01.2026 1:33:50.
+        ╨б╨▒╨╛╤А╨║╨░ ╨╜╨░╤З╨░╤В╨░ 05.01.2026 3:21:27.
         
-        ╨Я╤А╨╛╨╡╨║╤В "C:\\Users\\KSK-SHOP\\projects\\group_project\\group_project\\authorization\\build\\CMakeFiles\\CMakeScratch\\TryCompile-th3lnz\\cmTC_24af2.vcxproj" ╨▓ ╤Г╨╖╨╗╨╡ 1 (╤Ж╨╡╨╗╨╡╨▓╤Л╨╡ ╨╛╨▒╤К╨╡╨║╤В╤Л ╨┐╨╛ ╤Г╨╝╨╛╨╗╤З╨░╨╜╨╕╤О).
+        ╨Я╤А╨╛╨╡╨║╤В "C:\\Users\\KSK-SHOP\\projects\\group_project\\group_project\\authorization\\build\\CMakeFiles\\CMakeScratch\\TryCompile-8nnyzs\\cmTC_39065.vcxproj" ╨▓ ╤Г╨╖╨╗╨╡ 1 (╤Ж╨╡╨╗╨╡╨▓╤Л╨╡ ╨╛╨▒╤К╨╡╨║╤В╤Л ╨┐╨╛ ╤Г╨╝╨╛╨╗╤З╨░╨╜╨╕╤О).
         PrepareForBuild:
           ╨б╤В╤А╤Г╨║╤В╤Г╤А╨╕╤А╨╛╨▓╨░╨╜╨╜╤Л╨╣ ╨▓╤Л╨▓╨╛╨┤ ╨▓╨║╨╗╤О╤З╨╡╨╜. ╨д╨╛╤А╨╝╨░╤В╨╕╤А╨╛╨▓╨░╨╜╨╕╨╡ ╨┤╨╕╨░╨│╨╜╨╛╤Б╤В╨╕╨║╨╕ ╨║╨╛╨╝╨┐╨╕╨╗╤П╤В╨╛╤А╨░ ╨▒╤Г╨┤╨╡╤В ╨╛╤В╤А╨░╨╢╨░╤В╤М ╨╕╨╡╤А╨░╤А╤Е╨╕╤О ╨╛╤И╨╕╨▒╨╛╨║. ╨Я╨╛╨┤╤А╨╛╨▒╨╜╨╡╨╡ ╤Б╨╝. https://aka.ms/cpp/structured-output.
-          ╨б╨╛╨╖╨┤╨░╨╜╨╕╨╡ ╨║╨░╤В╨░╨╗╨╛╨│╨░ "C:\\Users\\KSK-SHOP\\projects\\group_project\\group_project\\authorization\\build\\CMakeFiles\\CMakeScratch\\TryCompile-th3lnz\\Debug\\".
-          ╨б╨╛╨╖╨┤╨░╨╜╨╕╨╡ ╨║╨░╤В╨░╨╗╨╛╨│╨░ "cmTC_24af2.dir\\Debug\\cmTC_24af2.tlog\\".
+          ╨б╨╛╨╖╨┤╨░╨╜╨╕╨╡ ╨║╨░╤В╨░╨╗╨╛╨│╨░ "C:\\Users\\KSK-SHOP\\projects\\group_project\\group_project\\authorization\\build\\CMakeFiles\\CMakeScratch\\TryCompile-8nnyzs\\Debug\\".
+          ╨б╨╛╨╖╨┤╨░╨╜╨╕╨╡ ╨║╨░╤В╨░╨╗╨╛╨│╨░ "cmTC_39065.dir\\Debug\\cmTC_39065.tlog\\".
         InitializeBuildStatus:
-          ╨б╨╛╨╖╨┤╨░╨╜╨╕╨╡ "cmTC_24af2.dir\\Debug\\cmTC_24af2.tlog\\unsuccessfulbuild", ╤В╨░╨║ ╨║╨░╨║ ╨▒╤Л╨╗╨╛ ╨╖╨░╨┤╨░╨╜╨╛ "AlwaysCreate".
-          ╨Ю╨▒╤А╨░╤Й╨╡╨╜╨╕╨╡ ╨║ "cmTC_24af2.dir\\Debug\\cmTC_24af2.tlog\\unsuccessfulbuild".
+          ╨б╨╛╨╖╨┤╨░╨╜╨╕╨╡ "cmTC_39065.dir\\Debug\\cmTC_39065.tlog\\unsuccessfulbuild", ╤В╨░╨║ ╨║╨░╨║ ╨▒╤Л╨╗╨╛ ╨╖╨░╨┤╨░╨╜╨╛ "AlwaysCreate".
+          ╨Ю╨▒╤А╨░╤Й╨╡╨╜╨╕╨╡ ╨║ "cmTC_39065.dir\\Debug\\cmTC_39065.tlog\\unsuccessfulbuild".
         ClCompile:
-          C:\\Program Files (x86)\\Microsoft Visual Studio\\2022\\BuildTools\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\CL.exe /c /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /EHsc /RTC1 /MDd /GR /Fo"cmTC_24af2.dir\\Debug\\\\" /Fd"cmTC_24af2.dir\\Debug\\vc143.pdb" /external:W1 /TP /errorReport:queue "C:\\Program Files\\CMake\\share\\cmake-4.2\\Modules\\CMakeCXXCompilerABI.cpp"
+          C:\\Program Files (x86)\\Microsoft Visual Studio\\2022\\BuildTools\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\CL.exe /c /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /EHsc /RTC1 /MDd /GR /Fo"cmTC_39065.dir\\Debug\\\\" /Fd"cmTC_39065.dir\\Debug\\vc143.pdb" /external:W1 /TP /errorReport:queue "C:\\Program Files\\CMake\\share\\cmake-4.2\\Modules\\CMakeCXXCompilerABI.cpp"
           ╨Ю╨┐╤В╨╕╨╝╨╕╨╖╨╕╤А╤Г╤О╤Й╨╕╨╣ ╨║╨╛╨╝╨┐╨╕╨╗╤П╤В╨╛╤А Microsoft (R) C/C++ ╨▓╨╡╤А╤Б╨╕╨╕ 19.44.35217 ╨┤╨╗╤П x64
           (C) ╨Ъ╨╛╤А╨┐╨╛╤А╨░╤Ж╨╕╤П ╨Ь╨░╨╣╨║╤А╨╛╤Б╨╛╤Д╤В (Microsoft Corporation).  ╨Т╤Б╨╡ ╨┐╤А╨░╨▓╨░ ╨╖╨░╤Й╨╕╤Й╨╡╨╜╤Л.
-          cl /c /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /EHsc /RTC1 /MDd /GR /Fo"cmTC_24af2.dir\\Debug\\\\" /Fd"cmTC_24af2.dir\\Debug\\vc143.pdb" /external:W1 /TP /errorReport:queue "C:\\Program Files\\CMake\\share\\cmake-4.2\\Modules\\CMakeCXXCompilerABI.cpp"
+          cl /c /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /EHsc /RTC1 /MDd /GR /Fo"cmTC_39065.dir\\Debug\\\\" /Fd"cmTC_39065.dir\\Debug\\vc143.pdb" /external:W1 /TP /errorReport:queue "C:\\Program Files\\CMake\\share\\cmake-4.2\\Modules\\CMakeCXXCompilerABI.cpp"
           CMakeCXXCompilerABI.cpp
         Link:
-          C:\\Program Files (x86)\\Microsoft Visual Studio\\2022\\BuildTools\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\link.exe /OUT:"C:\\Users\\KSK-SHOP\\projects\\group_project\\group_project\\authorization\\build\\CMakeFiles\\CMakeScratch\\TryCompile-th3lnz\\Debug\\cmTC_24af2.exe" /INCREMENTAL /ILK:"cmTC_24af2.dir\\Debug\\cmTC_24af2.ilk" /NOLOGO kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"C:/Users/KSK-SHOP/projects/group_project/group_project/authorization/build/CMakeFiles/CMakeScratch/TryCompile-th3lnz/Debug/cmTC_24af2.pdb" /SUBSYSTEM:CONSOLE /TLBID:1 /IMPLIB:"C:/Users/KSK-SHOP/projects/group_project/group_project/authorization/build/CMakeFiles/CMakeScratch/TryCompile-th3lnz/Debug/cmTC_24af2.lib" /MACHINE:X64  /machine:x64 cmTC_24af2.dir\\Debug\\CMakeCXXCompilerABI.obj
-          cmTC_24af2.vcxproj -> C:\\Users\\KSK-SHOP\\projects\\group_project\\group_project\\authorization\\build\\CMakeFiles\\CMakeScratch\\TryCompile-th3lnz\\Debug\\cmTC_24af2.exe
+          C:\\Program Files (x86)\\Microsoft Visual Studio\\2022\\BuildTools\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\link.exe /OUT:"C:\\Users\\KSK-SHOP\\projects\\group_project\\group_project\\authorization\\build\\CMakeFiles\\CMakeScratch\\TryCompile-8nnyzs\\Debug\\cmTC_39065.exe" /INCREMENTAL /ILK:"cmTC_39065.dir\\Debug\\cmTC_39065.ilk" /NOLOGO kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"C:/Users/KSK-SHOP/projects/group_project/group_project/authorization/build/CMakeFiles/CMakeScratch/TryCompile-8nnyzs/Debug/cmTC_39065.pdb" /SUBSYSTEM:CONSOLE /TLBID:1 /IMPLIB:"C:/Users/KSK-SHOP/projects/group_project/group_project/authorization/build/CMakeFiles/CMakeScratch/TryCompile-8nnyzs/Debug/cmTC_39065.lib" /MACHINE:X64  /machine:x64 cmTC_39065.dir\\Debug\\CMakeCXXCompilerABI.obj
+          cmTC_39065.vcxproj -> C:\\Users\\KSK-SHOP\\projects\\group_project\\group_project\\authorization\\build\\CMakeFiles\\CMakeScratch\\TryCompile-8nnyzs\\Debug\\cmTC_39065.exe
         FinalizeBuildStatus:
-          ╨д╨░╨╣╨╗ "cmTC_24af2.dir\\Debug\\cmTC_24af2.tlog\\unsuccessfulbuild" ╤Г╨┤╨░╨╗╤П╨╡╤В╤Б╤П.
-          ╨Ю╨▒╤А╨░╤Й╨╡╨╜╨╕╨╡ ╨║ "cmTC_24af2.dir\\Debug\\cmTC_24af2.tlog\\cmTC_24af2.lastbuildstate".
-        ╨б╨▒╨╛╤А╨║╨░ ╨┐╤А╨╛╨╡╨║╤В╨░ "C:\\Users\\KSK-SHOP\\projects\\group_project\\group_project\\authorization\\build\\CMakeFiles\\CMakeScratch\\TryCompile-th3lnz\\cmTC_24af2.vcxproj" ╨╖╨░╨▓╨╡╤А╤И╨╡╨╜╨░ (╤Ж╨╡╨╗╨╡╨▓╤Л╨╡ ╨╛╨▒╤К╨╡╨║╤В╤Л ╨┐╨╛ ╤Г╨╝╨╛╨╗╤З╨░╨╜╨╕╤О).
+          ╨д╨░╨╣╨╗ "cmTC_39065.dir\\Debug\\cmTC_39065.tlog\\unsuccessfulbuild" ╤Г╨┤╨░╨╗╤П╨╡╤В╤Б╤П.
+          ╨Ю╨▒╤А╨░╤Й╨╡╨╜╨╕╨╡ ╨║ "cmTC_39065.dir\\Debug\\cmTC_39065.tlog\\cmTC_39065.lastbuildstate".
+        ╨б╨▒╨╛╤А╨║╨░ ╨┐╤А╨╛╨╡╨║╤В╨░ "C:\\Users\\KSK-SHOP\\projects\\group_project\\group_project\\authorization\\build\\CMakeFiles\\CMakeScratch\\TryCompile-8nnyzs\\cmTC_39065.vcxproj" ╨╖╨░╨▓╨╡╤А╤И╨╡╨╜╨░ (╤Ж╨╡╨╗╨╡╨▓╤Л╨╡ ╨╛╨▒╤К╨╡╨║╤В╤Л ╨┐╨╛ ╤Г╨╝╨╛╨╗╤З╨░╨╜╨╕╤О).
         
         ╨б╨▒╨╛╤А╨║╨░ ╤Г╤Б╨┐╨╡╤И╨╜╨╛ ╨╖╨░╨▓╨╡╤А╤И╨╡╨╜╨░.
             ╨Я╤А╨╡╨┤╤Г╨┐╤А╨╡╨╢╨┤╨╡╨╜╨╕╨╣: 0
             ╨Ю╤И╨╕╨▒╨╛╨║: 0
         
-        ╨Я╤А╨╛╤И╨╗╨╛ ╨▓╤А╨╡╨╝╨╡╨╜╨╕ 00:00:00.52
+        ╨Я╤А╨╛╤И╨╗╨╛ ╨▓╤А╨╡╨╝╨╡╨╜╨╕ 00:00:00.47
         
       exitCode: 0
   -
@@ -2187,10 +2241,10 @@ events:
       - "C:/Program Files/CMake/share/cmake-4.2/Modules/CMakeFindDependencyMacro.cmake:125 (__find_dependency_common)"
       - "C:/tools/vcpkg/installed/x64-windows/share/crow/CrowConfig.cmake:32 (find_dependency)"
       - "C:/tools/vcpkg/scripts/buildsystems/vcpkg.cmake:908 (_find_package)"
-      - "CMakeLists.txt:7 (find_package)"
+      - "CMakeLists.txt:10 (find_package)"
     directories:
-      source: "C:/Users/KSK-SHOP/projects/group_project/group_project/authorization/build/CMakeFiles/CMakeScratch/TryCompile-chzm8t"
-      binary: "C:/Users/KSK-SHOP/projects/group_project/group_project/authorization/build/CMakeFiles/CMakeScratch/TryCompile-chzm8t"
+      source: "C:/Users/KSK-SHOP/projects/group_project/group_project/authorization/build/CMakeFiles/CMakeScratch/TryCompile-8v4sn9"
+      binary: "C:/Users/KSK-SHOP/projects/group_project/group_project/authorization/build/CMakeFiles/CMakeScratch/TryCompile-8v4sn9"
     cmakeVariables:
       CMAKE_CXX_FLAGS: "/DWIN32 /D_WINDOWS /GR /EHsc"
       CMAKE_CXX_FLAGS_DEBUG: "/Zi /Ob0 /Od /RTC1"
@@ -2204,39 +2258,39 @@ events:
       variable: "CMAKE_HAVE_LIBC_PTHREAD"
       cached: true
       stdout: |
-        Change Dir: 'C:/Users/KSK-SHOP/projects/group_project/group_project/authorization/build/CMakeFiles/CMakeScratch/TryCompile-chzm8t'
+        Change Dir: 'C:/Users/KSK-SHOP/projects/group_project/group_project/authorization/build/CMakeFiles/CMakeScratch/TryCompile-8v4sn9'
         
-        Run Build Command(s): "C:/Program Files (x86)/Microsoft Visual Studio/2022/BuildTools/MSBuild/Current/Bin/amd64/MSBuild.exe" cmTC_6d7ca.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:VisualStudioVersion=17.0 /v:n
+        Run Build Command(s): "C:/Program Files (x86)/Microsoft Visual Studio/2022/BuildTools/MSBuild/Current/Bin/amd64/MSBuild.exe" cmTC_de4f6.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:VisualStudioVersion=17.0 /v:n
         ╨Т╨╡╤А╤Б╨╕╤П MSBuild 17.14.23+b0019275e ╨┤╨╗╤П .NET Framework
-        ╨б╨▒╨╛╤А╨║╨░ ╨╜╨░╤З╨░╤В╨░ 05.01.2026 1:33:52.
+        ╨б╨▒╨╛╤А╨║╨░ ╨╜╨░╤З╨░╤В╨░ 05.01.2026 3:21:28.
         
-        ╨Я╤А╨╛╨╡╨║╤В "C:\\Users\\KSK-SHOP\\projects\\group_project\\group_project\\authorization\\build\\CMakeFiles\\CMakeScratch\\TryCompile-chzm8t\\cmTC_6d7ca.vcxproj" ╨▓ ╤Г╨╖╨╗╨╡ 1 (╤Ж╨╡╨╗╨╡╨▓╤Л╨╡ ╨╛╨▒╤К╨╡╨║╤В╤Л ╨┐╨╛ ╤Г╨╝╨╛╨╗╤З╨░╨╜╨╕╤О).
+        ╨Я╤А╨╛╨╡╨║╤В "C:\\Users\\KSK-SHOP\\projects\\group_project\\group_project\\authorization\\build\\CMakeFiles\\CMakeScratch\\TryCompile-8v4sn9\\cmTC_de4f6.vcxproj" ╨▓ ╤Г╨╖╨╗╨╡ 1 (╤Ж╨╡╨╗╨╡╨▓╤Л╨╡ ╨╛╨▒╤К╨╡╨║╤В╤Л ╨┐╨╛ ╤Г╨╝╨╛╨╗╤З╨░╨╜╨╕╤О).
         PrepareForBuild:
           ╨б╤В╤А╤Г╨║╤В╤Г╤А╨╕╤А╨╛╨▓╨░╨╜╨╜╤Л╨╣ ╨▓╤Л╨▓╨╛╨┤ ╨▓╨║╨╗╤О╤З╨╡╨╜. ╨д╨╛╤А╨╝╨░╤В╨╕╤А╨╛╨▓╨░╨╜╨╕╨╡ ╨┤╨╕╨░╨│╨╜╨╛╤Б╤В╨╕╨║╨╕ ╨║╨╛╨╝╨┐╨╕╨╗╤П╤В╨╛╤А╨░ ╨▒╤Г╨┤╨╡╤В ╨╛╤В╤А╨░╨╢╨░╤В╤М ╨╕╨╡╤А╨░╤А╤Е╨╕╤О ╨╛╤И╨╕╨▒╨╛╨║. ╨Я╨╛╨┤╤А╨╛╨▒╨╜╨╡╨╡ ╤Б╨╝. https://aka.ms/cpp/structured-output.
-          ╨б╨╛╨╖╨┤╨░╨╜╨╕╨╡ ╨║╨░╤В╨░╨╗╨╛╨│╨░ "C:\\Users\\KSK-SHOP\\projects\\group_project\\group_project\\authorization\\build\\CMakeFiles\\CMakeScratch\\TryCompile-chzm8t\\Debug\\".
-          ╨б╨╛╨╖╨┤╨░╨╜╨╕╨╡ ╨║╨░╤В╨░╨╗╨╛╨│╨░ "cmTC_6d7ca.dir\\Debug\\cmTC_6d7ca.tlog\\".
+          ╨б╨╛╨╖╨┤╨░╨╜╨╕╨╡ ╨║╨░╤В╨░╨╗╨╛╨│╨░ "C:\\Users\\KSK-SHOP\\projects\\group_project\\group_project\\authorization\\build\\CMakeFiles\\CMakeScratch\\TryCompile-8v4sn9\\Debug\\".
+          ╨б╨╛╨╖╨┤╨░╨╜╨╕╨╡ ╨║╨░╤В╨░╨╗╨╛╨│╨░ "cmTC_de4f6.dir\\Debug\\cmTC_de4f6.tlog\\".
         InitializeBuildStatus:
-          ╨б╨╛╨╖╨┤╨░╨╜╨╕╨╡ "cmTC_6d7ca.dir\\Debug\\cmTC_6d7ca.tlog\\unsuccessfulbuild", ╤В╨░╨║ ╨║╨░╨║ ╨▒╤Л╨╗╨╛ ╨╖╨░╨┤╨░╨╜╨╛ "AlwaysCreate".
-          ╨Ю╨▒╤А╨░╤Й╨╡╨╜╨╕╨╡ ╨║ "cmTC_6d7ca.dir\\Debug\\cmTC_6d7ca.tlog\\unsuccessfulbuild".
+          ╨б╨╛╨╖╨┤╨░╨╜╨╕╨╡ "cmTC_de4f6.dir\\Debug\\cmTC_de4f6.tlog\\unsuccessfulbuild", ╤В╨░╨║ ╨║╨░╨║ ╨▒╤Л╨╗╨╛ ╨╖╨░╨┤╨░╨╜╨╛ "AlwaysCreate".
+          ╨Ю╨▒╤А╨░╤Й╨╡╨╜╨╕╨╡ ╨║ "cmTC_de4f6.dir\\Debug\\cmTC_de4f6.tlog\\unsuccessfulbuild".
         ClCompile:
-          C:\\Program Files (x86)\\Microsoft Visual Studio\\2022\\BuildTools\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\CL.exe /c /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D CMAKE_HAVE_LIBC_PTHREAD /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /EHsc /RTC1 /MDd /GR /std:c++17 /Fo"cmTC_6d7ca.dir\\Debug\\\\" /Fd"cmTC_6d7ca.dir\\Debug\\vc143.pdb" /external:W1 /TP /errorReport:queue "C:\\Users\\KSK-SHOP\\projects\\group_project\\group_project\\authorization\\build\\CMakeFiles\\CMakeScratch\\TryCompile-chzm8t\\src.cxx"
+          C:\\Program Files (x86)\\Microsoft Visual Studio\\2022\\BuildTools\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\CL.exe /c /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D CMAKE_HAVE_LIBC_PTHREAD /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /EHsc /RTC1 /MDd /GR /std:c++17 /Fo"cmTC_de4f6.dir\\Debug\\\\" /Fd"cmTC_de4f6.dir\\Debug\\vc143.pdb" /external:W1 /TP /errorReport:queue "C:\\Users\\KSK-SHOP\\projects\\group_project\\group_project\\authorization\\build\\CMakeFiles\\CMakeScratch\\TryCompile-8v4sn9\\src.cxx"
           ╨Ю╨┐╤В╨╕╨╝╨╕╨╖╨╕╤А╤Г╤О╤Й╨╕╨╣ ╨║╨╛╨╝╨┐╨╕╨╗╤П╤В╨╛╤А Microsoft (R) C/C++ ╨▓╨╡╤А╤Б╨╕╨╕ 19.44.35217 ╨┤╨╗╤П x64
           (C) ╨Ъ╨╛╤А╨┐╨╛╤А╨░╤Ж╨╕╤П ╨Ь╨░╨╣╨║╤А╨╛╤Б╨╛╤Д╤В (Microsoft Corporation).  ╨Т╤Б╨╡ ╨┐╤А╨░╨▓╨░ ╨╖╨░╤Й╨╕╤Й╨╡╨╜╤Л.
-          cl /c /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D CMAKE_HAVE_LIBC_PTHREAD /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /EHsc /RTC1 /MDd /GR /std:c++17 /Fo"cmTC_6d7ca.dir\\Debug\\\\" /Fd"cmTC_6d7ca.dir\\Debug\\vc143.pdb" /external:W1 /TP /errorReport:queue "C:\\Users\\KSK-SHOP\\projects\\group_project\\group_project\\authorization\\build\\CMakeFiles\\CMakeScratch\\TryCompile-chzm8t\\src.cxx"
+          cl /c /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D CMAKE_HAVE_LIBC_PTHREAD /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /EHsc /RTC1 /MDd /GR /std:c++17 /Fo"cmTC_de4f6.dir\\Debug\\\\" /Fd"cmTC_de4f6.dir\\Debug\\vc143.pdb" /external:W1 /TP /errorReport:queue "C:\\Users\\KSK-SHOP\\projects\\group_project\\group_project\\authorization\\build\\CMakeFiles\\CMakeScratch\\TryCompile-8v4sn9\\src.cxx"
           src.cxx
-        C:\\Users\\KSK-SHOP\\projects\\group_project\\group_project\\authorization\\build\\CMakeFiles\\CMakeScratch\\TryCompile-chzm8t\\src.cxx(1,10): error C1083: ╨Э╨╡ ╤Г╨┤╨░╨╡╤В╤Б╤П ╨╛╤В╨║╤А╤Л╤В╤М ╤Д╨░╨╣╨╗ ╨▓╨║╨╗╤О╤З╨╡╨╜╨╕╨╡: pthread.h: No such file or directory, [C:\\Users\\KSK-SHOP\\projects\\group_project\\group_project\\authorization\\build\\CMakeFiles\\CMakeScratch\\TryCompile-chzm8t\\cmTC_6d7ca.vcxproj]
-        ╨б╨▒╨╛╤А╨║╨░ ╨┐╤А╨╛╨╡╨║╤В╨░ "C:\\Users\\KSK-SHOP\\projects\\group_project\\group_project\\authorization\\build\\CMakeFiles\\CMakeScratch\\TryCompile-chzm8t\\cmTC_6d7ca.vcxproj" ╨╖╨░╨▓╨╡╤А╤И╨╡╨╜╨░ (╤Ж╨╡╨╗╨╡╨▓╤Л╨╡ ╨╛╨▒╤К╨╡╨║╤В╤Л ╨┐╨╛ ╤Г╨╝╨╛╨╗╤З╨░╨╜╨╕╤О) ╤Б ╨╛╤И╨╕╨▒╨║╨╛╨╣.
+        C:\\Users\\KSK-SHOP\\projects\\group_project\\group_project\\authorization\\build\\CMakeFiles\\CMakeScratch\\TryCompile-8v4sn9\\src.cxx(1,10): error C1083: ╨Э╨╡ ╤Г╨┤╨░╨╡╤В╤Б╤П ╨╛╤В╨║╤А╤Л╤В╤М ╤Д╨░╨╣╨╗ ╨▓╨║╨╗╤О╤З╨╡╨╜╨╕╨╡: pthread.h: No such file or directory, [C:\\Users\\KSK-SHOP\\projects\\group_project\\group_project\\authorization\\build\\CMakeFiles\\CMakeScratch\\TryCompile-8v4sn9\\cmTC_de4f6.vcxproj]
+        ╨б╨▒╨╛╤А╨║╨░ ╨┐╤А╨╛╨╡╨║╤В╨░ "C:\\Users\\KSK-SHOP\\projects\\group_project\\group_project\\authorization\\build\\CMakeFiles\\CMakeScratch\\TryCompile-8v4sn9\\cmTC_de4f6.vcxproj" ╨╖╨░╨▓╨╡╤А╤И╨╡╨╜╨░ (╤Ж╨╡╨╗╨╡╨▓╤Л╨╡ ╨╛╨▒╤К╨╡╨║╤В╤Л ╨┐╨╛ ╤Г╨╝╨╛╨╗╤З╨░╨╜╨╕╤О) ╤Б ╨╛╤И╨╕╨▒╨║╨╛╨╣.
         
         ╨Ю╤И╨╕╨▒╨║╨░ ╤Б╨▒╨╛╤А╨║╨╕.
         
-        "C:\\Users\\KSK-SHOP\\projects\\group_project\\group_project\\authorization\\build\\CMakeFiles\\CMakeScratch\\TryCompile-chzm8t\\cmTC_6d7ca.vcxproj" (╤Ж╨╡╨╗╨╡╨▓╨╛╨╣ ╨╛╨▒╤К╨╡╨║╤В ╨┐╨╛ ╤Г╨╝╨╛╨╗╤З╨░╨╜╨╕╤О) (1) ->
+        "C:\\Users\\KSK-SHOP\\projects\\group_project\\group_project\\authorization\\build\\CMakeFiles\\CMakeScratch\\TryCompile-8v4sn9\\cmTC_de4f6.vcxproj" (╤Ж╨╡╨╗╨╡╨▓╨╛╨╣ ╨╛╨▒╤К╨╡╨║╤В ╨┐╨╛ ╤Г╨╝╨╛╨╗╤З╨░╨╜╨╕╤О) (1) ->
         (╨ж╨╡╨╗╨╡╨▓╨╛╨╣ ╨╛╨▒╤К╨╡╨║╤В ClCompile) -> 
-          C:\\Users\\KSK-SHOP\\projects\\group_project\\group_project\\authorization\\build\\CMakeFiles\\CMakeScratch\\TryCompile-chzm8t\\src.cxx(1,10): error C1083: ╨Э╨╡ ╤Г╨┤╨░╨╡╤В╤Б╤П ╨╛╤В╨║╤А╤Л╤В╤М ╤Д╨░╨╣╨╗ ╨▓╨║╨╗╤О╤З╨╡╨╜╨╕╨╡: pthread.h: No such file or directory, [C:\\Users\\KSK-SHOP\\projects\\group_project\\group_project\\authorization\\build\\CMakeFiles\\CMakeScratch\\TryCompile-chzm8t\\cmTC_6d7ca.vcxproj]
+          C:\\Users\\KSK-SHOP\\projects\\group_project\\group_project\\authorization\\build\\CMakeFiles\\CMakeScratch\\TryCompile-8v4sn9\\src.cxx(1,10): error C1083: ╨Э╨╡ ╤Г╨┤╨░╨╡╤В╤Б╤П ╨╛╤В╨║╤А╤Л╤В╤М ╤Д╨░╨╣╨╗ ╨▓╨║╨╗╤О╤З╨╡╨╜╨╕╨╡: pthread.h: No such file or directory, [C:\\Users\\KSK-SHOP\\projects\\group_project\\group_project\\authorization\\build\\CMakeFiles\\CMakeScratch\\TryCompile-8v4sn9\\cmTC_de4f6.vcxproj]
         
             ╨Я╤А╨╡╨┤╤Г╨┐╤А╨╡╨╢╨┤╨╡╨╜╨╕╨╣: 0
             ╨Ю╤И╨╕╨▒╨╛╨║: 1
         
-        ╨Я╤А╨╛╤И╨╗╨╛ ╨▓╤А╨╡╨╝╨╡╨╜╨╕ 00:00:00.84
+        ╨Я╤А╨╛╤И╨╗╨╛ ╨▓╤А╨╡╨╝╨╡╨╜╨╕ 00:00:00.28
         
       exitCode: 1
   -
@@ -2252,10 +2306,10 @@ events:
       - "C:/Program Files/CMake/share/cmake-4.2/Modules/CMakeFindDependencyMacro.cmake:125 (__find_dependency_common)"
       - "C:/tools/vcpkg/installed/x64-windows/share/crow/CrowConfig.cmake:32 (find_dependency)"
       - "C:/tools/vcpkg/scripts/buildsystems/vcpkg.cmake:908 (_find_package)"
-      - "CMakeLists.txt:7 (find_package)"
+      - "CMakeLists.txt:10 (find_package)"
     directories:
-      source: "C:/Users/KSK-SHOP/projects/group_project/group_project/authorization/build/CMakeFiles/CMakeScratch/TryCompile-n1iyhl"
-      binary: "C:/Users/KSK-SHOP/projects/group_project/group_project/authorization/build/CMakeFiles/CMakeScratch/TryCompile-n1iyhl"
+      source: "C:/Users/KSK-SHOP/projects/group_project/group_project/authorization/build/CMakeFiles/CMakeScratch/TryCompile-u1pznz"
+      binary: "C:/Users/KSK-SHOP/projects/group_project/group_project/authorization/build/CMakeFiles/CMakeScratch/TryCompile-u1pznz"
     cmakeVariables:
       CMAKE_CXX_FLAGS: "/DWIN32 /D_WINDOWS /GR /EHsc"
       CMAKE_CXX_FLAGS_DEBUG: "/Zi /Ob0 /Od /RTC1"
@@ -2269,41 +2323,41 @@ events:
       variable: "CMAKE_HAVE_PTHREADS_CREATE"
       cached: true
       stdout: |
-        Change Dir: 'C:/Users/KSK-SHOP/projects/group_project/group_project/authorization/build/CMakeFiles/CMakeScratch/TryCompile-n1iyhl'
+        Change Dir: 'C:/Users/KSK-SHOP/projects/group_project/group_project/authorization/build/CMakeFiles/CMakeScratch/TryCompile-u1pznz'
         
-        Run Build Command(s): "C:/Program Files (x86)/Microsoft Visual Studio/2022/BuildTools/MSBuild/Current/Bin/amd64/MSBuild.exe" cmTC_1eab3.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:VisualStudioVersion=17.0 /v:n
+        Run Build Command(s): "C:/Program Files (x86)/Microsoft Visual Studio/2022/BuildTools/MSBuild/Current/Bin/amd64/MSBuild.exe" cmTC_6e64e.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:VisualStudioVersion=17.0 /v:n
         ╨Т╨╡╤А╤Б╨╕╤П MSBuild 17.14.23+b0019275e ╨┤╨╗╤П .NET Framework
-        ╨б╨▒╨╛╤А╨║╨░ ╨╜╨░╤З╨░╤В╨░ 05.01.2026 1:33:53.
+        ╨б╨▒╨╛╤А╨║╨░ ╨╜╨░╤З╨░╤В╨░ 05.01.2026 3:21:29.
         
-        ╨Я╤А╨╛╨╡╨║╤В "C:\\Users\\KSK-SHOP\\projects\\group_project\\group_project\\authorization\\build\\CMakeFiles\\CMakeScratch\\TryCompile-n1iyhl\\cmTC_1eab3.vcxproj" ╨▓ ╤Г╨╖╨╗╨╡ 1 (╤Ж╨╡╨╗╨╡╨▓╤Л╨╡ ╨╛╨▒╤К╨╡╨║╤В╤Л ╨┐╨╛ ╤Г╨╝╨╛╨╗╤З╨░╨╜╨╕╤О).
+        ╨Я╤А╨╛╨╡╨║╤В "C:\\Users\\KSK-SHOP\\projects\\group_project\\group_project\\authorization\\build\\CMakeFiles\\CMakeScratch\\TryCompile-u1pznz\\cmTC_6e64e.vcxproj" ╨▓ ╤Г╨╖╨╗╨╡ 1 (╤Ж╨╡╨╗╨╡╨▓╤Л╨╡ ╨╛╨▒╤К╨╡╨║╤В╤Л ╨┐╨╛ ╤Г╨╝╨╛╨╗╤З╨░╨╜╨╕╤О).
         PrepareForBuild:
           ╨б╤В╤А╤Г╨║╤В╤Г╤А╨╕╤А╨╛╨▓╨░╨╜╨╜╤Л╨╣ ╨▓╤Л╨▓╨╛╨┤ ╨▓╨║╨╗╤О╤З╨╡╨╜. ╨д╨╛╤А╨╝╨░╤В╨╕╤А╨╛╨▓╨░╨╜╨╕╨╡ ╨┤╨╕╨░╨│╨╜╨╛╤Б╤В╨╕╨║╨╕ ╨║╨╛╨╝╨┐╨╕╨╗╤П╤В╨╛╤А╨░ ╨▒╤Г╨┤╨╡╤В ╨╛╤В╤А╨░╨╢╨░╤В╤М ╨╕╨╡╤А╨░╤А╤Е╨╕╤О ╨╛╤И╨╕╨▒╨╛╨║. ╨Я╨╛╨┤╤А╨╛╨▒╨╜╨╡╨╡ ╤Б╨╝. https://aka.ms/cpp/structured-output.
-          ╨б╨╛╨╖╨┤╨░╨╜╨╕╨╡ ╨║╨░╤В╨░╨╗╨╛╨│╨░ "C:\\Users\\KSK-SHOP\\projects\\group_project\\group_project\\authorization\\build\\CMakeFiles\\CMakeScratch\\TryCompile-n1iyhl\\Debug\\".
-          ╨б╨╛╨╖╨┤╨░╨╜╨╕╨╡ ╨║╨░╤В╨░╨╗╨╛╨│╨░ "cmTC_1eab3.dir\\Debug\\cmTC_1eab3.tlog\\".
+          ╨б╨╛╨╖╨┤╨░╨╜╨╕╨╡ ╨║╨░╤В╨░╨╗╨╛╨│╨░ "C:\\Users\\KSK-SHOP\\projects\\group_project\\group_project\\authorization\\build\\CMakeFiles\\CMakeScratch\\TryCompile-u1pznz\\Debug\\".
+          ╨б╨╛╨╖╨┤╨░╨╜╨╕╨╡ ╨║╨░╤В╨░╨╗╨╛╨│╨░ "cmTC_6e64e.dir\\Debug\\cmTC_6e64e.tlog\\".
         InitializeBuildStatus:
-          ╨б╨╛╨╖╨┤╨░╨╜╨╕╨╡ "cmTC_1eab3.dir\\Debug\\cmTC_1eab3.tlog\\unsuccessfulbuild", ╤В╨░╨║ ╨║╨░╨║ ╨▒╤Л╨╗╨╛ ╨╖╨░╨┤╨░╨╜╨╛ "AlwaysCreate".
-          ╨Ю╨▒╤А╨░╤Й╨╡╨╜╨╕╨╡ ╨║ "cmTC_1eab3.dir\\Debug\\cmTC_1eab3.tlog\\unsuccessfulbuild".
+          ╨б╨╛╨╖╨┤╨░╨╜╨╕╨╡ "cmTC_6e64e.dir\\Debug\\cmTC_6e64e.tlog\\unsuccessfulbuild", ╤В╨░╨║ ╨║╨░╨║ ╨▒╤Л╨╗╨╛ ╨╖╨░╨┤╨░╨╜╨╛ "AlwaysCreate".
+          ╨Ю╨▒╤А╨░╤Й╨╡╨╜╨╕╨╡ ╨║ "cmTC_6e64e.dir\\Debug\\cmTC_6e64e.tlog\\unsuccessfulbuild".
         ClCompile:
-          C:\\Program Files (x86)\\Microsoft Visual Studio\\2022\\BuildTools\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\CL.exe /c /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D CHECK_FUNCTION_EXISTS=pthread_create /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /EHsc /RTC1 /MDd /GR /std:c++17 /Fo"cmTC_1eab3.dir\\Debug\\\\" /Fd"cmTC_1eab3.dir\\Debug\\vc143.pdb" /external:W1 /TP /errorReport:queue "C:\\Users\\KSK-SHOP\\projects\\group_project\\group_project\\authorization\\build\\CMakeFiles\\CMakeScratch\\TryCompile-n1iyhl\\CheckFunctionExists.cxx"
+          C:\\Program Files (x86)\\Microsoft Visual Studio\\2022\\BuildTools\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\CL.exe /c /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D CHECK_FUNCTION_EXISTS=pthread_create /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /EHsc /RTC1 /MDd /GR /std:c++17 /Fo"cmTC_6e64e.dir\\Debug\\\\" /Fd"cmTC_6e64e.dir\\Debug\\vc143.pdb" /external:W1 /TP /errorReport:queue "C:\\Users\\KSK-SHOP\\projects\\group_project\\group_project\\authorization\\build\\CMakeFiles\\CMakeScratch\\TryCompile-u1pznz\\CheckFunctionExists.cxx"
           ╨Ю╨┐╤В╨╕╨╝╨╕╨╖╨╕╤А╤Г╤О╤Й╨╕╨╣ ╨║╨╛╨╝╨┐╨╕╨╗╤П╤В╨╛╤А Microsoft (R) C/C++ ╨▓╨╡╤А╤Б╨╕╨╕ 19.44.35217 ╨┤╨╗╤П x64
           (C) ╨Ъ╨╛╤А╨┐╨╛╤А╨░╤Ж╨╕╤П ╨Ь╨░╨╣╨║╤А╨╛╤Б╨╛╤Д╤В (Microsoft Corporation).  ╨Т╤Б╨╡ ╨┐╤А╨░╨▓╨░ ╨╖╨░╤Й╨╕╤Й╨╡╨╜╤Л.
-          cl /c /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D CHECK_FUNCTION_EXISTS=pthread_create /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /EHsc /RTC1 /MDd /GR /std:c++17 /Fo"cmTC_1eab3.dir\\Debug\\\\" /Fd"cmTC_1eab3.dir\\Debug\\vc143.pdb" /external:W1 /TP /errorReport:queue "C:\\Users\\KSK-SHOP\\projects\\group_project\\group_project\\authorization\\build\\CMakeFiles\\CMakeScratch\\TryCompile-n1iyhl\\CheckFunctionExists.cxx"
+          cl /c /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D CHECK_FUNCTION_EXISTS=pthread_create /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /EHsc /RTC1 /MDd /GR /std:c++17 /Fo"cmTC_6e64e.dir\\Debug\\\\" /Fd"cmTC_6e64e.dir\\Debug\\vc143.pdb" /external:W1 /TP /errorReport:queue "C:\\Users\\KSK-SHOP\\projects\\group_project\\group_project\\authorization\\build\\CMakeFiles\\CMakeScratch\\TryCompile-u1pznz\\CheckFunctionExists.cxx"
           CheckFunctionExists.cxx
         Link:
-          C:\\Program Files (x86)\\Microsoft Visual Studio\\2022\\BuildTools\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\link.exe /OUT:"C:\\Users\\KSK-SHOP\\projects\\group_project\\group_project\\authorization\\build\\CMakeFiles\\CMakeScratch\\TryCompile-n1iyhl\\Debug\\cmTC_1eab3.exe" /INCREMENTAL /ILK:"cmTC_1eab3.dir\\Debug\\cmTC_1eab3.ilk" /NOLOGO pthreads.lib kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"C:/Users/KSK-SHOP/projects/group_project/group_project/authorization/build/CMakeFiles/CMakeScratch/TryCompile-n1iyhl/Debug/cmTC_1eab3.pdb" /SUBSYSTEM:CONSOLE /TLBID:1 /IMPLIB:"C:/Users/KSK-SHOP/projects/group_project/group_project/authorization/build/CMakeFiles/CMakeScratch/TryCompile-n1iyhl/Debug/cmTC_1eab3.lib" /MACHINE:X64  /machine:x64 cmTC_1eab3.dir\\Debug\\CheckFunctionExists.obj
-        LINK : fatal error LNK1104: ╨╜╨╡ ╤Г╨┤╨░╨╡╤В╤Б╤П ╨╛╤В╨║╤А╤Л╤В╤М ╤Д╨░╨╣╨╗ "pthreads.lib" [C:\\Users\\KSK-SHOP\\projects\\group_project\\group_project\\authorization\\build\\CMakeFiles\\CMakeScratch\\TryCompile-n1iyhl\\cmTC_1eab3.vcxproj]
-        ╨б╨▒╨╛╤А╨║╨░ ╨┐╤А╨╛╨╡╨║╤В╨░ "C:\\Users\\KSK-SHOP\\projects\\group_project\\group_project\\authorization\\build\\CMakeFiles\\CMakeScratch\\TryCompile-n1iyhl\\cmTC_1eab3.vcxproj" ╨╖╨░╨▓╨╡╤А╤И╨╡╨╜╨░ (╤Ж╨╡╨╗╨╡╨▓╤Л╨╡ ╨╛╨▒╤К╨╡╨║╤В╤Л ╨┐╨╛ ╤Г╨╝╨╛╨╗╤З╨░╨╜╨╕╤О) ╤Б ╨╛╤И╨╕╨▒╨║╨╛╨╣.
+          C:\\Program Files (x86)\\Microsoft Visual Studio\\2022\\BuildTools\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\link.exe /OUT:"C:\\Users\\KSK-SHOP\\projects\\group_project\\group_project\\authorization\\build\\CMakeFiles\\CMakeScratch\\TryCompile-u1pznz\\Debug\\cmTC_6e64e.exe" /INCREMENTAL /ILK:"cmTC_6e64e.dir\\Debug\\cmTC_6e64e.ilk" /NOLOGO pthreads.lib kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"C:/Users/KSK-SHOP/projects/group_project/group_project/authorization/build/CMakeFiles/CMakeScratch/TryCompile-u1pznz/Debug/cmTC_6e64e.pdb" /SUBSYSTEM:CONSOLE /TLBID:1 /IMPLIB:"C:/Users/KSK-SHOP/projects/group_project/group_project/authorization/build/CMakeFiles/CMakeScratch/TryCompile-u1pznz/Debug/cmTC_6e64e.lib" /MACHINE:X64  /machine:x64 cmTC_6e64e.dir\\Debug\\CheckFunctionExists.obj
+        LINK : fatal error LNK1104: ╨╜╨╡ ╤Г╨┤╨░╨╡╤В╤Б╤П ╨╛╤В╨║╤А╤Л╤В╤М ╤Д╨░╨╣╨╗ "pthreads.lib" [C:\\Users\\KSK-SHOP\\projects\\group_project\\group_project\\authorization\\build\\CMakeFiles\\CMakeScratch\\TryCompile-u1pznz\\cmTC_6e64e.vcxproj]
+        ╨б╨▒╨╛╤А╨║╨░ ╨┐╤А╨╛╨╡╨║╤В╨░ "C:\\Users\\KSK-SHOP\\projects\\group_project\\group_project\\authorization\\build\\CMakeFiles\\CMakeScratch\\TryCompile-u1pznz\\cmTC_6e64e.vcxproj" ╨╖╨░╨▓╨╡╤А╤И╨╡╨╜╨░ (╤Ж╨╡╨╗╨╡╨▓╤Л╨╡ ╨╛╨▒╤К╨╡╨║╤В╤Л ╨┐╨╛ ╤Г╨╝╨╛╨╗╤З╨░╨╜╨╕╤О) ╤Б ╨╛╤И╨╕╨▒╨║╨╛╨╣.
         
         ╨Ю╤И╨╕╨▒╨║╨░ ╤Б╨▒╨╛╤А╨║╨╕.
         
-        "C:\\Users\\KSK-SHOP\\projects\\group_project\\group_project\\authorization\\build\\CMakeFiles\\CMakeScratch\\TryCompile-n1iyhl\\cmTC_1eab3.vcxproj" (╤Ж╨╡╨╗╨╡╨▓╨╛╨╣ ╨╛╨▒╤К╨╡╨║╤В ╨┐╨╛ ╤Г╨╝╨╛╨╗╤З╨░╨╜╨╕╤О) (1) ->
+        "C:\\Users\\KSK-SHOP\\projects\\group_project\\group_project\\authorization\\build\\CMakeFiles\\CMakeScratch\\TryCompile-u1pznz\\cmTC_6e64e.vcxproj" (╤Ж╨╡╨╗╨╡╨▓╨╛╨╣ ╨╛╨▒╤К╨╡╨║╤В ╨┐╨╛ ╤Г╨╝╨╛╨╗╤З╨░╨╜╨╕╤О) (1) ->
         (╨ж╨╡╨╗╨╡╨▓╨╛╨╣ ╨╛╨▒╤К╨╡╨║╤В Link) -> 
-          LINK : fatal error LNK1104: ╨╜╨╡ ╤Г╨┤╨░╨╡╤В╤Б╤П ╨╛╤В╨║╤А╤Л╤В╤М ╤Д╨░╨╣╨╗ "pthreads.lib" [C:\\Users\\KSK-SHOP\\projects\\group_project\\group_project\\authorization\\build\\CMakeFiles\\CMakeScratch\\TryCompile-n1iyhl\\cmTC_1eab3.vcxproj]
+          LINK : fatal error LNK1104: ╨╜╨╡ ╤Г╨┤╨░╨╡╤В╤Б╤П ╨╛╤В╨║╤А╤Л╤В╤М ╤Д╨░╨╣╨╗ "pthreads.lib" [C:\\Users\\KSK-SHOP\\projects\\group_project\\group_project\\authorization\\build\\CMakeFiles\\CMakeScratch\\TryCompile-u1pznz\\cmTC_6e64e.vcxproj]
         
             ╨Я╤А╨╡╨┤╤Г╨┐╤А╨╡╨╢╨┤╨╡╨╜╨╕╨╣: 0
             ╨Ю╤И╨╕╨▒╨╛╨║: 1
         
-        ╨Я╤А╨╛╤И╨╗╨╛ ╨▓╤А╨╡╨╝╨╡╨╜╨╕ 00:00:00.86
+        ╨Я╤А╨╛╤И╨╗╨╛ ╨▓╤А╨╡╨╝╨╡╨╜╨╕ 00:00:00.37
         
       exitCode: 1
   -
@@ -2319,10 +2373,10 @@ events:
       - "C:/Program Files/CMake/share/cmake-4.2/Modules/CMakeFindDependencyMacro.cmake:125 (__find_dependency_common)"
       - "C:/tools/vcpkg/installed/x64-windows/share/crow/CrowConfig.cmake:32 (find_dependency)"
       - "C:/tools/vcpkg/scripts/buildsystems/vcpkg.cmake:908 (_find_package)"
-      - "CMakeLists.txt:7 (find_package)"
+      - "CMakeLists.txt:10 (find_package)"
     directories:
-      source: "C:/Users/KSK-SHOP/projects/group_project/group_project/authorization/build/CMakeFiles/CMakeScratch/TryCompile-tahbky"
-      binary: "C:/Users/KSK-SHOP/projects/group_project/group_project/authorization/build/CMakeFiles/CMakeScratch/TryCompile-tahbky"
+      source: "C:/Users/KSK-SHOP/projects/group_project/group_project/authorization/build/CMakeFiles/CMakeScratch/TryCompile-t2t0qp"
+      binary: "C:/Users/KSK-SHOP/projects/group_project/group_project/authorization/build/CMakeFiles/CMakeScratch/TryCompile-t2t0qp"
     cmakeVariables:
       CMAKE_CXX_FLAGS: "/DWIN32 /D_WINDOWS /GR /EHsc"
       CMAKE_CXX_FLAGS_DEBUG: "/Zi /Ob0 /Od /RTC1"
@@ -2336,41 +2390,41 @@ events:
       variable: "CMAKE_HAVE_PTHREAD_CREATE"
       cached: true
       stdout: |
-        Change Dir: 'C:/Users/KSK-SHOP/projects/group_project/group_project/authorization/build/CMakeFiles/CMakeScratch/TryCompile-tahbky'
+        Change Dir: 'C:/Users/KSK-SHOP/projects/group_project/group_project/authorization/build/CMakeFiles/CMakeScratch/TryCompile-t2t0qp'
         
-        Run Build Command(s): "C:/Program Files (x86)/Microsoft Visual Studio/2022/BuildTools/MSBuild/Current/Bin/amd64/MSBuild.exe" cmTC_fea22.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:VisualStudioVersion=17.0 /v:n
+        Run Build Command(s): "C:/Program Files (x86)/Microsoft Visual Studio/2022/BuildTools/MSBuild/Current/Bin/amd64/MSBuild.exe" cmTC_a6cd8.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:VisualStudioVersion=17.0 /v:n
         ╨Т╨╡╤А╤Б╨╕╤П MSBuild 17.14.23+b0019275e ╨┤╨╗╤П .NET Framework
-        ╨б╨▒╨╛╤А╨║╨░ ╨╜╨░╤З╨░╤В╨░ 05.01.2026 1:33:54.
+        ╨б╨▒╨╛╤А╨║╨░ ╨╜╨░╤З╨░╤В╨░ 05.01.2026 3:21:30.
         
-        ╨Я╤А╨╛╨╡╨║╤В "C:\\Users\\KSK-SHOP\\projects\\group_project\\group_project\\authorization\\build\\CMakeFiles\\CMakeScratch\\TryCompile-tahbky\\cmTC_fea22.vcxproj" ╨▓ ╤Г╨╖╨╗╨╡ 1 (╤Ж╨╡╨╗╨╡╨▓╤Л╨╡ ╨╛╨▒╤К╨╡╨║╤В╤Л ╨┐╨╛ ╤Г╨╝╨╛╨╗╤З╨░╨╜╨╕╤О).
+        ╨Я╤А╨╛╨╡╨║╤В "C:\\Users\\KSK-SHOP\\projects\\group_project\\group_project\\authorization\\build\\CMakeFiles\\CMakeScratch\\TryCompile-t2t0qp\\cmTC_a6cd8.vcxproj" ╨▓ ╤Г╨╖╨╗╨╡ 1 (╤Ж╨╡╨╗╨╡╨▓╤Л╨╡ ╨╛╨▒╤К╨╡╨║╤В╤Л ╨┐╨╛ ╤Г╨╝╨╛╨╗╤З╨░╨╜╨╕╤О).
         PrepareForBuild:
           ╨б╤В╤А╤Г╨║╤В╤Г╤А╨╕╤А╨╛╨▓╨░╨╜╨╜╤Л╨╣ ╨▓╤Л╨▓╨╛╨┤ ╨▓╨║╨╗╤О╤З╨╡╨╜. ╨д╨╛╤А╨╝╨░╤В╨╕╤А╨╛╨▓╨░╨╜╨╕╨╡ ╨┤╨╕╨░╨│╨╜╨╛╤Б╤В╨╕╨║╨╕ ╨║╨╛╨╝╨┐╨╕╨╗╤П╤В╨╛╤А╨░ ╨▒╤Г╨┤╨╡╤В ╨╛╤В╤А╨░╨╢╨░╤В╤М ╨╕╨╡╤А╨░╤А╤Е╨╕╤О ╨╛╤И╨╕╨▒╨╛╨║. ╨Я╨╛╨┤╤А╨╛╨▒╨╜╨╡╨╡ ╤Б╨╝. https://aka.ms/cpp/structured-output.
-          ╨б╨╛╨╖╨┤╨░╨╜╨╕╨╡ ╨║╨░╤В╨░╨╗╨╛╨│╨░ "C:\\Users\\KSK-SHOP\\projects\\group_project\\group_project\\authorization\\build\\CMakeFiles\\CMakeScratch\\TryCompile-tahbky\\Debug\\".
-          ╨б╨╛╨╖╨┤╨░╨╜╨╕╨╡ ╨║╨░╤В╨░╨╗╨╛╨│╨░ "cmTC_fea22.dir\\Debug\\cmTC_fea22.tlog\\".
+          ╨б╨╛╨╖╨┤╨░╨╜╨╕╨╡ ╨║╨░╤В╨░╨╗╨╛╨│╨░ "C:\\Users\\KSK-SHOP\\projects\\group_project\\group_project\\authorization\\build\\CMakeFiles\\CMakeScratch\\TryCompile-t2t0qp\\Debug\\".
+          ╨б╨╛╨╖╨┤╨░╨╜╨╕╨╡ ╨║╨░╤В╨░╨╗╨╛╨│╨░ "cmTC_a6cd8.dir\\Debug\\cmTC_a6cd8.tlog\\".
         InitializeBuildStatus:
-          ╨б╨╛╨╖╨┤╨░╨╜╨╕╨╡ "cmTC_fea22.dir\\Debug\\cmTC_fea22.tlog\\unsuccessfulbuild", ╤В╨░╨║ ╨║╨░╨║ ╨▒╤Л╨╗╨╛ ╨╖╨░╨┤╨░╨╜╨╛ "AlwaysCreate".
-          ╨Ю╨▒╤А╨░╤Й╨╡╨╜╨╕╨╡ ╨║ "cmTC_fea22.dir\\Debug\\cmTC_fea22.tlog\\unsuccessfulbuild".
+          ╨б╨╛╨╖╨┤╨░╨╜╨╕╨╡ "cmTC_a6cd8.dir\\Debug\\cmTC_a6cd8.tlog\\unsuccessfulbuild", ╤В╨░╨║ ╨║╨░╨║ ╨▒╤Л╨╗╨╛ ╨╖╨░╨┤╨░╨╜╨╛ "AlwaysCreate".
+          ╨Ю╨▒╤А╨░╤Й╨╡╨╜╨╕╨╡ ╨║ "cmTC_a6cd8.dir\\Debug\\cmTC_a6cd8.tlog\\unsuccessfulbuild".
         ClCompile:
-          C:\\Program Files (x86)\\Microsoft Visual Studio\\2022\\BuildTools\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\CL.exe /c /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D CHECK_FUNCTION_EXISTS=pthread_create /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /EHsc /RTC1 /MDd /GR /std:c++17 /Fo"cmTC_fea22.dir\\Debug\\\\" /Fd"cmTC_fea22.dir\\Debug\\vc143.pdb" /external:W1 /TP /errorReport:queue "C:\\Users\\KSK-SHOP\\projects\\group_project\\group_project\\authorization\\build\\CMakeFiles\\CMakeScratch\\TryCompile-tahbky\\CheckFunctionExists.cxx"
+          C:\\Program Files (x86)\\Microsoft Visual Studio\\2022\\BuildTools\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\CL.exe /c /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D CHECK_FUNCTION_EXISTS=pthread_create /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /EHsc /RTC1 /MDd /GR /std:c++17 /Fo"cmTC_a6cd8.dir\\Debug\\\\" /Fd"cmTC_a6cd8.dir\\Debug\\vc143.pdb" /external:W1 /TP /errorReport:queue "C:\\Users\\KSK-SHOP\\projects\\group_project\\group_project\\authorization\\build\\CMakeFiles\\CMakeScratch\\TryCompile-t2t0qp\\CheckFunctionExists.cxx"
           ╨Ю╨┐╤В╨╕╨╝╨╕╨╖╨╕╤А╤Г╤О╤Й╨╕╨╣ ╨║╨╛╨╝╨┐╨╕╨╗╤П╤В╨╛╤А Microsoft (R) C/C++ ╨▓╨╡╤А╤Б╨╕╨╕ 19.44.35217 ╨┤╨╗╤П x64
           (C) ╨Ъ╨╛╤А╨┐╨╛╤А╨░╤Ж╨╕╤П ╨Ь╨░╨╣╨║╤А╨╛╤Б╨╛╤Д╤В (Microsoft Corporation).  ╨Т╤Б╨╡ ╨┐╤А╨░╨▓╨░ ╨╖╨░╤Й╨╕╤Й╨╡╨╜╤Л.
-          cl /c /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D CHECK_FUNCTION_EXISTS=pthread_create /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /EHsc /RTC1 /MDd /GR /std:c++17 /Fo"cmTC_fea22.dir\\Debug\\\\" /Fd"cmTC_fea22.dir\\Debug\\vc143.pdb" /external:W1 /TP /errorReport:queue "C:\\Users\\KSK-SHOP\\projects\\group_project\\group_project\\authorization\\build\\CMakeFiles\\CMakeScratch\\TryCompile-tahbky\\CheckFunctionExists.cxx"
+          cl /c /Zi /W1 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D CHECK_FUNCTION_EXISTS=pthread_create /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /EHsc /RTC1 /MDd /GR /std:c++17 /Fo"cmTC_a6cd8.dir\\Debug\\\\" /Fd"cmTC_a6cd8.dir\\Debug\\vc143.pdb" /external:W1 /TP /errorReport:queue "C:\\Users\\KSK-SHOP\\projects\\group_project\\group_project\\authorization\\build\\CMakeFiles\\CMakeScratch\\TryCompile-t2t0qp\\CheckFunctionExists.cxx"
           CheckFunctionExists.cxx
         Link:
-          C:\\Program Files (x86)\\Microsoft Visual Studio\\2022\\BuildTools\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\link.exe /OUT:"C:\\Users\\KSK-SHOP\\projects\\group_project\\group_project\\authorization\\build\\CMakeFiles\\CMakeScratch\\TryCompile-tahbky\\Debug\\cmTC_fea22.exe" /INCREMENTAL /ILK:"cmTC_fea22.dir\\Debug\\cmTC_fea22.ilk" /NOLOGO pthread.lib kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"C:/Users/KSK-SHOP/projects/group_project/group_project/authorization/build/CMakeFiles/CMakeScratch/TryCompile-tahbky/Debug/cmTC_fea22.pdb" /SUBSYSTEM:CONSOLE /TLBID:1 /IMPLIB:"C:/Users/KSK-SHOP/projects/group_project/group_project/authorization/build/CMakeFiles/CMakeScratch/TryCompile-tahbky/Debug/cmTC_fea22.lib" /MACHINE:X64  /machine:x64 cmTC_fea22.dir\\Debug\\CheckFunctionExists.obj
-        LINK : fatal error LNK1104: ╨╜╨╡ ╤Г╨┤╨░╨╡╤В╤Б╤П ╨╛╤В╨║╤А╤Л╤В╤М ╤Д╨░╨╣╨╗ "pthread.lib" [C:\\Users\\KSK-SHOP\\projects\\group_project\\group_project\\authorization\\build\\CMakeFiles\\CMakeScratch\\TryCompile-tahbky\\cmTC_fea22.vcxproj]
-        ╨б╨▒╨╛╤А╨║╨░ ╨┐╤А╨╛╨╡╨║╤В╨░ "C:\\Users\\KSK-SHOP\\projects\\group_project\\group_project\\authorization\\build\\CMakeFiles\\CMakeScratch\\TryCompile-tahbky\\cmTC_fea22.vcxproj" ╨╖╨░╨▓╨╡╤А╤И╨╡╨╜╨░ (╤Ж╨╡╨╗╨╡╨▓╤Л╨╡ ╨╛╨▒╤К╨╡╨║╤В╤Л ╨┐╨╛ ╤Г╨╝╨╛╨╗╤З╨░╨╜╨╕╤О) ╤Б ╨╛╤И╨╕╨▒╨║╨╛╨╣.
+          C:\\Program Files (x86)\\Microsoft Visual Studio\\2022\\BuildTools\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\link.exe /OUT:"C:\\Users\\KSK-SHOP\\projects\\group_project\\group_project\\authorization\\build\\CMakeFiles\\CMakeScratch\\TryCompile-t2t0qp\\Debug\\cmTC_a6cd8.exe" /INCREMENTAL /ILK:"cmTC_a6cd8.dir\\Debug\\cmTC_a6cd8.ilk" /NOLOGO pthread.lib kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"C:/Users/KSK-SHOP/projects/group_project/group_project/authorization/build/CMakeFiles/CMakeScratch/TryCompile-t2t0qp/Debug/cmTC_a6cd8.pdb" /SUBSYSTEM:CONSOLE /TLBID:1 /IMPLIB:"C:/Users/KSK-SHOP/projects/group_project/group_project/authorization/build/CMakeFiles/CMakeScratch/TryCompile-t2t0qp/Debug/cmTC_a6cd8.lib" /MACHINE:X64  /machine:x64 cmTC_a6cd8.dir\\Debug\\CheckFunctionExists.obj
+        LINK : fatal error LNK1104: ╨╜╨╡ ╤Г╨┤╨░╨╡╤В╤Б╤П ╨╛╤В╨║╤А╤Л╤В╤М ╤Д╨░╨╣╨╗ "pthread.lib" [C:\\Users\\KSK-SHOP\\projects\\group_project\\group_project\\authorization\\build\\CMakeFiles\\CMakeScratch\\TryCompile-t2t0qp\\cmTC_a6cd8.vcxproj]
+        ╨б╨▒╨╛╤А╨║╨░ ╨┐╤А╨╛╨╡╨║╤В╨░ "C:\\Users\\KSK-SHOP\\projects\\group_project\\group_project\\authorization\\build\\CMakeFiles\\CMakeScratch\\TryCompile-t2t0qp\\cmTC_a6cd8.vcxproj" ╨╖╨░╨▓╨╡╤А╤И╨╡╨╜╨░ (╤Ж╨╡╨╗╨╡╨▓╤Л╨╡ ╨╛╨▒╤К╨╡╨║╤В╤Л ╨┐╨╛ ╤Г╨╝╨╛╨╗╤З╨░╨╜╨╕╤О) ╤Б ╨╛╤И╨╕╨▒╨║╨╛╨╣.
         
         ╨Ю╤И╨╕╨▒╨║╨░ ╤Б╨▒╨╛╤А╨║╨╕.
         
-        "C:\\Users\\KSK-SHOP\\projects\\group_project\\group_project\\authorization\\build\\CMakeFiles\\CMakeScratch\\TryCompile-tahbky\\cmTC_fea22.vcxproj" (╤Ж╨╡╨╗╨╡╨▓╨╛╨╣ ╨╛╨▒╤К╨╡╨║╤В ╨┐╨╛ ╤Г╨╝╨╛╨╗╤З╨░╨╜╨╕╤О) (1) ->
+        "C:\\Users\\KSK-SHOP\\projects\\group_project\\group_project\\authorization\\build\\CMakeFiles\\CMakeScratch\\TryCompile-t2t0qp\\cmTC_a6cd8.vcxproj" (╤Ж╨╡╨╗╨╡╨▓╨╛╨╣ ╨╛╨▒╤К╨╡╨║╤В ╨┐╨╛ ╤Г╨╝╨╛╨╗╤З╨░╨╜╨╕╤О) (1) ->
         (╨ж╨╡╨╗╨╡╨▓╨╛╨╣ ╨╛╨▒╤К╨╡╨║╤В Link) -> 
-          LINK : fatal error LNK1104: ╨╜╨╡ ╤Г╨┤╨░╨╡╤В╤Б╤П ╨╛╤В╨║╤А╤Л╤В╤М ╤Д╨░╨╣╨╗ "pthread.lib" [C:\\Users\\KSK-SHOP\\projects\\group_project\\group_project\\authorization\\build\\CMakeFiles\\CMakeScratch\\TryCompile-tahbky\\cmTC_fea22.vcxproj]
+          LINK : fatal error LNK1104: ╨╜╨╡ ╤Г╨┤╨░╨╡╤В╤Б╤П ╨╛╤В╨║╤А╤Л╤В╤М ╤Д╨░╨╣╨╗ "pthread.lib" [C:\\Users\\KSK-SHOP\\projects\\group_project\\group_project\\authorization\\build\\CMakeFiles\\CMakeScratch\\TryCompile-t2t0qp\\cmTC_a6cd8.vcxproj]
         
             ╨Я╤А╨╡╨┤╤Г╨┐╤А╨╡╨╢╨┤╨╡╨╜╨╕╨╣: 0
             ╨Ю╤И╨╕╨▒╨╛╨║: 1
         
-        ╨Я╤А╨╛╤И╨╗╨╛ ╨▓╤А╨╡╨╝╨╡╨╜╨╕ 00:00:00.40
+        ╨Я╤А╨╛╤И╨╗╨╛ ╨▓╤А╨╡╨╝╨╡╨╜╨╕ 00:00:00.39
         
       exitCode: 1
   -
@@ -2382,7 +2436,7 @@ events:
       - "C:/Program Files/CMake/share/cmake-4.2/Modules/CMakeFindDependencyMacro.cmake:125 (__find_dependency_common)"
       - "C:/tools/vcpkg/installed/x64-windows/share/crow/CrowConfig.cmake:32 (find_dependency)"
       - "C:/tools/vcpkg/scripts/buildsystems/vcpkg.cmake:908 (_find_package)"
-      - "CMakeLists.txt:7 (find_package)"
+      - "CMakeLists.txt:10 (find_package)"
     mode: "path"
     variable: "ASIO_INCLUDE_DIR"
     description: "Path to a file."
@@ -2428,8 +2482,8 @@ events:
       - "C:/tools/vcpkg/installed/x64-windows/debug/Program Files (x86)/"
       - "C:/tools/vcpkg/installed/x64-windows/debug/Program Files/CMake/include/"
       - "C:/tools/vcpkg/installed/x64-windows/debug/Program Files/CMake/"
-      - "C:/tools/vcpkg/installed/x64-windows/debug/Program Files (x86)/authorization/include/"
-      - "C:/tools/vcpkg/installed/x64-windows/debug/Program Files (x86)/authorization/"
+      - "C:/tools/vcpkg/installed/x64-windows/debug/Program Files (x86)/auth/include/"
+      - "C:/tools/vcpkg/installed/x64-windows/debug/Program Files (x86)/auth/"
       - "C:/tools/vcpkg/installed/x64-windows/debug/include/"
       - "C:/tools/vcpkg/installed/x64-windows/debug/"
       - "C:/tools/vcpkg/installed/x64-windows/include/"
@@ -2461,8 +2515,8 @@ events:
       - "C:/tools/vcpkg/installed/x64-windows/Program Files (x86)/"
       - "C:/tools/vcpkg/installed/x64-windows/Program Files/CMake/include/"
       - "C:/tools/vcpkg/installed/x64-windows/Program Files/CMake/"
-      - "C:/tools/vcpkg/installed/x64-windows/Program Files (x86)/authorization/include/"
-      - "C:/tools/vcpkg/installed/x64-windows/Program Files (x86)/authorization/"
+      - "C:/tools/vcpkg/installed/x64-windows/Program Files (x86)/auth/include/"
+      - "C:/tools/vcpkg/installed/x64-windows/Program Files (x86)/auth/"
       - "C:/tools/vcpkg/installed/x64-windows/debug/include/"
       - "C:/tools/vcpkg/installed/x64-windows/debug/"
       - "C:/tools/vcpkg/installed/x64-windows/include/"
@@ -2494,8 +2548,8 @@ events:
       - "C:/Program Files (x86)/"
       - "C:/Program Files/CMake/include/"
       - "C:/Program Files/CMake/"
-      - "C:/Program Files (x86)/authorization/include/"
-      - "C:/Program Files (x86)/authorization/"
+      - "C:/Program Files (x86)/auth/include/"
+      - "C:/Program Files (x86)/auth/"
     searched_directories:
       - "C:/tools/vcpkg/installed/x64-windows/debug/include/asio.hpp"
       - "C:/tools/vcpkg/installed/x64-windows/debug/asio.hpp"
@@ -2528,8 +2582,8 @@ events:
       - "C:/tools/vcpkg/installed/x64-windows/debug/Program Files (x86)/asio.hpp"
       - "C:/tools/vcpkg/installed/x64-windows/debug/Program Files/CMake/include/asio.hpp"
       - "C:/tools/vcpkg/installed/x64-windows/debug/Program Files/CMake/asio.hpp"
-      - "C:/tools/vcpkg/installed/x64-windows/debug/Program Files (x86)/authorization/include/asio.hpp"
-      - "C:/tools/vcpkg/installed/x64-windows/debug/Program Files (x86)/authorization/asio.hpp"
+      - "C:/tools/vcpkg/installed/x64-windows/debug/Program Files (x86)/auth/include/asio.hpp"
+      - "C:/tools/vcpkg/installed/x64-windows/debug/Program Files (x86)/auth/asio.hpp"
       - "C:/tools/vcpkg/installed/x64-windows/debug/include/asio.hpp"
       - "C:/tools/vcpkg/installed/x64-windows/debug/asio.hpp"
     found: "C:/tools/vcpkg/installed/x64-windows/include/"
@@ -2565,18 +2619,18 @@ events:
         - "C:\\msys64\\ucrt64\\bin"
         - "C:\\Users\\KSK-SHOP\\go\\bin"
         - "C:\\tools\\vcpkg"
-      CMAKE_INSTALL_PREFIX: "C:/Program Files (x86)/authorization"
+      CMAKE_INSTALL_PREFIX: "C:/Program Files (x86)/auth"
       CMAKE_SYSTEM_PREFIX_PATH:
         - "C:/Program Files"
         - "C:/Program Files (x86)"
         - "C:/Program Files/CMake"
-        - "C:/Program Files (x86)/authorization"
+        - "C:/Program Files (x86)/auth"
       CMAKE_FIND_ROOT_PATH: "C:/tools/vcpkg/installed/x64-windows/debug;C:/tools/vcpkg/installed/x64-windows"
   -
     kind: "find_package-v1"
     backtrace:
       - "C:/tools/vcpkg/scripts/buildsystems/vcpkg.cmake:908 (_find_package)"
-      - "CMakeLists.txt:7 (find_package)"
+      - "CMakeLists.txt:10 (find_package)"
     name: "Crow"
     configs:
       -
@@ -2668,18 +2722,827 @@ events:
         - "C:\\msys64\\ucrt64\\bin"
         - "C:\\Users\\KSK-SHOP\\go\\bin"
         - "C:\\tools\\vcpkg"
-      CMAKE_INSTALL_PREFIX: "C:/Program Files (x86)/authorization"
+      CMAKE_INSTALL_PREFIX: "C:/Program Files (x86)/auth"
       CMAKE_SYSTEM_PREFIX_PATH:
         - "C:/Program Files"
         - "C:/Program Files (x86)"
         - "C:/Program Files/CMake"
-        - "C:/Program Files (x86)/authorization"
+        - "C:/Program Files (x86)/auth"
       CMAKE_FIND_ROOT_PATH: "C:/tools/vcpkg/installed/x64-windows/debug;C:/tools/vcpkg/installed/x64-windows"
   -
     kind: "find_package-v1"
     backtrace:
       - "C:/tools/vcpkg/scripts/buildsystems/vcpkg.cmake:908 (_find_package)"
-      - "CMakeLists.txt:8 (find_package)"
+      - "CMakeLists.txt:11 (find_package)"
+    name: "mysql-connector-cpp"
+    configs:
+      -
+        filename: "mysql-connector-cppConfig.cmake"
+        kind: "cmake"
+      -
+        filename: "mysql-connector-cpp-config.cmake"
+        kind: "cmake"
+    version_request:
+      exact: false
+    settings:
+      required: "required_explicit"
+      quiet: false
+      global: false
+      policy_scope: true
+      bypass_provider: false
+      names:
+        - "mysql-connector-cpp"
+      path_suffixes:
+        - ""
+      paths:
+        CMAKE_FIND_USE_CMAKE_PATH: true
+        CMAKE_FIND_USE_CMAKE_ENVIRONMENT_PATH: true
+        CMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH: true
+        CMAKE_FIND_USE_CMAKE_SYSTEM_PATH: true
+        CMAKE_FIND_USE_INSTALL_PREFIX: true
+        CMAKE_FIND_USE_PACKAGE_ROOT_PATH: true
+        CMAKE_FIND_USE_CMAKE_PACKAGE_REGISTRY: true
+        CMAKE_FIND_USE_SYSTEM_PACKAGE_REGISTRY: true
+        CMAKE_FIND_ROOT_PATH_MODE: "BOTH"
+    candidates:
+      -
+        path: "C:/tools/vcpkg/installed/x64-windows/debug/mysql-connector-cppConfig.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "C:/tools/vcpkg/installed/x64-windows/debug/mysql-connector-cpp-config.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "C:/tools/vcpkg/installed/x64-windows/debug/mysql-connector-cppConfig.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "C:/tools/vcpkg/installed/x64-windows/debug/mysql-connector-cpp-config.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "C:/tools/vcpkg/installed/x64-windows/mysql-connector-cppConfig.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "C:/tools/vcpkg/installed/x64-windows/mysql-connector-cpp-config.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "C:/tools/vcpkg/installed/x64-windows/share/mysql-connector-cpp/mysql-connector-cppConfig.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "C:/tools/vcpkg/installed/x64-windows/share/mysql-connector-cpp/mysql-connector-cpp-config.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "C:/Users/KSK-SHOP/projects/group_project/group_project/authorization/build/CMakeFiles/pkgRedirects/mysql-connector-cppConfig.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "C:/Users/KSK-SHOP/projects/group_project/group_project/authorization/build/CMakeFiles/pkgRedirects/mysql-connector-cpp-config.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "C:/tools/vcpkg/installed/x64-windows/debug/mysql-connector-cppConfig.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "C:/tools/vcpkg/installed/x64-windows/debug/mysql-connector-cpp-config.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "C:/tools/vcpkg/installed/x64-windows/mysql-connector-cppConfig.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "C:/tools/vcpkg/installed/x64-windows/mysql-connector-cpp-config.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "C:/tools/vcpkg/installed/x64-windows/share/mysql-connector-cpp/mysql-connector-cppConfig.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "C:/tools/vcpkg/installed/x64-windows/share/mysql-connector-cpp/mysql-connector-cpp-config.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "C:/Program Files/PowerShell/7/mysql-connector-cppConfig.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "C:/Program Files/PowerShell/7/mysql-connector-cpp-config.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "C:/Windows/System32/mysql-connector-cppConfig.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "C:/Windows/System32/mysql-connector-cpp-config.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "C:/Windows/mysql-connector-cppConfig.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "C:/Windows/mysql-connector-cpp-config.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "C:/Windows/System32/wbem/mysql-connector-cppConfig.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "C:/Windows/System32/wbem/mysql-connector-cpp-config.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "C:/Windows/System32/WindowsPowerShell/v1.0/mysql-connector-cppConfig.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "C:/Windows/System32/WindowsPowerShell/v1.0/mysql-connector-cpp-config.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "C:/Windows/System32/OpenSSH/mysql-connector-cppConfig.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "C:/Windows/System32/OpenSSH/mysql-connector-cpp-config.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "C:/Program Files (x86)/NVIDIA Corporation/PhysX/Common/mysql-connector-cppConfig.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "C:/Program Files (x86)/NVIDIA Corporation/PhysX/Common/mysql-connector-cpp-config.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "C:/Program Files/NVIDIA Corporation/NVIDIA NvDLISR/mysql-connector-cppConfig.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "C:/Program Files/NVIDIA Corporation/NVIDIA NvDLISR/mysql-connector-cpp-config.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "C:/Program Files/Microsoft SQL Server/150/Tools/Binn/mysql-connector-cppConfig.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "C:/Program Files/Microsoft SQL Server/150/Tools/Binn/mysql-connector-cpp-config.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "C:/Program Files/Docker/Docker/resources/mysql-connector-cppConfig.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "C:/Program Files/Docker/Docker/resources/mysql-connector-cpp-config.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "C:/Program Files (x86)/Windows Kits/10/Windows Performance Toolkit/mysql-connector-cppConfig.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "C:/Program Files (x86)/Windows Kits/10/Windows Performance Toolkit/mysql-connector-cpp-config.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "C:/Program Files/Go/mysql-connector-cppConfig.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "C:/Program Files/Go/mysql-connector-cpp-config.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "C:/Program Files/Git/cmd/mysql-connector-cppConfig.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "C:/Program Files/Git/cmd/mysql-connector-cpp-config.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "C:/Program Files/CMake/mysql-connector-cppConfig.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "C:/Program Files/CMake/mysql-connector-cpp-config.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "C:/Users/KSK-SHOP/AppData/Local/Programs/Python/Launcher/mysql-connector-cppConfig.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "C:/Users/KSK-SHOP/AppData/Local/Programs/Python/Launcher/mysql-connector-cpp-config.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "C:/Users/KSK-SHOP/AppData/Local/Microsoft/WindowsApps/mysql-connector-cppConfig.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "C:/Users/KSK-SHOP/AppData/Local/Microsoft/WindowsApps/mysql-connector-cpp-config.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "C:/tools/VSCode/mysql-connector-cppConfig.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "C:/tools/VSCode/mysql-connector-cpp-config.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "C:/msys64/ucrt64/mysql-connector-cppConfig.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "C:/msys64/ucrt64/mysql-connector-cpp-config.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "C:/Users/KSK-SHOP/go/mysql-connector-cppConfig.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "C:/Users/KSK-SHOP/go/mysql-connector-cpp-config.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "C:/tools/vcpkg/mysql-connector-cppConfig.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "C:/tools/vcpkg/mysql-connector-cpp-config.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "C:/Program Files/mysql-connector-cppConfig.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "C:/Program Files/mysql-connector-cpp-config.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "C:/Program Files/CMake/mysql-connector-cppConfig.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "C:/Program Files/CMake/mysql-connector-cpp-config.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "C:/Program Files (x86)/mysql-connector-cppConfig.cmake"
+        mode: "config"
+        reason: "no_exist"
+      -
+        path: "C:/Program Files (x86)/mysql-connector-cpp-config.cmake"
+        mode: "config"
+        reason: "no_exist"
+    found: null
+    search_context:
+      CMAKE_PREFIX_PATH:
+        - "C:/tools/vcpkg/installed/x64-windows/debug"
+        - "C:/tools/vcpkg/installed/x64-windows"
+      ENV{PATH}:
+        - "C:\\Program Files\\PowerShell\\7"
+        - "C:\\Windows\\system32"
+        - "C:\\Windows"
+        - "C:\\Windows\\System32\\Wbem"
+        - "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\"
+        - "C:\\Windows\\System32\\OpenSSH\\"
+        - "C:\\Program Files (x86)\\NVIDIA Corporation\\PhysX\\Common"
+        - "C:\\Program Files\\NVIDIA Corporation\\NVIDIA NvDLISR"
+        - "C:\\Program Files\\Microsoft SQL Server\\150\\Tools\\Binn\\"
+        - "C:\\WINDOWS\\system32"
+        - "C:\\WINDOWS"
+        - "C:\\WINDOWS\\System32\\Wbem"
+        - "C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\"
+        - "C:\\WINDOWS\\System32\\OpenSSH\\"
+        - "C:\\Program Files\\Docker\\Docker\\resources\\bin"
+        - "C:\\Program Files (x86)\\Windows Kits\\10\\Windows Performance Toolkit\\"
+        - "C:\\Program Files\\Go\\bin"
+        - "C:\\Program Files\\Git\\cmd"
+        - "C:\\Program Files\\CMake\\bin"
+        - "C:\\Program Files\\PowerShell\\7\\"
+        - "C:\\Users\\KSK-SHOP\\scoop\\shims"
+        - "C:\\Users\\KSK-SHOP\\AppData\\Local\\Programs\\Python\\Launcher\\"
+        - "C:\\Users\\KSK-SHOP\\AppData\\Local\\Microsoft\\WindowsApps"
+        - "C:\\tools\\VSCode"
+        - "C:\\msys64\\ucrt64\\bin"
+        - "C:\\Users\\KSK-SHOP\\go\\bin"
+        - "C:\\tools\\vcpkg"
+      CMAKE_INSTALL_PREFIX: "C:/Program Files (x86)/auth"
+      CMAKE_SYSTEM_PREFIX_PATH:
+        - "C:/Program Files"
+        - "C:/Program Files (x86)"
+        - "C:/Program Files/CMake"
+        - "C:/Program Files (x86)/auth"
+      CMAKE_FIND_ROOT_PATH: "C:/tools/vcpkg/installed/x64-windows/debug;C:/tools/vcpkg/installed/x64-windows"
+...
+
+---
+events:
+  -
+    kind: "find-v1"
+    backtrace:
+      - "C:/tools/vcpkg/installed/x64-windows/share/openssl/vcpkg-cmake-wrapper.cmake:23 (find_path)"
+      - "C:/tools/vcpkg/scripts/buildsystems/vcpkg.cmake:862 (include)"
+      - "CMakeLists.txt:11 (find_package)"
+    mode: "path"
+    variable: "OPENSSL_INCLUDE_DIR"
+    description: "Path to a file."
+    settings:
+      SearchFramework: "LAST"
+      SearchAppBundle: "LAST"
+      CMAKE_FIND_USE_CMAKE_PATH: true
+      CMAKE_FIND_USE_CMAKE_ENVIRONMENT_PATH: true
+      CMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH: true
+      CMAKE_FIND_USE_CMAKE_SYSTEM_PATH: true
+      CMAKE_FIND_USE_INSTALL_PREFIX: true
+    names:
+      - "openssl/ssl.h"
+      - "PATH"
+      - "C:/tools/vcpkg/installed/x64-windows/include"
+    found: false
+    search_context:
+      CMAKE_PREFIX_PATH:
+        - "C:/tools/vcpkg/installed/x64-windows/debug"
+        - "C:/tools/vcpkg/installed/x64-windows"
+      ENV{PATH}:
+        - "C:\\Program Files\\PowerShell\\7"
+        - "C:\\Windows\\system32"
+        - "C:\\Windows"
+        - "C:\\Windows\\System32\\Wbem"
+        - "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\"
+        - "C:\\Windows\\System32\\OpenSSH\\"
+        - "C:\\Program Files (x86)\\NVIDIA Corporation\\PhysX\\Common"
+        - "C:\\Program Files\\NVIDIA Corporation\\NVIDIA NvDLISR"
+        - "C:\\Program Files\\Microsoft SQL Server\\150\\Tools\\Binn\\"
+        - "C:\\WINDOWS\\system32"
+        - "C:\\WINDOWS"
+        - "C:\\WINDOWS\\System32\\Wbem"
+        - "C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\"
+        - "C:\\WINDOWS\\System32\\OpenSSH\\"
+        - "C:\\Program Files\\Docker\\Docker\\resources\\bin"
+        - "C:\\Program Files (x86)\\Windows Kits\\10\\Windows Performance Toolkit\\"
+        - "C:\\Program Files\\Go\\bin"
+        - "C:\\Program Files\\Git\\cmd"
+        - "C:\\Program Files\\CMake\\bin"
+        - "C:\\Program Files\\PowerShell\\7\\"
+        - "C:\\Users\\KSK-SHOP\\scoop\\shims"
+        - "C:\\Users\\KSK-SHOP\\AppData\\Local\\Programs\\Python\\Launcher\\"
+        - "C:\\Users\\KSK-SHOP\\AppData\\Local\\Microsoft\\WindowsApps"
+        - "C:\\tools\\VSCode"
+        - "C:\\msys64\\ucrt64\\bin"
+        - "C:\\Users\\KSK-SHOP\\go\\bin"
+        - "C:\\tools\\vcpkg"
+      CMAKE_INSTALL_PREFIX: "C:/Program Files (x86)/auth"
+      CMAKE_SYSTEM_PREFIX_PATH:
+        - "C:/Program Files"
+        - "C:/Program Files (x86)"
+        - "C:/Program Files/CMake"
+        - "C:/Program Files (x86)/auth"
+      CMAKE_FIND_ROOT_PATH: "C:/tools/vcpkg/installed/x64-windows/debug;C:/tools/vcpkg/installed/x64-windows"
+  -
+    kind: "find-v1"
+    backtrace:
+      - "C:/tools/vcpkg/installed/x64-windows/share/openssl/vcpkg-cmake-wrapper.cmake:25 (find_library)"
+      - "C:/tools/vcpkg/scripts/buildsystems/vcpkg.cmake:862 (include)"
+      - "CMakeLists.txt:11 (find_package)"
+    mode: "library"
+    variable: "LIB_EAY_DEBUG"
+    description: "Path to a library."
+    settings:
+      SearchFramework: "LAST"
+      SearchAppBundle: "LAST"
+      CMAKE_FIND_USE_CMAKE_PATH: true
+      CMAKE_FIND_USE_CMAKE_ENVIRONMENT_PATH: true
+      CMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH: true
+      CMAKE_FIND_USE_CMAKE_SYSTEM_PATH: true
+      CMAKE_FIND_USE_INSTALL_PREFIX: true
+    names:
+      - "libcrypto"
+    candidate_directories:
+      - "C:/tools/vcpkg/installed/x64-windows/debug/lib/"
+      - "C:/tools/vcpkg/installed/x64-windows/debug/lib/"
+      - "C:/tools/vcpkg/installed/x64-windows/debug/lib/"
+    found: "C:/tools/vcpkg/installed/x64-windows/debug/lib/libcrypto.lib"
+    search_context:
+      CMAKE_LIBRARY_PATH:
+        - "C:/tools/vcpkg/installed/x64-windows/debug/lib/manual-link"
+        - "C:/tools/vcpkg/installed/x64-windows/lib/manual-link"
+      CMAKE_PREFIX_PATH:
+        - "C:/tools/vcpkg/installed/x64-windows/debug"
+        - "C:/tools/vcpkg/installed/x64-windows"
+      ENV{PATH}:
+        - "C:\\Program Files\\PowerShell\\7"
+        - "C:\\Windows\\system32"
+        - "C:\\Windows"
+        - "C:\\Windows\\System32\\Wbem"
+        - "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\"
+        - "C:\\Windows\\System32\\OpenSSH\\"
+        - "C:\\Program Files (x86)\\NVIDIA Corporation\\PhysX\\Common"
+        - "C:\\Program Files\\NVIDIA Corporation\\NVIDIA NvDLISR"
+        - "C:\\Program Files\\Microsoft SQL Server\\150\\Tools\\Binn\\"
+        - "C:\\WINDOWS\\system32"
+        - "C:\\WINDOWS"
+        - "C:\\WINDOWS\\System32\\Wbem"
+        - "C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\"
+        - "C:\\WINDOWS\\System32\\OpenSSH\\"
+        - "C:\\Program Files\\Docker\\Docker\\resources\\bin"
+        - "C:\\Program Files (x86)\\Windows Kits\\10\\Windows Performance Toolkit\\"
+        - "C:\\Program Files\\Go\\bin"
+        - "C:\\Program Files\\Git\\cmd"
+        - "C:\\Program Files\\CMake\\bin"
+        - "C:\\Program Files\\PowerShell\\7\\"
+        - "C:\\Users\\KSK-SHOP\\scoop\\shims"
+        - "C:\\Users\\KSK-SHOP\\AppData\\Local\\Programs\\Python\\Launcher\\"
+        - "C:\\Users\\KSK-SHOP\\AppData\\Local\\Microsoft\\WindowsApps"
+        - "C:\\tools\\VSCode"
+        - "C:\\msys64\\ucrt64\\bin"
+        - "C:\\Users\\KSK-SHOP\\go\\bin"
+        - "C:\\tools\\vcpkg"
+      CMAKE_INSTALL_PREFIX: "C:/Program Files (x86)/auth"
+      CMAKE_SYSTEM_PREFIX_PATH:
+        - "C:/Program Files"
+        - "C:/Program Files (x86)"
+        - "C:/Program Files/CMake"
+        - "C:/Program Files (x86)/auth"
+      CMAKE_SYSTEM_LIBRARY_PATH:
+        - "C:/Program Files (x86)/auth/bin"
+        - "C:/Program Files/CMake/bin"
+        - "/bin"
+      CMAKE_FIND_ROOT_PATH: "C:/tools/vcpkg/installed/x64-windows/debug;C:/tools/vcpkg/installed/x64-windows"
+  -
+    kind: "find-v1"
+    backtrace:
+      - "C:/tools/vcpkg/installed/x64-windows/share/openssl/vcpkg-cmake-wrapper.cmake:26 (find_library)"
+      - "C:/tools/vcpkg/scripts/buildsystems/vcpkg.cmake:862 (include)"
+      - "CMakeLists.txt:11 (find_package)"
+    mode: "library"
+    variable: "LIB_EAY_RELEASE"
+    description: "Path to a library."
+    settings:
+      SearchFramework: "LAST"
+      SearchAppBundle: "LAST"
+      CMAKE_FIND_USE_CMAKE_PATH: true
+      CMAKE_FIND_USE_CMAKE_ENVIRONMENT_PATH: true
+      CMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH: true
+      CMAKE_FIND_USE_CMAKE_SYSTEM_PATH: true
+      CMAKE_FIND_USE_INSTALL_PREFIX: true
+    names:
+      - "libcrypto"
+    candidate_directories:
+      - "C:/tools/vcpkg/installed/x64-windows/debug/tools/vcpkg/installed/x64-windows/lib/"
+      - "C:/tools/vcpkg/installed/x64-windows/lib/"
+      - "C:/tools/vcpkg/installed/x64-windows/lib/"
+    searched_directories:
+      - "C:/tools/vcpkg/installed/x64-windows/debug/tools/vcpkg/installed/x64-windows/lib/"
+    found: "C:/tools/vcpkg/installed/x64-windows/lib/libcrypto.lib"
+    search_context:
+      CMAKE_LIBRARY_PATH:
+        - "C:/tools/vcpkg/installed/x64-windows/debug/lib/manual-link"
+        - "C:/tools/vcpkg/installed/x64-windows/lib/manual-link"
+      CMAKE_PREFIX_PATH:
+        - "C:/tools/vcpkg/installed/x64-windows/debug"
+        - "C:/tools/vcpkg/installed/x64-windows"
+      ENV{PATH}:
+        - "C:\\Program Files\\PowerShell\\7"
+        - "C:\\Windows\\system32"
+        - "C:\\Windows"
+        - "C:\\Windows\\System32\\Wbem"
+        - "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\"
+        - "C:\\Windows\\System32\\OpenSSH\\"
+        - "C:\\Program Files (x86)\\NVIDIA Corporation\\PhysX\\Common"
+        - "C:\\Program Files\\NVIDIA Corporation\\NVIDIA NvDLISR"
+        - "C:\\Program Files\\Microsoft SQL Server\\150\\Tools\\Binn\\"
+        - "C:\\WINDOWS\\system32"
+        - "C:\\WINDOWS"
+        - "C:\\WINDOWS\\System32\\Wbem"
+        - "C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\"
+        - "C:\\WINDOWS\\System32\\OpenSSH\\"
+        - "C:\\Program Files\\Docker\\Docker\\resources\\bin"
+        - "C:\\Program Files (x86)\\Windows Kits\\10\\Windows Performance Toolkit\\"
+        - "C:\\Program Files\\Go\\bin"
+        - "C:\\Program Files\\Git\\cmd"
+        - "C:\\Program Files\\CMake\\bin"
+        - "C:\\Program Files\\PowerShell\\7\\"
+        - "C:\\Users\\KSK-SHOP\\scoop\\shims"
+        - "C:\\Users\\KSK-SHOP\\AppData\\Local\\Programs\\Python\\Launcher\\"
+        - "C:\\Users\\KSK-SHOP\\AppData\\Local\\Microsoft\\WindowsApps"
+        - "C:\\tools\\VSCode"
+        - "C:\\msys64\\ucrt64\\bin"
+        - "C:\\Users\\KSK-SHOP\\go\\bin"
+        - "C:\\tools\\vcpkg"
+      CMAKE_INSTALL_PREFIX: "C:/Program Files (x86)/auth"
+      CMAKE_SYSTEM_PREFIX_PATH:
+        - "C:/Program Files"
+        - "C:/Program Files (x86)"
+        - "C:/Program Files/CMake"
+        - "C:/Program Files (x86)/auth"
+      CMAKE_SYSTEM_LIBRARY_PATH:
+        - "C:/Program Files (x86)/auth/bin"
+        - "C:/Program Files/CMake/bin"
+        - "/bin"
+      CMAKE_FIND_ROOT_PATH: "C:/tools/vcpkg/installed/x64-windows/debug;C:/tools/vcpkg/installed/x64-windows"
+  -
+    kind: "find-v1"
+    backtrace:
+      - "C:/tools/vcpkg/installed/x64-windows/share/openssl/vcpkg-cmake-wrapper.cmake:27 (find_library)"
+      - "C:/tools/vcpkg/scripts/buildsystems/vcpkg.cmake:862 (include)"
+      - "CMakeLists.txt:11 (find_package)"
+    mode: "library"
+    variable: "SSL_EAY_DEBUG"
+    description: "Path to a library."
+    settings:
+      SearchFramework: "LAST"
+      SearchAppBundle: "LAST"
+      CMAKE_FIND_USE_CMAKE_PATH: true
+      CMAKE_FIND_USE_CMAKE_ENVIRONMENT_PATH: true
+      CMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH: true
+      CMAKE_FIND_USE_CMAKE_SYSTEM_PATH: true
+      CMAKE_FIND_USE_INSTALL_PREFIX: true
+    names:
+      - "libssl"
+    candidate_directories:
+      - "C:/tools/vcpkg/installed/x64-windows/debug/lib/"
+      - "C:/tools/vcpkg/installed/x64-windows/debug/lib/"
+      - "C:/tools/vcpkg/installed/x64-windows/debug/lib/"
+    found: "C:/tools/vcpkg/installed/x64-windows/debug/lib/libssl.lib"
+    search_context:
+      CMAKE_LIBRARY_PATH:
+        - "C:/tools/vcpkg/installed/x64-windows/debug/lib/manual-link"
+        - "C:/tools/vcpkg/installed/x64-windows/lib/manual-link"
+      CMAKE_PREFIX_PATH:
+        - "C:/tools/vcpkg/installed/x64-windows/debug"
+        - "C:/tools/vcpkg/installed/x64-windows"
+      ENV{PATH}:
+        - "C:\\Program Files\\PowerShell\\7"
+        - "C:\\Windows\\system32"
+        - "C:\\Windows"
+        - "C:\\Windows\\System32\\Wbem"
+        - "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\"
+        - "C:\\Windows\\System32\\OpenSSH\\"
+        - "C:\\Program Files (x86)\\NVIDIA Corporation\\PhysX\\Common"
+        - "C:\\Program Files\\NVIDIA Corporation\\NVIDIA NvDLISR"
+        - "C:\\Program Files\\Microsoft SQL Server\\150\\Tools\\Binn\\"
+        - "C:\\WINDOWS\\system32"
+        - "C:\\WINDOWS"
+        - "C:\\WINDOWS\\System32\\Wbem"
+        - "C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\"
+        - "C:\\WINDOWS\\System32\\OpenSSH\\"
+        - "C:\\Program Files\\Docker\\Docker\\resources\\bin"
+        - "C:\\Program Files (x86)\\Windows Kits\\10\\Windows Performance Toolkit\\"
+        - "C:\\Program Files\\Go\\bin"
+        - "C:\\Program Files\\Git\\cmd"
+        - "C:\\Program Files\\CMake\\bin"
+        - "C:\\Program Files\\PowerShell\\7\\"
+        - "C:\\Users\\KSK-SHOP\\scoop\\shims"
+        - "C:\\Users\\KSK-SHOP\\AppData\\Local\\Programs\\Python\\Launcher\\"
+        - "C:\\Users\\KSK-SHOP\\AppData\\Local\\Microsoft\\WindowsApps"
+        - "C:\\tools\\VSCode"
+        - "C:\\msys64\\ucrt64\\bin"
+        - "C:\\Users\\KSK-SHOP\\go\\bin"
+        - "C:\\tools\\vcpkg"
+      CMAKE_INSTALL_PREFIX: "C:/Program Files (x86)/auth"
+      CMAKE_SYSTEM_PREFIX_PATH:
+        - "C:/Program Files"
+        - "C:/Program Files (x86)"
+        - "C:/Program Files/CMake"
+        - "C:/Program Files (x86)/auth"
+      CMAKE_SYSTEM_LIBRARY_PATH:
+        - "C:/Program Files (x86)/auth/bin"
+        - "C:/Program Files/CMake/bin"
+        - "/bin"
+      CMAKE_FIND_ROOT_PATH: "C:/tools/vcpkg/installed/x64-windows/debug;C:/tools/vcpkg/installed/x64-windows"
+  -
+    kind: "find-v1"
+    backtrace:
+      - "C:/tools/vcpkg/installed/x64-windows/share/openssl/vcpkg-cmake-wrapper.cmake:28 (find_library)"
+      - "C:/tools/vcpkg/scripts/buildsystems/vcpkg.cmake:862 (include)"
+      - "CMakeLists.txt:11 (find_package)"
+    mode: "library"
+    variable: "SSL_EAY_RELEASE"
+    description: "Path to a library."
+    settings:
+      SearchFramework: "LAST"
+      SearchAppBundle: "LAST"
+      CMAKE_FIND_USE_CMAKE_PATH: true
+      CMAKE_FIND_USE_CMAKE_ENVIRONMENT_PATH: true
+      CMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH: true
+      CMAKE_FIND_USE_CMAKE_SYSTEM_PATH: true
+      CMAKE_FIND_USE_INSTALL_PREFIX: true
+    names:
+      - "libssl"
+    candidate_directories:
+      - "C:/tools/vcpkg/installed/x64-windows/debug/tools/vcpkg/installed/x64-windows/lib/"
+      - "C:/tools/vcpkg/installed/x64-windows/lib/"
+      - "C:/tools/vcpkg/installed/x64-windows/lib/"
+    searched_directories:
+      - "C:/tools/vcpkg/installed/x64-windows/debug/tools/vcpkg/installed/x64-windows/lib/"
+    found: "C:/tools/vcpkg/installed/x64-windows/lib/libssl.lib"
+    search_context:
+      CMAKE_LIBRARY_PATH:
+        - "C:/tools/vcpkg/installed/x64-windows/debug/lib/manual-link"
+        - "C:/tools/vcpkg/installed/x64-windows/lib/manual-link"
+      CMAKE_PREFIX_PATH:
+        - "C:/tools/vcpkg/installed/x64-windows/debug"
+        - "C:/tools/vcpkg/installed/x64-windows"
+      ENV{PATH}:
+        - "C:\\Program Files\\PowerShell\\7"
+        - "C:\\Windows\\system32"
+        - "C:\\Windows"
+        - "C:\\Windows\\System32\\Wbem"
+        - "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\"
+        - "C:\\Windows\\System32\\OpenSSH\\"
+        - "C:\\Program Files (x86)\\NVIDIA Corporation\\PhysX\\Common"
+        - "C:\\Program Files\\NVIDIA Corporation\\NVIDIA NvDLISR"
+        - "C:\\Program Files\\Microsoft SQL Server\\150\\Tools\\Binn\\"
+        - "C:\\WINDOWS\\system32"
+        - "C:\\WINDOWS"
+        - "C:\\WINDOWS\\System32\\Wbem"
+        - "C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\"
+        - "C:\\WINDOWS\\System32\\OpenSSH\\"
+        - "C:\\Program Files\\Docker\\Docker\\resources\\bin"
+        - "C:\\Program Files (x86)\\Windows Kits\\10\\Windows Performance Toolkit\\"
+        - "C:\\Program Files\\Go\\bin"
+        - "C:\\Program Files\\Git\\cmd"
+        - "C:\\Program Files\\CMake\\bin"
+        - "C:\\Program Files\\PowerShell\\7\\"
+        - "C:\\Users\\KSK-SHOP\\scoop\\shims"
+        - "C:\\Users\\KSK-SHOP\\AppData\\Local\\Programs\\Python\\Launcher\\"
+        - "C:\\Users\\KSK-SHOP\\AppData\\Local\\Microsoft\\WindowsApps"
+        - "C:\\tools\\VSCode"
+        - "C:\\msys64\\ucrt64\\bin"
+        - "C:\\Users\\KSK-SHOP\\go\\bin"
+        - "C:\\tools\\vcpkg"
+      CMAKE_INSTALL_PREFIX: "C:/Program Files (x86)/auth"
+      CMAKE_SYSTEM_PREFIX_PATH:
+        - "C:/Program Files"
+        - "C:/Program Files (x86)"
+        - "C:/Program Files/CMake"
+        - "C:/Program Files (x86)/auth"
+      CMAKE_SYSTEM_LIBRARY_PATH:
+        - "C:/Program Files (x86)/auth/bin"
+        - "C:/Program Files/CMake/bin"
+        - "/bin"
+      CMAKE_FIND_ROOT_PATH: "C:/tools/vcpkg/installed/x64-windows/debug;C:/tools/vcpkg/installed/x64-windows"
+  -
+    kind: "find-v1"
+    backtrace:
+      - "C:/Program Files/CMake/share/cmake-4.2/Modules/FindOpenSSL.cmake:370 (find_path)"
+      - "C:/tools/vcpkg/installed/x64-windows/share/openssl/vcpkg-cmake-wrapper.cmake:37 (_find_package)"
+      - "C:/tools/vcpkg/scripts/buildsystems/vcpkg.cmake:862 (include)"
+      - "CMakeLists.txt:11 (find_package)"
+    mode: "path"
+    variable: "OPENSSL_INCLUDE_DIR"
+    description: "Path to a file."
+    settings:
+      SearchFramework: "LAST"
+      SearchAppBundle: "LAST"
+      CMAKE_FIND_USE_CMAKE_PATH: true
+      CMAKE_FIND_USE_CMAKE_ENVIRONMENT_PATH: true
+      CMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH: true
+      CMAKE_FIND_USE_CMAKE_SYSTEM_PATH: true
+      CMAKE_FIND_USE_INSTALL_PREFIX: true
+    names:
+      - "openssl/ssl.h"
+    candidate_directories:
+      - "C:/tools/vcpkg/installed/x64-windows/debug/tools/vcpkg/installed/x64-windows/include/"
+      - "C:/tools/vcpkg/installed/x64-windows/debug/tools/vcpkg/installed/x64-windows/"
+      - "C:/tools/vcpkg/installed/x64-windows/include/"
+      - "C:/tools/vcpkg/installed/x64-windows/"
+      - "C:/tools/vcpkg/installed/x64-windows/include/"
+      - "C:/tools/vcpkg/installed/x64-windows/"
+    searched_directories:
+      - "C:/tools/vcpkg/installed/x64-windows/debug/tools/vcpkg/installed/x64-windows/include/openssl/ssl.h"
+      - "C:/tools/vcpkg/installed/x64-windows/debug/tools/vcpkg/installed/x64-windows/openssl/ssl.h"
+    found: "C:/tools/vcpkg/installed/x64-windows/include/"
+    search_context:
+      CMAKE_PREFIX_PATH:
+        - "C:/tools/vcpkg/installed/x64-windows/debug"
+        - "C:/tools/vcpkg/installed/x64-windows"
+      ENV{PATH}:
+        - "C:\\Program Files\\PowerShell\\7"
+        - "C:\\Windows\\system32"
+        - "C:\\Windows"
+        - "C:\\Windows\\System32\\Wbem"
+        - "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\"
+        - "C:\\Windows\\System32\\OpenSSH\\"
+        - "C:\\Program Files (x86)\\NVIDIA Corporation\\PhysX\\Common"
+        - "C:\\Program Files\\NVIDIA Corporation\\NVIDIA NvDLISR"
+        - "C:\\Program Files\\Microsoft SQL Server\\150\\Tools\\Binn\\"
+        - "C:\\WINDOWS\\system32"
+        - "C:\\WINDOWS"
+        - "C:\\WINDOWS\\System32\\Wbem"
+        - "C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\"
+        - "C:\\WINDOWS\\System32\\OpenSSH\\"
+        - "C:\\Program Files\\Docker\\Docker\\resources\\bin"
+        - "C:\\Program Files (x86)\\Windows Kits\\10\\Windows Performance Toolkit\\"
+        - "C:\\Program Files\\Go\\bin"
+        - "C:\\Program Files\\Git\\cmd"
+        - "C:\\Program Files\\CMake\\bin"
+        - "C:\\Program Files\\PowerShell\\7\\"
+        - "C:\\Users\\KSK-SHOP\\scoop\\shims"
+        - "C:\\Users\\KSK-SHOP\\AppData\\Local\\Programs\\Python\\Launcher\\"
+        - "C:\\Users\\KSK-SHOP\\AppData\\Local\\Microsoft\\WindowsApps"
+        - "C:\\tools\\VSCode"
+        - "C:\\msys64\\ucrt64\\bin"
+        - "C:\\Users\\KSK-SHOP\\go\\bin"
+        - "C:\\tools\\vcpkg"
+      CMAKE_INSTALL_PREFIX: "C:/Program Files (x86)/auth"
+      CMAKE_SYSTEM_PREFIX_PATH:
+        - "C:/Program Files"
+        - "C:/Program Files (x86)"
+        - "C:/Program Files/CMake"
+        - "C:/Program Files (x86)/auth"
+      CMAKE_FIND_ROOT_PATH: "C:/tools/vcpkg/installed/x64-windows/debug;C:/tools/vcpkg/installed/x64-windows"
+  -
+    kind: "find-v1"
+    backtrace:
+      - "C:/Program Files/CMake/share/cmake-4.2/Modules/FindOpenSSL.cmake:836 (find_file)"
+      - "C:/tools/vcpkg/installed/x64-windows/share/openssl/vcpkg-cmake-wrapper.cmake:37 (_find_package)"
+      - "C:/tools/vcpkg/scripts/buildsystems/vcpkg.cmake:862 (include)"
+      - "CMakeLists.txt:11 (find_package)"
+    mode: "file"
+    variable: "OPENSSL_APPLINK_SOURCE"
+    description: "Path to a file."
+    settings:
+      SearchFramework: "LAST"
+      SearchAppBundle: "LAST"
+      CMAKE_FIND_USE_CMAKE_PATH: true
+      CMAKE_FIND_USE_CMAKE_ENVIRONMENT_PATH: true
+      CMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH: true
+      CMAKE_FIND_USE_CMAKE_SYSTEM_PATH: true
+      CMAKE_FIND_USE_INSTALL_PREFIX: true
+    names:
+      - "openssl/applink.c"
+    candidate_directories:
+      - "C:/tools/vcpkg/installed/x64-windows/debug/tools/vcpkg/installed/x64-windows/include/"
+      - "C:/tools/vcpkg/installed/x64-windows/include/"
+      - "C:/tools/vcpkg/installed/x64-windows/include/"
+    searched_directories:
+      - "C:/tools/vcpkg/installed/x64-windows/debug/tools/vcpkg/installed/x64-windows/include/openssl/applink.c"
+    found: "C:/tools/vcpkg/installed/x64-windows/include/openssl/applink.c"
+    search_context:
+      CMAKE_PREFIX_PATH:
+        - "C:/tools/vcpkg/installed/x64-windows/debug"
+        - "C:/tools/vcpkg/installed/x64-windows"
+      ENV{PATH}:
+        - "C:\\Program Files\\PowerShell\\7"
+        - "C:\\Windows\\system32"
+        - "C:\\Windows"
+        - "C:\\Windows\\System32\\Wbem"
+        - "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\"
+        - "C:\\Windows\\System32\\OpenSSH\\"
+        - "C:\\Program Files (x86)\\NVIDIA Corporation\\PhysX\\Common"
+        - "C:\\Program Files\\NVIDIA Corporation\\NVIDIA NvDLISR"
+        - "C:\\Program Files\\Microsoft SQL Server\\150\\Tools\\Binn\\"
+        - "C:\\WINDOWS\\system32"
+        - "C:\\WINDOWS"
+        - "C:\\WINDOWS\\System32\\Wbem"
+        - "C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\"
+        - "C:\\WINDOWS\\System32\\OpenSSH\\"
+        - "C:\\Program Files\\Docker\\Docker\\resources\\bin"
+        - "C:\\Program Files (x86)\\Windows Kits\\10\\Windows Performance Toolkit\\"
+        - "C:\\Program Files\\Go\\bin"
+        - "C:\\Program Files\\Git\\cmd"
+        - "C:\\Program Files\\CMake\\bin"
+        - "C:\\Program Files\\PowerShell\\7\\"
+        - "C:\\Users\\KSK-SHOP\\scoop\\shims"
+        - "C:\\Users\\KSK-SHOP\\AppData\\Local\\Programs\\Python\\Launcher\\"
+        - "C:\\Users\\KSK-SHOP\\AppData\\Local\\Microsoft\\WindowsApps"
+        - "C:\\tools\\VSCode"
+        - "C:\\msys64\\ucrt64\\bin"
+        - "C:\\Users\\KSK-SHOP\\go\\bin"
+        - "C:\\tools\\vcpkg"
+      CMAKE_INSTALL_PREFIX: "C:/Program Files (x86)/auth"
+      CMAKE_SYSTEM_PREFIX_PATH:
+        - "C:/Program Files"
+        - "C:/Program Files (x86)"
+        - "C:/Program Files/CMake"
+        - "C:/Program Files (x86)/auth"
+      CMAKE_FIND_ROOT_PATH: "C:/tools/vcpkg/installed/x64-windows/debug;C:/tools/vcpkg/installed/x64-windows"
+  -
+    kind: "find_package-v1"
+    backtrace:
+      - "C:/tools/vcpkg/scripts/buildsystems/vcpkg.cmake:908 (_find_package)"
+      - "CMakeLists.txt:12 (find_package)"
     name: "nlohmann_json"
     configs:
       -
@@ -2771,1315 +3634,19 @@ events:
         - "C:\\msys64\\ucrt64\\bin"
         - "C:\\Users\\KSK-SHOP\\go\\bin"
         - "C:\\tools\\vcpkg"
-      CMAKE_INSTALL_PREFIX: "C:/Program Files (x86)/authorization"
+      CMAKE_INSTALL_PREFIX: "C:/Program Files (x86)/auth"
       CMAKE_SYSTEM_PREFIX_PATH:
         - "C:/Program Files"
         - "C:/Program Files (x86)"
         - "C:/Program Files/CMake"
-        - "C:/Program Files (x86)/authorization"
-      CMAKE_FIND_ROOT_PATH: "C:/tools/vcpkg/installed/x64-windows/debug;C:/tools/vcpkg/installed/x64-windows"
-  -
-    kind: "find-v1"
-    backtrace:
-      - "C:/tools/vcpkg/installed/x64-windows/share/openssl/vcpkg-cmake-wrapper.cmake:23 (find_path)"
-      - "C:/tools/vcpkg/scripts/buildsystems/vcpkg.cmake:862 (include)"
-      - "C:/Program Files/CMake/share/cmake-4.2/Modules/CMakeFindDependencyMacro.cmake:93 (find_package)"
-      - "C:/Program Files/CMake/share/cmake-4.2/Modules/CMakeFindDependencyMacro.cmake:125 (__find_dependency_common)"
-      - "C:/tools/vcpkg/installed/x64-windows/share/jwt-cpp/jwt-cpp-config.cmake:37 (find_dependency)"
-      - "C:/tools/vcpkg/scripts/buildsystems/vcpkg.cmake:908 (_find_package)"
-      - "CMakeLists.txt:9 (find_package)"
-    mode: "path"
-    variable: "OPENSSL_INCLUDE_DIR"
-    description: "Path to a file."
-    settings:
-      SearchFramework: "LAST"
-      SearchAppBundle: "LAST"
-      CMAKE_FIND_USE_CMAKE_PATH: true
-      CMAKE_FIND_USE_CMAKE_ENVIRONMENT_PATH: true
-      CMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH: true
-      CMAKE_FIND_USE_CMAKE_SYSTEM_PATH: true
-      CMAKE_FIND_USE_INSTALL_PREFIX: true
-    names:
-      - "openssl/ssl.h"
-      - "PATH"
-      - "C:/tools/vcpkg/installed/x64-windows/include"
-    found: false
-    search_context:
-      CMAKE_PREFIX_PATH:
-        - "C:/tools/vcpkg/installed/x64-windows/debug"
-        - "C:/tools/vcpkg/installed/x64-windows"
-      ENV{PATH}:
-        - "C:\\Program Files\\PowerShell\\7"
-        - "C:\\Windows\\system32"
-        - "C:\\Windows"
-        - "C:\\Windows\\System32\\Wbem"
-        - "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\"
-        - "C:\\Windows\\System32\\OpenSSH\\"
-        - "C:\\Program Files (x86)\\NVIDIA Corporation\\PhysX\\Common"
-        - "C:\\Program Files\\NVIDIA Corporation\\NVIDIA NvDLISR"
-        - "C:\\Program Files\\Microsoft SQL Server\\150\\Tools\\Binn\\"
-        - "C:\\WINDOWS\\system32"
-        - "C:\\WINDOWS"
-        - "C:\\WINDOWS\\System32\\Wbem"
-        - "C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\"
-        - "C:\\WINDOWS\\System32\\OpenSSH\\"
-        - "C:\\Program Files\\Docker\\Docker\\resources\\bin"
-        - "C:\\Program Files (x86)\\Windows Kits\\10\\Windows Performance Toolkit\\"
-        - "C:\\Program Files\\Go\\bin"
-        - "C:\\Program Files\\Git\\cmd"
-        - "C:\\Program Files\\CMake\\bin"
-        - "C:\\Program Files\\PowerShell\\7\\"
-        - "C:\\Users\\KSK-SHOP\\scoop\\shims"
-        - "C:\\Users\\KSK-SHOP\\AppData\\Local\\Programs\\Python\\Launcher\\"
-        - "C:\\Users\\KSK-SHOP\\AppData\\Local\\Microsoft\\WindowsApps"
-        - "C:\\tools\\VSCode"
-        - "C:\\msys64\\ucrt64\\bin"
-        - "C:\\Users\\KSK-SHOP\\go\\bin"
-        - "C:\\tools\\vcpkg"
-      CMAKE_INSTALL_PREFIX: "C:/Program Files (x86)/authorization"
-      CMAKE_SYSTEM_PREFIX_PATH:
-        - "C:/Program Files"
-        - "C:/Program Files (x86)"
-        - "C:/Program Files/CMake"
-        - "C:/Program Files (x86)/authorization"
-      CMAKE_FIND_ROOT_PATH: "C:/tools/vcpkg/installed/x64-windows/debug;C:/tools/vcpkg/installed/x64-windows"
-  -
-    kind: "find-v1"
-    backtrace:
-      - "C:/tools/vcpkg/installed/x64-windows/share/openssl/vcpkg-cmake-wrapper.cmake:25 (find_library)"
-      - "C:/tools/vcpkg/scripts/buildsystems/vcpkg.cmake:862 (include)"
-      - "C:/Program Files/CMake/share/cmake-4.2/Modules/CMakeFindDependencyMacro.cmake:93 (find_package)"
-      - "C:/Program Files/CMake/share/cmake-4.2/Modules/CMakeFindDependencyMacro.cmake:125 (__find_dependency_common)"
-      - "C:/tools/vcpkg/installed/x64-windows/share/jwt-cpp/jwt-cpp-config.cmake:37 (find_dependency)"
-      - "C:/tools/vcpkg/scripts/buildsystems/vcpkg.cmake:908 (_find_package)"
-      - "CMakeLists.txt:9 (find_package)"
-    mode: "library"
-    variable: "LIB_EAY_DEBUG"
-    description: "Path to a library."
-    settings:
-      SearchFramework: "LAST"
-      SearchAppBundle: "LAST"
-      CMAKE_FIND_USE_CMAKE_PATH: true
-      CMAKE_FIND_USE_CMAKE_ENVIRONMENT_PATH: true
-      CMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH: true
-      CMAKE_FIND_USE_CMAKE_SYSTEM_PATH: true
-      CMAKE_FIND_USE_INSTALL_PREFIX: true
-    names:
-      - "libcrypto"
-    candidate_directories:
-      - "C:/tools/vcpkg/installed/x64-windows/debug/lib/"
-      - "C:/tools/vcpkg/installed/x64-windows/debug/lib/"
-      - "C:/tools/vcpkg/installed/x64-windows/debug/lib/"
-    found: "C:/tools/vcpkg/installed/x64-windows/debug/lib/libcrypto.lib"
-    search_context:
-      CMAKE_LIBRARY_PATH:
-        - "C:/tools/vcpkg/installed/x64-windows/debug/lib/manual-link"
-        - "C:/tools/vcpkg/installed/x64-windows/lib/manual-link"
-      CMAKE_PREFIX_PATH:
-        - "C:/tools/vcpkg/installed/x64-windows/debug"
-        - "C:/tools/vcpkg/installed/x64-windows"
-      ENV{PATH}:
-        - "C:\\Program Files\\PowerShell\\7"
-        - "C:\\Windows\\system32"
-        - "C:\\Windows"
-        - "C:\\Windows\\System32\\Wbem"
-        - "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\"
-        - "C:\\Windows\\System32\\OpenSSH\\"
-        - "C:\\Program Files (x86)\\NVIDIA Corporation\\PhysX\\Common"
-        - "C:\\Program Files\\NVIDIA Corporation\\NVIDIA NvDLISR"
-        - "C:\\Program Files\\Microsoft SQL Server\\150\\Tools\\Binn\\"
-        - "C:\\WINDOWS\\system32"
-        - "C:\\WINDOWS"
-        - "C:\\WINDOWS\\System32\\Wbem"
-        - "C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\"
-        - "C:\\WINDOWS\\System32\\OpenSSH\\"
-        - "C:\\Program Files\\Docker\\Docker\\resources\\bin"
-        - "C:\\Program Files (x86)\\Windows Kits\\10\\Windows Performance Toolkit\\"
-        - "C:\\Program Files\\Go\\bin"
-        - "C:\\Program Files\\Git\\cmd"
-        - "C:\\Program Files\\CMake\\bin"
-        - "C:\\Program Files\\PowerShell\\7\\"
-        - "C:\\Users\\KSK-SHOP\\scoop\\shims"
-        - "C:\\Users\\KSK-SHOP\\AppData\\Local\\Programs\\Python\\Launcher\\"
-        - "C:\\Users\\KSK-SHOP\\AppData\\Local\\Microsoft\\WindowsApps"
-        - "C:\\tools\\VSCode"
-        - "C:\\msys64\\ucrt64\\bin"
-        - "C:\\Users\\KSK-SHOP\\go\\bin"
-        - "C:\\tools\\vcpkg"
-      CMAKE_INSTALL_PREFIX: "C:/Program Files (x86)/authorization"
-      CMAKE_SYSTEM_PREFIX_PATH:
-        - "C:/Program Files"
-        - "C:/Program Files (x86)"
-        - "C:/Program Files/CMake"
-        - "C:/Program Files (x86)/authorization"
-      CMAKE_SYSTEM_LIBRARY_PATH:
-        - "C:/Program Files (x86)/authorization/bin"
-        - "C:/Program Files/CMake/bin"
-        - "/bin"
-      CMAKE_FIND_ROOT_PATH: "C:/tools/vcpkg/installed/x64-windows/debug;C:/tools/vcpkg/installed/x64-windows"
-  -
-    kind: "find-v1"
-    backtrace:
-      - "C:/tools/vcpkg/installed/x64-windows/share/openssl/vcpkg-cmake-wrapper.cmake:26 (find_library)"
-      - "C:/tools/vcpkg/scripts/buildsystems/vcpkg.cmake:862 (include)"
-      - "C:/Program Files/CMake/share/cmake-4.2/Modules/CMakeFindDependencyMacro.cmake:93 (find_package)"
-      - "C:/Program Files/CMake/share/cmake-4.2/Modules/CMakeFindDependencyMacro.cmake:125 (__find_dependency_common)"
-      - "C:/tools/vcpkg/installed/x64-windows/share/jwt-cpp/jwt-cpp-config.cmake:37 (find_dependency)"
-      - "C:/tools/vcpkg/scripts/buildsystems/vcpkg.cmake:908 (_find_package)"
-      - "CMakeLists.txt:9 (find_package)"
-    mode: "library"
-    variable: "LIB_EAY_RELEASE"
-    description: "Path to a library."
-    settings:
-      SearchFramework: "LAST"
-      SearchAppBundle: "LAST"
-      CMAKE_FIND_USE_CMAKE_PATH: true
-      CMAKE_FIND_USE_CMAKE_ENVIRONMENT_PATH: true
-      CMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH: true
-      CMAKE_FIND_USE_CMAKE_SYSTEM_PATH: true
-      CMAKE_FIND_USE_INSTALL_PREFIX: true
-    names:
-      - "libcrypto"
-    candidate_directories:
-      - "C:/tools/vcpkg/installed/x64-windows/debug/tools/vcpkg/installed/x64-windows/lib/"
-      - "C:/tools/vcpkg/installed/x64-windows/lib/"
-      - "C:/tools/vcpkg/installed/x64-windows/lib/"
-    searched_directories:
-      - "C:/tools/vcpkg/installed/x64-windows/debug/tools/vcpkg/installed/x64-windows/lib/"
-    found: "C:/tools/vcpkg/installed/x64-windows/lib/libcrypto.lib"
-    search_context:
-      CMAKE_LIBRARY_PATH:
-        - "C:/tools/vcpkg/installed/x64-windows/debug/lib/manual-link"
-        - "C:/tools/vcpkg/installed/x64-windows/lib/manual-link"
-      CMAKE_PREFIX_PATH:
-        - "C:/tools/vcpkg/installed/x64-windows/debug"
-        - "C:/tools/vcpkg/installed/x64-windows"
-      ENV{PATH}:
-        - "C:\\Program Files\\PowerShell\\7"
-        - "C:\\Windows\\system32"
-        - "C:\\Windows"
-        - "C:\\Windows\\System32\\Wbem"
-        - "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\"
-        - "C:\\Windows\\System32\\OpenSSH\\"
-        - "C:\\Program Files (x86)\\NVIDIA Corporation\\PhysX\\Common"
-        - "C:\\Program Files\\NVIDIA Corporation\\NVIDIA NvDLISR"
-        - "C:\\Program Files\\Microsoft SQL Server\\150\\Tools\\Binn\\"
-        - "C:\\WINDOWS\\system32"
-        - "C:\\WINDOWS"
-        - "C:\\WINDOWS\\System32\\Wbem"
-        - "C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\"
-        - "C:\\WINDOWS\\System32\\OpenSSH\\"
-        - "C:\\Program Files\\Docker\\Docker\\resources\\bin"
-        - "C:\\Program Files (x86)\\Windows Kits\\10\\Windows Performance Toolkit\\"
-        - "C:\\Program Files\\Go\\bin"
-        - "C:\\Program Files\\Git\\cmd"
-        - "C:\\Program Files\\CMake\\bin"
-        - "C:\\Program Files\\PowerShell\\7\\"
-        - "C:\\Users\\KSK-SHOP\\scoop\\shims"
-        - "C:\\Users\\KSK-SHOP\\AppData\\Local\\Programs\\Python\\Launcher\\"
-        - "C:\\Users\\KSK-SHOP\\AppData\\Local\\Microsoft\\WindowsApps"
-        - "C:\\tools\\VSCode"
-        - "C:\\msys64\\ucrt64\\bin"
-        - "C:\\Users\\KSK-SHOP\\go\\bin"
-        - "C:\\tools\\vcpkg"
-      CMAKE_INSTALL_PREFIX: "C:/Program Files (x86)/authorization"
-      CMAKE_SYSTEM_PREFIX_PATH:
-        - "C:/Program Files"
-        - "C:/Program Files (x86)"
-        - "C:/Program Files/CMake"
-        - "C:/Program Files (x86)/authorization"
-      CMAKE_SYSTEM_LIBRARY_PATH:
-        - "C:/Program Files (x86)/authorization/bin"
-        - "C:/Program Files/CMake/bin"
-        - "/bin"
-      CMAKE_FIND_ROOT_PATH: "C:/tools/vcpkg/installed/x64-windows/debug;C:/tools/vcpkg/installed/x64-windows"
-  -
-    kind: "find-v1"
-    backtrace:
-      - "C:/tools/vcpkg/installed/x64-windows/share/openssl/vcpkg-cmake-wrapper.cmake:27 (find_library)"
-      - "C:/tools/vcpkg/scripts/buildsystems/vcpkg.cmake:862 (include)"
-      - "C:/Program Files/CMake/share/cmake-4.2/Modules/CMakeFindDependencyMacro.cmake:93 (find_package)"
-      - "C:/Program Files/CMake/share/cmake-4.2/Modules/CMakeFindDependencyMacro.cmake:125 (__find_dependency_common)"
-      - "C:/tools/vcpkg/installed/x64-windows/share/jwt-cpp/jwt-cpp-config.cmake:37 (find_dependency)"
-      - "C:/tools/vcpkg/scripts/buildsystems/vcpkg.cmake:908 (_find_package)"
-      - "CMakeLists.txt:9 (find_package)"
-    mode: "library"
-    variable: "SSL_EAY_DEBUG"
-    description: "Path to a library."
-    settings:
-      SearchFramework: "LAST"
-      SearchAppBundle: "LAST"
-      CMAKE_FIND_USE_CMAKE_PATH: true
-      CMAKE_FIND_USE_CMAKE_ENVIRONMENT_PATH: true
-      CMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH: true
-      CMAKE_FIND_USE_CMAKE_SYSTEM_PATH: true
-      CMAKE_FIND_USE_INSTALL_PREFIX: true
-    names:
-      - "libssl"
-    candidate_directories:
-      - "C:/tools/vcpkg/installed/x64-windows/debug/lib/"
-      - "C:/tools/vcpkg/installed/x64-windows/debug/lib/"
-      - "C:/tools/vcpkg/installed/x64-windows/debug/lib/"
-    found: "C:/tools/vcpkg/installed/x64-windows/debug/lib/libssl.lib"
-    search_context:
-      CMAKE_LIBRARY_PATH:
-        - "C:/tools/vcpkg/installed/x64-windows/debug/lib/manual-link"
-        - "C:/tools/vcpkg/installed/x64-windows/lib/manual-link"
-      CMAKE_PREFIX_PATH:
-        - "C:/tools/vcpkg/installed/x64-windows/debug"
-        - "C:/tools/vcpkg/installed/x64-windows"
-      ENV{PATH}:
-        - "C:\\Program Files\\PowerShell\\7"
-        - "C:\\Windows\\system32"
-        - "C:\\Windows"
-        - "C:\\Windows\\System32\\Wbem"
-        - "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\"
-        - "C:\\Windows\\System32\\OpenSSH\\"
-        - "C:\\Program Files (x86)\\NVIDIA Corporation\\PhysX\\Common"
-        - "C:\\Program Files\\NVIDIA Corporation\\NVIDIA NvDLISR"
-        - "C:\\Program Files\\Microsoft SQL Server\\150\\Tools\\Binn\\"
-        - "C:\\WINDOWS\\system32"
-        - "C:\\WINDOWS"
-        - "C:\\WINDOWS\\System32\\Wbem"
-        - "C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\"
-        - "C:\\WINDOWS\\System32\\OpenSSH\\"
-        - "C:\\Program Files\\Docker\\Docker\\resources\\bin"
-        - "C:\\Program Files (x86)\\Windows Kits\\10\\Windows Performance Toolkit\\"
-        - "C:\\Program Files\\Go\\bin"
-        - "C:\\Program Files\\Git\\cmd"
-        - "C:\\Program Files\\CMake\\bin"
-        - "C:\\Program Files\\PowerShell\\7\\"
-        - "C:\\Users\\KSK-SHOP\\scoop\\shims"
-        - "C:\\Users\\KSK-SHOP\\AppData\\Local\\Programs\\Python\\Launcher\\"
-        - "C:\\Users\\KSK-SHOP\\AppData\\Local\\Microsoft\\WindowsApps"
-        - "C:\\tools\\VSCode"
-        - "C:\\msys64\\ucrt64\\bin"
-        - "C:\\Users\\KSK-SHOP\\go\\bin"
-        - "C:\\tools\\vcpkg"
-      CMAKE_INSTALL_PREFIX: "C:/Program Files (x86)/authorization"
-      CMAKE_SYSTEM_PREFIX_PATH:
-        - "C:/Program Files"
-        - "C:/Program Files (x86)"
-        - "C:/Program Files/CMake"
-        - "C:/Program Files (x86)/authorization"
-      CMAKE_SYSTEM_LIBRARY_PATH:
-        - "C:/Program Files (x86)/authorization/bin"
-        - "C:/Program Files/CMake/bin"
-        - "/bin"
-      CMAKE_FIND_ROOT_PATH: "C:/tools/vcpkg/installed/x64-windows/debug;C:/tools/vcpkg/installed/x64-windows"
-  -
-    kind: "find-v1"
-    backtrace:
-      - "C:/tools/vcpkg/installed/x64-windows/share/openssl/vcpkg-cmake-wrapper.cmake:28 (find_library)"
-      - "C:/tools/vcpkg/scripts/buildsystems/vcpkg.cmake:862 (include)"
-      - "C:/Program Files/CMake/share/cmake-4.2/Modules/CMakeFindDependencyMacro.cmake:93 (find_package)"
-      - "C:/Program Files/CMake/share/cmake-4.2/Modules/CMakeFindDependencyMacro.cmake:125 (__find_dependency_common)"
-      - "C:/tools/vcpkg/installed/x64-windows/share/jwt-cpp/jwt-cpp-config.cmake:37 (find_dependency)"
-      - "C:/tools/vcpkg/scripts/buildsystems/vcpkg.cmake:908 (_find_package)"
-      - "CMakeLists.txt:9 (find_package)"
-    mode: "library"
-    variable: "SSL_EAY_RELEASE"
-    description: "Path to a library."
-    settings:
-      SearchFramework: "LAST"
-      SearchAppBundle: "LAST"
-      CMAKE_FIND_USE_CMAKE_PATH: true
-      CMAKE_FIND_USE_CMAKE_ENVIRONMENT_PATH: true
-      CMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH: true
-      CMAKE_FIND_USE_CMAKE_SYSTEM_PATH: true
-      CMAKE_FIND_USE_INSTALL_PREFIX: true
-    names:
-      - "libssl"
-    candidate_directories:
-      - "C:/tools/vcpkg/installed/x64-windows/debug/tools/vcpkg/installed/x64-windows/lib/"
-      - "C:/tools/vcpkg/installed/x64-windows/lib/"
-      - "C:/tools/vcpkg/installed/x64-windows/lib/"
-    searched_directories:
-      - "C:/tools/vcpkg/installed/x64-windows/debug/tools/vcpkg/installed/x64-windows/lib/"
-    found: "C:/tools/vcpkg/installed/x64-windows/lib/libssl.lib"
-    search_context:
-      CMAKE_LIBRARY_PATH:
-        - "C:/tools/vcpkg/installed/x64-windows/debug/lib/manual-link"
-        - "C:/tools/vcpkg/installed/x64-windows/lib/manual-link"
-      CMAKE_PREFIX_PATH:
-        - "C:/tools/vcpkg/installed/x64-windows/debug"
-        - "C:/tools/vcpkg/installed/x64-windows"
-      ENV{PATH}:
-        - "C:\\Program Files\\PowerShell\\7"
-        - "C:\\Windows\\system32"
-        - "C:\\Windows"
-        - "C:\\Windows\\System32\\Wbem"
-        - "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\"
-        - "C:\\Windows\\System32\\OpenSSH\\"
-        - "C:\\Program Files (x86)\\NVIDIA Corporation\\PhysX\\Common"
-        - "C:\\Program Files\\NVIDIA Corporation\\NVIDIA NvDLISR"
-        - "C:\\Program Files\\Microsoft SQL Server\\150\\Tools\\Binn\\"
-        - "C:\\WINDOWS\\system32"
-        - "C:\\WINDOWS"
-        - "C:\\WINDOWS\\System32\\Wbem"
-        - "C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\"
-        - "C:\\WINDOWS\\System32\\OpenSSH\\"
-        - "C:\\Program Files\\Docker\\Docker\\resources\\bin"
-        - "C:\\Program Files (x86)\\Windows Kits\\10\\Windows Performance Toolkit\\"
-        - "C:\\Program Files\\Go\\bin"
-        - "C:\\Program Files\\Git\\cmd"
-        - "C:\\Program Files\\CMake\\bin"
-        - "C:\\Program Files\\PowerShell\\7\\"
-        - "C:\\Users\\KSK-SHOP\\scoop\\shims"
-        - "C:\\Users\\KSK-SHOP\\AppData\\Local\\Programs\\Python\\Launcher\\"
-        - "C:\\Users\\KSK-SHOP\\AppData\\Local\\Microsoft\\WindowsApps"
-        - "C:\\tools\\VSCode"
-        - "C:\\msys64\\ucrt64\\bin"
-        - "C:\\Users\\KSK-SHOP\\go\\bin"
-        - "C:\\tools\\vcpkg"
-      CMAKE_INSTALL_PREFIX: "C:/Program Files (x86)/authorization"
-      CMAKE_SYSTEM_PREFIX_PATH:
-        - "C:/Program Files"
-        - "C:/Program Files (x86)"
-        - "C:/Program Files/CMake"
-        - "C:/Program Files (x86)/authorization"
-      CMAKE_SYSTEM_LIBRARY_PATH:
-        - "C:/Program Files (x86)/authorization/bin"
-        - "C:/Program Files/CMake/bin"
-        - "/bin"
-      CMAKE_FIND_ROOT_PATH: "C:/tools/vcpkg/installed/x64-windows/debug;C:/tools/vcpkg/installed/x64-windows"
-  -
-    kind: "find-v1"
-    backtrace:
-      - "C:/Program Files/CMake/share/cmake-4.2/Modules/FindOpenSSL.cmake:370 (find_path)"
-      - "C:/tools/vcpkg/installed/x64-windows/share/openssl/vcpkg-cmake-wrapper.cmake:37 (_find_package)"
-      - "C:/tools/vcpkg/scripts/buildsystems/vcpkg.cmake:862 (include)"
-      - "C:/Program Files/CMake/share/cmake-4.2/Modules/CMakeFindDependencyMacro.cmake:93 (find_package)"
-      - "C:/Program Files/CMake/share/cmake-4.2/Modules/CMakeFindDependencyMacro.cmake:125 (__find_dependency_common)"
-      - "C:/tools/vcpkg/installed/x64-windows/share/jwt-cpp/jwt-cpp-config.cmake:37 (find_dependency)"
-      - "C:/tools/vcpkg/scripts/buildsystems/vcpkg.cmake:908 (_find_package)"
-      - "CMakeLists.txt:9 (find_package)"
-    mode: "path"
-    variable: "OPENSSL_INCLUDE_DIR"
-    description: "Path to a file."
-    settings:
-      SearchFramework: "LAST"
-      SearchAppBundle: "LAST"
-      CMAKE_FIND_USE_CMAKE_PATH: true
-      CMAKE_FIND_USE_CMAKE_ENVIRONMENT_PATH: true
-      CMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH: true
-      CMAKE_FIND_USE_CMAKE_SYSTEM_PATH: true
-      CMAKE_FIND_USE_INSTALL_PREFIX: true
-    names:
-      - "openssl/ssl.h"
-    candidate_directories:
-      - "C:/tools/vcpkg/installed/x64-windows/debug/tools/vcpkg/installed/x64-windows/include/"
-      - "C:/tools/vcpkg/installed/x64-windows/debug/tools/vcpkg/installed/x64-windows/"
-      - "C:/tools/vcpkg/installed/x64-windows/include/"
-      - "C:/tools/vcpkg/installed/x64-windows/"
-      - "C:/tools/vcpkg/installed/x64-windows/include/"
-      - "C:/tools/vcpkg/installed/x64-windows/"
-    searched_directories:
-      - "C:/tools/vcpkg/installed/x64-windows/debug/tools/vcpkg/installed/x64-windows/include/openssl/ssl.h"
-      - "C:/tools/vcpkg/installed/x64-windows/debug/tools/vcpkg/installed/x64-windows/openssl/ssl.h"
-    found: "C:/tools/vcpkg/installed/x64-windows/include/"
-    search_context:
-      CMAKE_PREFIX_PATH:
-        - "C:/tools/vcpkg/installed/x64-windows/debug"
-        - "C:/tools/vcpkg/installed/x64-windows"
-      ENV{PATH}:
-        - "C:\\Program Files\\PowerShell\\7"
-        - "C:\\Windows\\system32"
-        - "C:\\Windows"
-        - "C:\\Windows\\System32\\Wbem"
-        - "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\"
-        - "C:\\Windows\\System32\\OpenSSH\\"
-        - "C:\\Program Files (x86)\\NVIDIA Corporation\\PhysX\\Common"
-        - "C:\\Program Files\\NVIDIA Corporation\\NVIDIA NvDLISR"
-        - "C:\\Program Files\\Microsoft SQL Server\\150\\Tools\\Binn\\"
-        - "C:\\WINDOWS\\system32"
-        - "C:\\WINDOWS"
-        - "C:\\WINDOWS\\System32\\Wbem"
-        - "C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\"
-        - "C:\\WINDOWS\\System32\\OpenSSH\\"
-        - "C:\\Program Files\\Docker\\Docker\\resources\\bin"
-        - "C:\\Program Files (x86)\\Windows Kits\\10\\Windows Performance Toolkit\\"
-        - "C:\\Program Files\\Go\\bin"
-        - "C:\\Program Files\\Git\\cmd"
-        - "C:\\Program Files\\CMake\\bin"
-        - "C:\\Program Files\\PowerShell\\7\\"
-        - "C:\\Users\\KSK-SHOP\\scoop\\shims"
-        - "C:\\Users\\KSK-SHOP\\AppData\\Local\\Programs\\Python\\Launcher\\"
-        - "C:\\Users\\KSK-SHOP\\AppData\\Local\\Microsoft\\WindowsApps"
-        - "C:\\tools\\VSCode"
-        - "C:\\msys64\\ucrt64\\bin"
-        - "C:\\Users\\KSK-SHOP\\go\\bin"
-        - "C:\\tools\\vcpkg"
-      CMAKE_INSTALL_PREFIX: "C:/Program Files (x86)/authorization"
-      CMAKE_SYSTEM_PREFIX_PATH:
-        - "C:/Program Files"
-        - "C:/Program Files (x86)"
-        - "C:/Program Files/CMake"
-        - "C:/Program Files (x86)/authorization"
-      CMAKE_FIND_ROOT_PATH: "C:/tools/vcpkg/installed/x64-windows/debug;C:/tools/vcpkg/installed/x64-windows"
-  -
-    kind: "find-v1"
-    backtrace:
-      - "C:/Program Files/CMake/share/cmake-4.2/Modules/FindOpenSSL.cmake:836 (find_file)"
-      - "C:/tools/vcpkg/installed/x64-windows/share/openssl/vcpkg-cmake-wrapper.cmake:37 (_find_package)"
-      - "C:/tools/vcpkg/scripts/buildsystems/vcpkg.cmake:862 (include)"
-      - "C:/Program Files/CMake/share/cmake-4.2/Modules/CMakeFindDependencyMacro.cmake:93 (find_package)"
-      - "C:/Program Files/CMake/share/cmake-4.2/Modules/CMakeFindDependencyMacro.cmake:125 (__find_dependency_common)"
-      - "C:/tools/vcpkg/installed/x64-windows/share/jwt-cpp/jwt-cpp-config.cmake:37 (find_dependency)"
-      - "C:/tools/vcpkg/scripts/buildsystems/vcpkg.cmake:908 (_find_package)"
-      - "CMakeLists.txt:9 (find_package)"
-    mode: "file"
-    variable: "OPENSSL_APPLINK_SOURCE"
-    description: "Path to a file."
-    settings:
-      SearchFramework: "LAST"
-      SearchAppBundle: "LAST"
-      CMAKE_FIND_USE_CMAKE_PATH: true
-      CMAKE_FIND_USE_CMAKE_ENVIRONMENT_PATH: true
-      CMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH: true
-      CMAKE_FIND_USE_CMAKE_SYSTEM_PATH: true
-      CMAKE_FIND_USE_INSTALL_PREFIX: true
-    names:
-      - "openssl/applink.c"
-    candidate_directories:
-      - "C:/tools/vcpkg/installed/x64-windows/debug/tools/vcpkg/installed/x64-windows/include/"
-      - "C:/tools/vcpkg/installed/x64-windows/include/"
-      - "C:/tools/vcpkg/installed/x64-windows/include/"
-    searched_directories:
-      - "C:/tools/vcpkg/installed/x64-windows/debug/tools/vcpkg/installed/x64-windows/include/openssl/applink.c"
-    found: "C:/tools/vcpkg/installed/x64-windows/include/openssl/applink.c"
-    search_context:
-      CMAKE_PREFIX_PATH:
-        - "C:/tools/vcpkg/installed/x64-windows/debug"
-        - "C:/tools/vcpkg/installed/x64-windows"
-      ENV{PATH}:
-        - "C:\\Program Files\\PowerShell\\7"
-        - "C:\\Windows\\system32"
-        - "C:\\Windows"
-        - "C:\\Windows\\System32\\Wbem"
-        - "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\"
-        - "C:\\Windows\\System32\\OpenSSH\\"
-        - "C:\\Program Files (x86)\\NVIDIA Corporation\\PhysX\\Common"
-        - "C:\\Program Files\\NVIDIA Corporation\\NVIDIA NvDLISR"
-        - "C:\\Program Files\\Microsoft SQL Server\\150\\Tools\\Binn\\"
-        - "C:\\WINDOWS\\system32"
-        - "C:\\WINDOWS"
-        - "C:\\WINDOWS\\System32\\Wbem"
-        - "C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\"
-        - "C:\\WINDOWS\\System32\\OpenSSH\\"
-        - "C:\\Program Files\\Docker\\Docker\\resources\\bin"
-        - "C:\\Program Files (x86)\\Windows Kits\\10\\Windows Performance Toolkit\\"
-        - "C:\\Program Files\\Go\\bin"
-        - "C:\\Program Files\\Git\\cmd"
-        - "C:\\Program Files\\CMake\\bin"
-        - "C:\\Program Files\\PowerShell\\7\\"
-        - "C:\\Users\\KSK-SHOP\\scoop\\shims"
-        - "C:\\Users\\KSK-SHOP\\AppData\\Local\\Programs\\Python\\Launcher\\"
-        - "C:\\Users\\KSK-SHOP\\AppData\\Local\\Microsoft\\WindowsApps"
-        - "C:\\tools\\VSCode"
-        - "C:\\msys64\\ucrt64\\bin"
-        - "C:\\Users\\KSK-SHOP\\go\\bin"
-        - "C:\\tools\\vcpkg"
-      CMAKE_INSTALL_PREFIX: "C:/Program Files (x86)/authorization"
-      CMAKE_SYSTEM_PREFIX_PATH:
-        - "C:/Program Files"
-        - "C:/Program Files (x86)"
-        - "C:/Program Files/CMake"
-        - "C:/Program Files (x86)/authorization"
-      CMAKE_FIND_ROOT_PATH: "C:/tools/vcpkg/installed/x64-windows/debug;C:/tools/vcpkg/installed/x64-windows"
-  -
-    kind: "find_package-v1"
-    backtrace:
-      - "C:/tools/vcpkg/scripts/buildsystems/vcpkg.cmake:908 (_find_package)"
-      - "CMakeLists.txt:9 (find_package)"
-    name: "jwt-cpp"
-    configs:
-      -
-        filename: "jwt-cppConfig.cmake"
-        kind: "cmake"
-      -
-        filename: "jwt-cpp-config.cmake"
-        kind: "cmake"
-    version_request:
-      exact: false
-    settings:
-      required: "required_explicit"
-      quiet: false
-      global: false
-      policy_scope: true
-      bypass_provider: false
-      names:
-        - "jwt-cpp"
-      path_suffixes:
-        - ""
-      paths:
-        CMAKE_FIND_USE_CMAKE_PATH: true
-        CMAKE_FIND_USE_CMAKE_ENVIRONMENT_PATH: true
-        CMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH: true
-        CMAKE_FIND_USE_CMAKE_SYSTEM_PATH: true
-        CMAKE_FIND_USE_INSTALL_PREFIX: true
-        CMAKE_FIND_USE_PACKAGE_ROOT_PATH: true
-        CMAKE_FIND_USE_CMAKE_PACKAGE_REGISTRY: true
-        CMAKE_FIND_USE_SYSTEM_PACKAGE_REGISTRY: true
-        CMAKE_FIND_ROOT_PATH_MODE: "BOTH"
-    candidates:
-      -
-        path: "C:/tools/vcpkg/installed/x64-windows/debug/jwt-cppConfig.cmake"
-        mode: "config"
-        reason: "no_exist"
-      -
-        path: "C:/tools/vcpkg/installed/x64-windows/debug/jwt-cpp-config.cmake"
-        mode: "config"
-        reason: "no_exist"
-      -
-        path: "C:/tools/vcpkg/installed/x64-windows/debug/jwt-cppConfig.cmake"
-        mode: "config"
-        reason: "no_exist"
-      -
-        path: "C:/tools/vcpkg/installed/x64-windows/debug/jwt-cpp-config.cmake"
-        mode: "config"
-        reason: "no_exist"
-      -
-        path: "C:/tools/vcpkg/installed/x64-windows/jwt-cppConfig.cmake"
-        mode: "config"
-        reason: "no_exist"
-      -
-        path: "C:/tools/vcpkg/installed/x64-windows/jwt-cpp-config.cmake"
-        mode: "config"
-        reason: "no_exist"
-      -
-        path: "C:/tools/vcpkg/installed/x64-windows/share/jwt-cpp/jwt-cppConfig.cmake"
-        mode: "config"
-        reason: "no_exist"
-    found:
-      path: "C:/tools/vcpkg/installed/x64-windows/share/jwt-cpp/jwt-cpp-config.cmake"
-      mode: "config"
-      version: "0.7.1"
-    search_context:
-      CMAKE_PREFIX_PATH:
-        - "C:/tools/vcpkg/installed/x64-windows/debug"
-        - "C:/tools/vcpkg/installed/x64-windows"
-      ENV{PATH}:
-        - "C:\\Program Files\\PowerShell\\7"
-        - "C:\\Windows\\system32"
-        - "C:\\Windows"
-        - "C:\\Windows\\System32\\Wbem"
-        - "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\"
-        - "C:\\Windows\\System32\\OpenSSH\\"
-        - "C:\\Program Files (x86)\\NVIDIA Corporation\\PhysX\\Common"
-        - "C:\\Program Files\\NVIDIA Corporation\\NVIDIA NvDLISR"
-        - "C:\\Program Files\\Microsoft SQL Server\\150\\Tools\\Binn\\"
-        - "C:\\WINDOWS\\system32"
-        - "C:\\WINDOWS"
-        - "C:\\WINDOWS\\System32\\Wbem"
-        - "C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\"
-        - "C:\\WINDOWS\\System32\\OpenSSH\\"
-        - "C:\\Program Files\\Docker\\Docker\\resources\\bin"
-        - "C:\\Program Files (x86)\\Windows Kits\\10\\Windows Performance Toolkit\\"
-        - "C:\\Program Files\\Go\\bin"
-        - "C:\\Program Files\\Git\\cmd"
-        - "C:\\Program Files\\CMake\\bin"
-        - "C:\\Program Files\\PowerShell\\7\\"
-        - "C:\\Users\\KSK-SHOP\\scoop\\shims"
-        - "C:\\Users\\KSK-SHOP\\AppData\\Local\\Programs\\Python\\Launcher\\"
-        - "C:\\Users\\KSK-SHOP\\AppData\\Local\\Microsoft\\WindowsApps"
-        - "C:\\tools\\VSCode"
-        - "C:\\msys64\\ucrt64\\bin"
-        - "C:\\Users\\KSK-SHOP\\go\\bin"
-        - "C:\\tools\\vcpkg"
-      CMAKE_INSTALL_PREFIX: "C:/Program Files (x86)/authorization"
-      CMAKE_SYSTEM_PREFIX_PATH:
-        - "C:/Program Files"
-        - "C:/Program Files (x86)"
-        - "C:/Program Files/CMake"
-        - "C:/Program Files (x86)/authorization"
-      CMAKE_FIND_ROOT_PATH: "C:/tools/vcpkg/installed/x64-windows/debug;C:/tools/vcpkg/installed/x64-windows"
-  -
-    kind: "find_package-v1"
-    backtrace:
-      - "C:/tools/vcpkg/scripts/buildsystems/vcpkg.cmake:908 (_find_package)"
-      - "C:/Program Files/CMake/share/cmake-4.2/Modules/CMakeFindDependencyMacro.cmake:93 (find_package)"
-      - "C:/Program Files/CMake/share/cmake-4.2/Modules/CMakeFindDependencyMacro.cmake:125 (__find_dependency_common)"
-      - "C:/tools/vcpkg/installed/x64-windows/share/mongoc-1.0/mongoc-1.0-config.cmake:2 (find_dependency)"
-      - "C:/tools/vcpkg/scripts/buildsystems/vcpkg.cmake:908 (_find_package)"
-      - "C:/Program Files/CMake/share/cmake-4.2/Modules/CMakeFindDependencyMacro.cmake:93 (find_package)"
-      - "C:/Program Files/CMake/share/cmake-4.2/Modules/CMakeFindDependencyMacro.cmake:125 (__find_dependency_common)"
-      - "C:/tools/vcpkg/installed/x64-windows/share/mongocxx/mongocxx-config.cmake:2 (find_dependency)"
-      - "C:/tools/vcpkg/scripts/buildsystems/vcpkg.cmake:908 (_find_package)"
-      - "CMakeLists.txt:10 (find_package)"
-    name: "bson-1.0"
-    configs:
-      -
-        filename: "bson-1.0Config.cmake"
-        kind: "cmake"
-      -
-        filename: "bson-1.0-config.cmake"
-        kind: "cmake"
-    version_request:
-      version: "1.30.6"
-      version_complete: "1.30.6"
-      exact: false
-    settings:
-      required: "required_explicit"
-      quiet: false
-      global: false
-      policy_scope: true
-      bypass_provider: false
-      names:
-        - "bson-1.0"
-      path_suffixes:
-        - ""
-      paths:
-        CMAKE_FIND_USE_CMAKE_PATH: true
-        CMAKE_FIND_USE_CMAKE_ENVIRONMENT_PATH: true
-        CMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH: true
-        CMAKE_FIND_USE_CMAKE_SYSTEM_PATH: true
-        CMAKE_FIND_USE_INSTALL_PREFIX: true
-        CMAKE_FIND_USE_PACKAGE_ROOT_PATH: true
-        CMAKE_FIND_USE_CMAKE_PACKAGE_REGISTRY: true
-        CMAKE_FIND_USE_SYSTEM_PACKAGE_REGISTRY: true
-        CMAKE_FIND_ROOT_PATH_MODE: "BOTH"
-    candidates:
-      -
-        path: "C:/tools/vcpkg/installed/x64-windows/debug/bson-1.0Config.cmake"
-        mode: "config"
-        reason: "no_exist"
-      -
-        path: "C:/tools/vcpkg/installed/x64-windows/debug/bson-1.0-config.cmake"
-        mode: "config"
-        reason: "no_exist"
-      -
-        path: "C:/tools/vcpkg/installed/x64-windows/debug/bson-1.0Config.cmake"
-        mode: "config"
-        reason: "no_exist"
-      -
-        path: "C:/tools/vcpkg/installed/x64-windows/debug/bson-1.0-config.cmake"
-        mode: "config"
-        reason: "no_exist"
-      -
-        path: "C:/tools/vcpkg/installed/x64-windows/bson-1.0Config.cmake"
-        mode: "config"
-        reason: "no_exist"
-      -
-        path: "C:/tools/vcpkg/installed/x64-windows/bson-1.0-config.cmake"
-        mode: "config"
-        reason: "no_exist"
-      -
-        path: "C:/tools/vcpkg/installed/x64-windows/share/bson-1.0/bson-1.0Config.cmake"
-        mode: "config"
-        reason: "no_exist"
-    found:
-      path: "C:/tools/vcpkg/installed/x64-windows/share/bson-1.0/bson-1.0-config.cmake"
-      mode: "config"
-      version: "1.30.6"
-    search_context:
-      CMAKE_PREFIX_PATH:
-        - "C:/tools/vcpkg/installed/x64-windows/debug"
-        - "C:/tools/vcpkg/installed/x64-windows"
-      ENV{PATH}:
-        - "C:\\Program Files\\PowerShell\\7"
-        - "C:\\Windows\\system32"
-        - "C:\\Windows"
-        - "C:\\Windows\\System32\\Wbem"
-        - "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\"
-        - "C:\\Windows\\System32\\OpenSSH\\"
-        - "C:\\Program Files (x86)\\NVIDIA Corporation\\PhysX\\Common"
-        - "C:\\Program Files\\NVIDIA Corporation\\NVIDIA NvDLISR"
-        - "C:\\Program Files\\Microsoft SQL Server\\150\\Tools\\Binn\\"
-        - "C:\\WINDOWS\\system32"
-        - "C:\\WINDOWS"
-        - "C:\\WINDOWS\\System32\\Wbem"
-        - "C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\"
-        - "C:\\WINDOWS\\System32\\OpenSSH\\"
-        - "C:\\Program Files\\Docker\\Docker\\resources\\bin"
-        - "C:\\Program Files (x86)\\Windows Kits\\10\\Windows Performance Toolkit\\"
-        - "C:\\Program Files\\Go\\bin"
-        - "C:\\Program Files\\Git\\cmd"
-        - "C:\\Program Files\\CMake\\bin"
-        - "C:\\Program Files\\PowerShell\\7\\"
-        - "C:\\Users\\KSK-SHOP\\scoop\\shims"
-        - "C:\\Users\\KSK-SHOP\\AppData\\Local\\Programs\\Python\\Launcher\\"
-        - "C:\\Users\\KSK-SHOP\\AppData\\Local\\Microsoft\\WindowsApps"
-        - "C:\\tools\\VSCode"
-        - "C:\\msys64\\ucrt64\\bin"
-        - "C:\\Users\\KSK-SHOP\\go\\bin"
-        - "C:\\tools\\vcpkg"
-      CMAKE_INSTALL_PREFIX: "C:/Program Files (x86)/authorization"
-      CMAKE_SYSTEM_PREFIX_PATH:
-        - "C:/Program Files"
-        - "C:/Program Files (x86)"
-        - "C:/Program Files/CMake"
-        - "C:/Program Files (x86)/authorization"
-      CMAKE_FIND_ROOT_PATH: "C:/tools/vcpkg/installed/x64-windows/debug;C:/tools/vcpkg/installed/x64-windows"
-  -
-    kind: "find_package-v1"
-    backtrace:
-      - "C:/tools/vcpkg/scripts/buildsystems/vcpkg.cmake:908 (_find_package)"
-      - "C:/Program Files/CMake/share/cmake-4.2/Modules/CMakeFindDependencyMacro.cmake:93 (find_package)"
-      - "C:/Program Files/CMake/share/cmake-4.2/Modules/CMakeFindDependencyMacro.cmake:125 (__find_dependency_common)"
-      - "C:/tools/vcpkg/installed/x64-windows/share/unofficial-utf8proc/unofficial-utf8proc-config.cmake:8 (find_dependency)"
-      - "C:/tools/vcpkg/scripts/buildsystems/vcpkg.cmake:908 (_find_package)"
-      - "C:/Program Files/CMake/share/cmake-4.2/Modules/CMakeFindDependencyMacro.cmake:93 (find_package)"
-      - "C:/Program Files/CMake/share/cmake-4.2/Modules/CMakeFindDependencyMacro.cmake:125 (__find_dependency_common)"
-      - "C:/tools/vcpkg/installed/x64-windows/share/mongoc-1.0/mongoc-1.0-config.cmake:34 (find_dependency)"
-      - "C:/tools/vcpkg/scripts/buildsystems/vcpkg.cmake:908 (_find_package)"
-      - "C:/Program Files/CMake/share/cmake-4.2/Modules/CMakeFindDependencyMacro.cmake:93 (find_package)"
-      - "C:/Program Files/CMake/share/cmake-4.2/Modules/CMakeFindDependencyMacro.cmake:125 (__find_dependency_common)"
-      - "C:/tools/vcpkg/installed/x64-windows/share/mongocxx/mongocxx-config.cmake:2 (find_dependency)"
-      - "C:/tools/vcpkg/scripts/buildsystems/vcpkg.cmake:908 (_find_package)"
-      - "CMakeLists.txt:10 (find_package)"
-    name: "utf8proc"
-    configs:
-      -
-        filename: "utf8procConfig.cmake"
-        kind: "cmake"
-      -
-        filename: "utf8proc-config.cmake"
-        kind: "cmake"
-    version_request:
-      exact: false
-    settings:
-      required: "required_explicit"
-      quiet: false
-      global: false
-      policy_scope: true
-      bypass_provider: false
-      names:
-        - "utf8proc"
-      path_suffixes:
-        - ""
-      paths:
-        CMAKE_FIND_USE_CMAKE_PATH: true
-        CMAKE_FIND_USE_CMAKE_ENVIRONMENT_PATH: true
-        CMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH: true
-        CMAKE_FIND_USE_CMAKE_SYSTEM_PATH: true
-        CMAKE_FIND_USE_INSTALL_PREFIX: true
-        CMAKE_FIND_USE_PACKAGE_ROOT_PATH: true
-        CMAKE_FIND_USE_CMAKE_PACKAGE_REGISTRY: true
-        CMAKE_FIND_USE_SYSTEM_PACKAGE_REGISTRY: true
-        CMAKE_FIND_ROOT_PATH_MODE: "BOTH"
-    candidates:
-      -
-        path: "C:/tools/vcpkg/installed/x64-windows/debug/utf8procConfig.cmake"
-        mode: "config"
-        reason: "no_exist"
-      -
-        path: "C:/tools/vcpkg/installed/x64-windows/debug/utf8proc-config.cmake"
-        mode: "config"
-        reason: "no_exist"
-      -
-        path: "C:/tools/vcpkg/installed/x64-windows/debug/utf8procConfig.cmake"
-        mode: "config"
-        reason: "no_exist"
-      -
-        path: "C:/tools/vcpkg/installed/x64-windows/debug/utf8proc-config.cmake"
-        mode: "config"
-        reason: "no_exist"
-      -
-        path: "C:/tools/vcpkg/installed/x64-windows/utf8procConfig.cmake"
-        mode: "config"
-        reason: "no_exist"
-      -
-        path: "C:/tools/vcpkg/installed/x64-windows/utf8proc-config.cmake"
-        mode: "config"
-        reason: "no_exist"
-      -
-        path: "C:/tools/vcpkg/installed/x64-windows/share/utf8proc/utf8procConfig.cmake"
-        mode: "config"
-        reason: "no_exist"
-    found:
-      path: "C:/tools/vcpkg/installed/x64-windows/share/utf8proc/utf8proc-config.cmake"
-      mode: "config"
-      version: "2.11.2"
-    search_context:
-      CMAKE_PREFIX_PATH:
-        - "C:/tools/vcpkg/installed/x64-windows/debug"
-        - "C:/tools/vcpkg/installed/x64-windows"
-      ENV{PATH}:
-        - "C:\\Program Files\\PowerShell\\7"
-        - "C:\\Windows\\system32"
-        - "C:\\Windows"
-        - "C:\\Windows\\System32\\Wbem"
-        - "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\"
-        - "C:\\Windows\\System32\\OpenSSH\\"
-        - "C:\\Program Files (x86)\\NVIDIA Corporation\\PhysX\\Common"
-        - "C:\\Program Files\\NVIDIA Corporation\\NVIDIA NvDLISR"
-        - "C:\\Program Files\\Microsoft SQL Server\\150\\Tools\\Binn\\"
-        - "C:\\WINDOWS\\system32"
-        - "C:\\WINDOWS"
-        - "C:\\WINDOWS\\System32\\Wbem"
-        - "C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\"
-        - "C:\\WINDOWS\\System32\\OpenSSH\\"
-        - "C:\\Program Files\\Docker\\Docker\\resources\\bin"
-        - "C:\\Program Files (x86)\\Windows Kits\\10\\Windows Performance Toolkit\\"
-        - "C:\\Program Files\\Go\\bin"
-        - "C:\\Program Files\\Git\\cmd"
-        - "C:\\Program Files\\CMake\\bin"
-        - "C:\\Program Files\\PowerShell\\7\\"
-        - "C:\\Users\\KSK-SHOP\\scoop\\shims"
-        - "C:\\Users\\KSK-SHOP\\AppData\\Local\\Programs\\Python\\Launcher\\"
-        - "C:\\Users\\KSK-SHOP\\AppData\\Local\\Microsoft\\WindowsApps"
-        - "C:\\tools\\VSCode"
-        - "C:\\msys64\\ucrt64\\bin"
-        - "C:\\Users\\KSK-SHOP\\go\\bin"
-        - "C:\\tools\\vcpkg"
-      CMAKE_INSTALL_PREFIX: "C:/Program Files (x86)/authorization"
-      CMAKE_SYSTEM_PREFIX_PATH:
-        - "C:/Program Files"
-        - "C:/Program Files (x86)"
-        - "C:/Program Files/CMake"
-        - "C:/Program Files (x86)/authorization"
-      CMAKE_FIND_ROOT_PATH: "C:/tools/vcpkg/installed/x64-windows/debug;C:/tools/vcpkg/installed/x64-windows"
-  -
-    kind: "find_package-v1"
-    backtrace:
-      - "C:/tools/vcpkg/scripts/buildsystems/vcpkg.cmake:908 (_find_package)"
-      - "C:/Program Files/CMake/share/cmake-4.2/Modules/CMakeFindDependencyMacro.cmake:93 (find_package)"
-      - "C:/Program Files/CMake/share/cmake-4.2/Modules/CMakeFindDependencyMacro.cmake:125 (__find_dependency_common)"
-      - "C:/tools/vcpkg/installed/x64-windows/share/mongoc-1.0/mongoc-1.0-config.cmake:34 (find_dependency)"
-      - "C:/tools/vcpkg/scripts/buildsystems/vcpkg.cmake:908 (_find_package)"
-      - "C:/Program Files/CMake/share/cmake-4.2/Modules/CMakeFindDependencyMacro.cmake:93 (find_package)"
-      - "C:/Program Files/CMake/share/cmake-4.2/Modules/CMakeFindDependencyMacro.cmake:125 (__find_dependency_common)"
-      - "C:/tools/vcpkg/installed/x64-windows/share/mongocxx/mongocxx-config.cmake:2 (find_dependency)"
-      - "C:/tools/vcpkg/scripts/buildsystems/vcpkg.cmake:908 (_find_package)"
-      - "CMakeLists.txt:10 (find_package)"
-    name: "unofficial-utf8proc"
-    configs:
-      -
-        filename: "unofficial-utf8procConfig.cmake"
-        kind: "cmake"
-      -
-        filename: "unofficial-utf8proc-config.cmake"
-        kind: "cmake"
-    version_request:
-      exact: false
-    settings:
-      required: "required_explicit"
-      quiet: false
-      global: false
-      policy_scope: true
-      bypass_provider: false
-      names:
-        - "unofficial-utf8proc"
-      path_suffixes:
-        - ""
-      paths:
-        CMAKE_FIND_USE_CMAKE_PATH: true
-        CMAKE_FIND_USE_CMAKE_ENVIRONMENT_PATH: true
-        CMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH: true
-        CMAKE_FIND_USE_CMAKE_SYSTEM_PATH: true
-        CMAKE_FIND_USE_INSTALL_PREFIX: true
-        CMAKE_FIND_USE_PACKAGE_ROOT_PATH: true
-        CMAKE_FIND_USE_CMAKE_PACKAGE_REGISTRY: true
-        CMAKE_FIND_USE_SYSTEM_PACKAGE_REGISTRY: true
-        CMAKE_FIND_ROOT_PATH_MODE: "BOTH"
-    candidates:
-      -
-        path: "C:/tools/vcpkg/installed/x64-windows/debug/unofficial-utf8procConfig.cmake"
-        mode: "config"
-        reason: "no_exist"
-      -
-        path: "C:/tools/vcpkg/installed/x64-windows/debug/unofficial-utf8proc-config.cmake"
-        mode: "config"
-        reason: "no_exist"
-      -
-        path: "C:/tools/vcpkg/installed/x64-windows/debug/unofficial-utf8procConfig.cmake"
-        mode: "config"
-        reason: "no_exist"
-      -
-        path: "C:/tools/vcpkg/installed/x64-windows/debug/unofficial-utf8proc-config.cmake"
-        mode: "config"
-        reason: "no_exist"
-      -
-        path: "C:/tools/vcpkg/installed/x64-windows/unofficial-utf8procConfig.cmake"
-        mode: "config"
-        reason: "no_exist"
-      -
-        path: "C:/tools/vcpkg/installed/x64-windows/unofficial-utf8proc-config.cmake"
-        mode: "config"
-        reason: "no_exist"
-      -
-        path: "C:/tools/vcpkg/installed/x64-windows/share/unofficial-utf8proc/unofficial-utf8procConfig.cmake"
-        mode: "config"
-        reason: "no_exist"
-    found:
-      path: "C:/tools/vcpkg/installed/x64-windows/share/unofficial-utf8proc/unofficial-utf8proc-config.cmake"
-      mode: "config"
-      version: ""
-    search_context:
-      CMAKE_PREFIX_PATH:
-        - "C:/tools/vcpkg/installed/x64-windows/debug"
-        - "C:/tools/vcpkg/installed/x64-windows"
-      ENV{PATH}:
-        - "C:\\Program Files\\PowerShell\\7"
-        - "C:\\Windows\\system32"
-        - "C:\\Windows"
-        - "C:\\Windows\\System32\\Wbem"
-        - "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\"
-        - "C:\\Windows\\System32\\OpenSSH\\"
-        - "C:\\Program Files (x86)\\NVIDIA Corporation\\PhysX\\Common"
-        - "C:\\Program Files\\NVIDIA Corporation\\NVIDIA NvDLISR"
-        - "C:\\Program Files\\Microsoft SQL Server\\150\\Tools\\Binn\\"
-        - "C:\\WINDOWS\\system32"
-        - "C:\\WINDOWS"
-        - "C:\\WINDOWS\\System32\\Wbem"
-        - "C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\"
-        - "C:\\WINDOWS\\System32\\OpenSSH\\"
-        - "C:\\Program Files\\Docker\\Docker\\resources\\bin"
-        - "C:\\Program Files (x86)\\Windows Kits\\10\\Windows Performance Toolkit\\"
-        - "C:\\Program Files\\Go\\bin"
-        - "C:\\Program Files\\Git\\cmd"
-        - "C:\\Program Files\\CMake\\bin"
-        - "C:\\Program Files\\PowerShell\\7\\"
-        - "C:\\Users\\KSK-SHOP\\scoop\\shims"
-        - "C:\\Users\\KSK-SHOP\\AppData\\Local\\Programs\\Python\\Launcher\\"
-        - "C:\\Users\\KSK-SHOP\\AppData\\Local\\Microsoft\\WindowsApps"
-        - "C:\\tools\\VSCode"
-        - "C:\\msys64\\ucrt64\\bin"
-        - "C:\\Users\\KSK-SHOP\\go\\bin"
-        - "C:\\tools\\vcpkg"
-      CMAKE_INSTALL_PREFIX: "C:/Program Files (x86)/authorization"
-      CMAKE_SYSTEM_PREFIX_PATH:
-        - "C:/Program Files"
-        - "C:/Program Files (x86)"
-        - "C:/Program Files/CMake"
-        - "C:/Program Files (x86)/authorization"
-      CMAKE_FIND_ROOT_PATH: "C:/tools/vcpkg/installed/x64-windows/debug;C:/tools/vcpkg/installed/x64-windows"
-  -
-    kind: "find_package-v1"
-    backtrace:
-      - "C:/tools/vcpkg/scripts/buildsystems/vcpkg.cmake:908 (_find_package)"
-      - "C:/Program Files/CMake/share/cmake-4.2/Modules/CMakeFindDependencyMacro.cmake:93 (find_package)"
-      - "C:/Program Files/CMake/share/cmake-4.2/Modules/CMakeFindDependencyMacro.cmake:125 (__find_dependency_common)"
-      - "C:/tools/vcpkg/installed/x64-windows/share/mongocxx/mongocxx-config.cmake:2 (find_dependency)"
-      - "C:/tools/vcpkg/scripts/buildsystems/vcpkg.cmake:908 (_find_package)"
-      - "CMakeLists.txt:10 (find_package)"
-    name: "mongoc-1.0"
-    configs:
-      -
-        filename: "mongoc-1.0Config.cmake"
-        kind: "cmake"
-      -
-        filename: "mongoc-1.0-config.cmake"
-        kind: "cmake"
-    version_request:
-      exact: false
-    settings:
-      required: "required_explicit"
-      quiet: false
-      global: false
-      policy_scope: true
-      bypass_provider: false
-      names:
-        - "mongoc-1.0"
-      path_suffixes:
-        - ""
-      paths:
-        CMAKE_FIND_USE_CMAKE_PATH: true
-        CMAKE_FIND_USE_CMAKE_ENVIRONMENT_PATH: true
-        CMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH: true
-        CMAKE_FIND_USE_CMAKE_SYSTEM_PATH: true
-        CMAKE_FIND_USE_INSTALL_PREFIX: true
-        CMAKE_FIND_USE_PACKAGE_ROOT_PATH: true
-        CMAKE_FIND_USE_CMAKE_PACKAGE_REGISTRY: true
-        CMAKE_FIND_USE_SYSTEM_PACKAGE_REGISTRY: true
-        CMAKE_FIND_ROOT_PATH_MODE: "BOTH"
-    candidates:
-      -
-        path: "C:/tools/vcpkg/installed/x64-windows/debug/mongoc-1.0Config.cmake"
-        mode: "config"
-        reason: "no_exist"
-      -
-        path: "C:/tools/vcpkg/installed/x64-windows/debug/mongoc-1.0-config.cmake"
-        mode: "config"
-        reason: "no_exist"
-      -
-        path: "C:/tools/vcpkg/installed/x64-windows/debug/mongoc-1.0Config.cmake"
-        mode: "config"
-        reason: "no_exist"
-      -
-        path: "C:/tools/vcpkg/installed/x64-windows/debug/mongoc-1.0-config.cmake"
-        mode: "config"
-        reason: "no_exist"
-      -
-        path: "C:/tools/vcpkg/installed/x64-windows/mongoc-1.0Config.cmake"
-        mode: "config"
-        reason: "no_exist"
-      -
-        path: "C:/tools/vcpkg/installed/x64-windows/mongoc-1.0-config.cmake"
-        mode: "config"
-        reason: "no_exist"
-      -
-        path: "C:/tools/vcpkg/installed/x64-windows/share/mongoc-1.0/mongoc-1.0Config.cmake"
-        mode: "config"
-        reason: "no_exist"
-    found:
-      path: "C:/tools/vcpkg/installed/x64-windows/share/mongoc-1.0/mongoc-1.0-config.cmake"
-      mode: "config"
-      version: "1.30.6"
-    search_context:
-      CMAKE_PREFIX_PATH:
-        - "C:/tools/vcpkg/installed/x64-windows/debug"
-        - "C:/tools/vcpkg/installed/x64-windows"
-      ENV{PATH}:
-        - "C:\\Program Files\\PowerShell\\7"
-        - "C:\\Windows\\system32"
-        - "C:\\Windows"
-        - "C:\\Windows\\System32\\Wbem"
-        - "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\"
-        - "C:\\Windows\\System32\\OpenSSH\\"
-        - "C:\\Program Files (x86)\\NVIDIA Corporation\\PhysX\\Common"
-        - "C:\\Program Files\\NVIDIA Corporation\\NVIDIA NvDLISR"
-        - "C:\\Program Files\\Microsoft SQL Server\\150\\Tools\\Binn\\"
-        - "C:\\WINDOWS\\system32"
-        - "C:\\WINDOWS"
-        - "C:\\WINDOWS\\System32\\Wbem"
-        - "C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\"
-        - "C:\\WINDOWS\\System32\\OpenSSH\\"
-        - "C:\\Program Files\\Docker\\Docker\\resources\\bin"
-        - "C:\\Program Files (x86)\\Windows Kits\\10\\Windows Performance Toolkit\\"
-        - "C:\\Program Files\\Go\\bin"
-        - "C:\\Program Files\\Git\\cmd"
-        - "C:\\Program Files\\CMake\\bin"
-        - "C:\\Program Files\\PowerShell\\7\\"
-        - "C:\\Users\\KSK-SHOP\\scoop\\shims"
-        - "C:\\Users\\KSK-SHOP\\AppData\\Local\\Programs\\Python\\Launcher\\"
-        - "C:\\Users\\KSK-SHOP\\AppData\\Local\\Microsoft\\WindowsApps"
-        - "C:\\tools\\VSCode"
-        - "C:\\msys64\\ucrt64\\bin"
-        - "C:\\Users\\KSK-SHOP\\go\\bin"
-        - "C:\\tools\\vcpkg"
-      CMAKE_INSTALL_PREFIX: "C:/Program Files (x86)/authorization"
-      CMAKE_SYSTEM_PREFIX_PATH:
-        - "C:/Program Files"
-        - "C:/Program Files (x86)"
-        - "C:/Program Files/CMake"
-        - "C:/Program Files (x86)/authorization"
-      CMAKE_FIND_ROOT_PATH: "C:/tools/vcpkg/installed/x64-windows/debug;C:/tools/vcpkg/installed/x64-windows"
-  -
-    kind: "find_package-v1"
-    backtrace:
-      - "C:/tools/vcpkg/scripts/buildsystems/vcpkg.cmake:908 (_find_package)"
-      - "C:/Program Files/CMake/share/cmake-4.2/Modules/CMakeFindDependencyMacro.cmake:93 (find_package)"
-      - "C:/Program Files/CMake/share/cmake-4.2/Modules/CMakeFindDependencyMacro.cmake:125 (__find_dependency_common)"
-      - "C:/tools/vcpkg/installed/x64-windows/share/mongocxx/mongocxx-config.cmake:3 (find_dependency)"
-      - "C:/tools/vcpkg/scripts/buildsystems/vcpkg.cmake:908 (_find_package)"
-      - "CMakeLists.txt:10 (find_package)"
-    name: "bsoncxx"
-    configs:
-      -
-        filename: "bsoncxxConfig.cmake"
-        kind: "cmake"
-      -
-        filename: "bsoncxx-config.cmake"
-        kind: "cmake"
-    version_request:
-      exact: false
-    settings:
-      required: "required_explicit"
-      quiet: false
-      global: false
-      policy_scope: true
-      bypass_provider: false
-      names:
-        - "bsoncxx"
-      path_suffixes:
-        - ""
-      paths:
-        CMAKE_FIND_USE_CMAKE_PATH: true
-        CMAKE_FIND_USE_CMAKE_ENVIRONMENT_PATH: true
-        CMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH: true
-        CMAKE_FIND_USE_CMAKE_SYSTEM_PATH: true
-        CMAKE_FIND_USE_INSTALL_PREFIX: true
-        CMAKE_FIND_USE_PACKAGE_ROOT_PATH: true
-        CMAKE_FIND_USE_CMAKE_PACKAGE_REGISTRY: true
-        CMAKE_FIND_USE_SYSTEM_PACKAGE_REGISTRY: true
-        CMAKE_FIND_ROOT_PATH_MODE: "BOTH"
-    candidates:
-      -
-        path: "C:/tools/vcpkg/installed/x64-windows/debug/bsoncxxConfig.cmake"
-        mode: "config"
-        reason: "no_exist"
-      -
-        path: "C:/tools/vcpkg/installed/x64-windows/debug/bsoncxx-config.cmake"
-        mode: "config"
-        reason: "no_exist"
-      -
-        path: "C:/tools/vcpkg/installed/x64-windows/debug/bsoncxxConfig.cmake"
-        mode: "config"
-        reason: "no_exist"
-      -
-        path: "C:/tools/vcpkg/installed/x64-windows/debug/bsoncxx-config.cmake"
-        mode: "config"
-        reason: "no_exist"
-      -
-        path: "C:/tools/vcpkg/installed/x64-windows/bsoncxxConfig.cmake"
-        mode: "config"
-        reason: "no_exist"
-      -
-        path: "C:/tools/vcpkg/installed/x64-windows/bsoncxx-config.cmake"
-        mode: "config"
-        reason: "no_exist"
-      -
-        path: "C:/tools/vcpkg/installed/x64-windows/share/bsoncxx/bsoncxxConfig.cmake"
-        mode: "config"
-        reason: "no_exist"
-    found:
-      path: "C:/tools/vcpkg/installed/x64-windows/share/bsoncxx/bsoncxx-config.cmake"
-      mode: "config"
-      version: "4.0.0"
-    search_context:
-      CMAKE_PREFIX_PATH:
-        - "C:/tools/vcpkg/installed/x64-windows/debug"
-        - "C:/tools/vcpkg/installed/x64-windows"
-      ENV{PATH}:
-        - "C:\\Program Files\\PowerShell\\7"
-        - "C:\\Windows\\system32"
-        - "C:\\Windows"
-        - "C:\\Windows\\System32\\Wbem"
-        - "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\"
-        - "C:\\Windows\\System32\\OpenSSH\\"
-        - "C:\\Program Files (x86)\\NVIDIA Corporation\\PhysX\\Common"
-        - "C:\\Program Files\\NVIDIA Corporation\\NVIDIA NvDLISR"
-        - "C:\\Program Files\\Microsoft SQL Server\\150\\Tools\\Binn\\"
-        - "C:\\WINDOWS\\system32"
-        - "C:\\WINDOWS"
-        - "C:\\WINDOWS\\System32\\Wbem"
-        - "C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\"
-        - "C:\\WINDOWS\\System32\\OpenSSH\\"
-        - "C:\\Program Files\\Docker\\Docker\\resources\\bin"
-        - "C:\\Program Files (x86)\\Windows Kits\\10\\Windows Performance Toolkit\\"
-        - "C:\\Program Files\\Go\\bin"
-        - "C:\\Program Files\\Git\\cmd"
-        - "C:\\Program Files\\CMake\\bin"
-        - "C:\\Program Files\\PowerShell\\7\\"
-        - "C:\\Users\\KSK-SHOP\\scoop\\shims"
-        - "C:\\Users\\KSK-SHOP\\AppData\\Local\\Programs\\Python\\Launcher\\"
-        - "C:\\Users\\KSK-SHOP\\AppData\\Local\\Microsoft\\WindowsApps"
-        - "C:\\tools\\VSCode"
-        - "C:\\msys64\\ucrt64\\bin"
-        - "C:\\Users\\KSK-SHOP\\go\\bin"
-        - "C:\\tools\\vcpkg"
-      CMAKE_INSTALL_PREFIX: "C:/Program Files (x86)/authorization"
-      CMAKE_SYSTEM_PREFIX_PATH:
-        - "C:/Program Files"
-        - "C:/Program Files (x86)"
-        - "C:/Program Files/CMake"
-        - "C:/Program Files (x86)/authorization"
-      CMAKE_FIND_ROOT_PATH: "C:/tools/vcpkg/installed/x64-windows/debug;C:/tools/vcpkg/installed/x64-windows"
-  -
-    kind: "find_package-v1"
-    backtrace:
-      - "C:/tools/vcpkg/scripts/buildsystems/vcpkg.cmake:908 (_find_package)"
-      - "CMakeLists.txt:10 (find_package)"
-    name: "mongocxx"
-    configs:
-      -
-        filename: "mongocxxConfig.cmake"
-        kind: "cmake"
-      -
-        filename: "mongocxx-config.cmake"
-        kind: "cmake"
-    version_request:
-      exact: false
-    settings:
-      required: "required_explicit"
-      quiet: false
-      global: false
-      policy_scope: true
-      bypass_provider: false
-      names:
-        - "mongocxx"
-      path_suffixes:
-        - ""
-      paths:
-        CMAKE_FIND_USE_CMAKE_PATH: true
-        CMAKE_FIND_USE_CMAKE_ENVIRONMENT_PATH: true
-        CMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH: true
-        CMAKE_FIND_USE_CMAKE_SYSTEM_PATH: true
-        CMAKE_FIND_USE_INSTALL_PREFIX: true
-        CMAKE_FIND_USE_PACKAGE_ROOT_PATH: true
-        CMAKE_FIND_USE_CMAKE_PACKAGE_REGISTRY: true
-        CMAKE_FIND_USE_SYSTEM_PACKAGE_REGISTRY: true
-        CMAKE_FIND_ROOT_PATH_MODE: "BOTH"
-    candidates:
-      -
-        path: "C:/tools/vcpkg/installed/x64-windows/debug/mongocxxConfig.cmake"
-        mode: "config"
-        reason: "no_exist"
-      -
-        path: "C:/tools/vcpkg/installed/x64-windows/debug/mongocxx-config.cmake"
-        mode: "config"
-        reason: "no_exist"
-      -
-        path: "C:/tools/vcpkg/installed/x64-windows/debug/mongocxxConfig.cmake"
-        mode: "config"
-        reason: "no_exist"
-      -
-        path: "C:/tools/vcpkg/installed/x64-windows/debug/mongocxx-config.cmake"
-        mode: "config"
-        reason: "no_exist"
-      -
-        path: "C:/tools/vcpkg/installed/x64-windows/mongocxxConfig.cmake"
-        mode: "config"
-        reason: "no_exist"
-      -
-        path: "C:/tools/vcpkg/installed/x64-windows/mongocxx-config.cmake"
-        mode: "config"
-        reason: "no_exist"
-      -
-        path: "C:/tools/vcpkg/installed/x64-windows/share/mongocxx/mongocxxConfig.cmake"
-        mode: "config"
-        reason: "no_exist"
-    found:
-      path: "C:/tools/vcpkg/installed/x64-windows/share/mongocxx/mongocxx-config.cmake"
-      mode: "config"
-      version: "4.0.0"
-    search_context:
-      CMAKE_PREFIX_PATH:
-        - "C:/tools/vcpkg/installed/x64-windows/debug"
-        - "C:/tools/vcpkg/installed/x64-windows"
-      ENV{PATH}:
-        - "C:\\Program Files\\PowerShell\\7"
-        - "C:\\Windows\\system32"
-        - "C:\\Windows"
-        - "C:\\Windows\\System32\\Wbem"
-        - "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\"
-        - "C:\\Windows\\System32\\OpenSSH\\"
-        - "C:\\Program Files (x86)\\NVIDIA Corporation\\PhysX\\Common"
-        - "C:\\Program Files\\NVIDIA Corporation\\NVIDIA NvDLISR"
-        - "C:\\Program Files\\Microsoft SQL Server\\150\\Tools\\Binn\\"
-        - "C:\\WINDOWS\\system32"
-        - "C:\\WINDOWS"
-        - "C:\\WINDOWS\\System32\\Wbem"
-        - "C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\"
-        - "C:\\WINDOWS\\System32\\OpenSSH\\"
-        - "C:\\Program Files\\Docker\\Docker\\resources\\bin"
-        - "C:\\Program Files (x86)\\Windows Kits\\10\\Windows Performance Toolkit\\"
-        - "C:\\Program Files\\Go\\bin"
-        - "C:\\Program Files\\Git\\cmd"
-        - "C:\\Program Files\\CMake\\bin"
-        - "C:\\Program Files\\PowerShell\\7\\"
-        - "C:\\Users\\KSK-SHOP\\scoop\\shims"
-        - "C:\\Users\\KSK-SHOP\\AppData\\Local\\Programs\\Python\\Launcher\\"
-        - "C:\\Users\\KSK-SHOP\\AppData\\Local\\Microsoft\\WindowsApps"
-        - "C:\\tools\\VSCode"
-        - "C:\\msys64\\ucrt64\\bin"
-        - "C:\\Users\\KSK-SHOP\\go\\bin"
-        - "C:\\tools\\vcpkg"
-      CMAKE_INSTALL_PREFIX: "C:/Program Files (x86)/authorization"
-      CMAKE_SYSTEM_PREFIX_PATH:
-        - "C:/Program Files"
-        - "C:/Program Files (x86)"
-        - "C:/Program Files/CMake"
-        - "C:/Program Files (x86)/authorization"
+        - "C:/Program Files (x86)/auth"
       CMAKE_FIND_ROOT_PATH: "C:/tools/vcpkg/installed/x64-windows/debug;C:/tools/vcpkg/installed/x64-windows"
   -
     kind: "find-v1"
     backtrace:
       - "C:/tools/vcpkg/scripts/buildsystems/vcpkg.cmake:188 (find_program)"
       - "C:/tools/vcpkg/scripts/buildsystems/vcpkg.cmake:621 (z_vcpkg_set_powershell_path)"
-      - "CMakeLists.txt:13 (add_executable)"
+      - "CMakeLists.txt:20 (add_executable)"
     mode: "program"
     variable: "Z_VCPKG_PWSH_PATH"
     description: "Path to a program."
@@ -4101,6 +3668,9 @@ events:
       - "C:/tools/vcpkg/installed/x64-windows/debug/tools/vcpkg/installed/x64-windows/sbin/"
       - "C:/tools/vcpkg/installed/x64-windows/debug/tools/vcpkg/installed/x64-windows/"
       - "C:/tools/vcpkg/installed/x64-windows/debug/tools/vcpkg/installed/x64-windows/tools/"
+      - "C:/tools/vcpkg/installed/x64-windows/debug/tools/vcpkg/installed/x64-windows/tools/libmysql/"
+      - "C:/tools/vcpkg/installed/x64-windows/debug/tools/vcpkg/installed/x64-windows/tools/protobuf/"
+      - "C:/tools/vcpkg/installed/x64-windows/debug/tools/vcpkg/installed/x64-windows/tools/curl/bin/"
       - "C:/tools/vcpkg/installed/x64-windows/debug/Program Files/PowerShell/7/"
       - "C:/tools/vcpkg/installed/x64-windows/debug/Windows/System32/"
       - "C:/tools/vcpkg/installed/x64-windows/debug/Windows/"
@@ -4131,9 +3701,9 @@ events:
       - "C:/tools/vcpkg/installed/x64-windows/debug/Program Files/CMake/bin/"
       - "C:/tools/vcpkg/installed/x64-windows/debug/Program Files/CMake/sbin/"
       - "C:/tools/vcpkg/installed/x64-windows/debug/Program Files/CMake/"
-      - "C:/tools/vcpkg/installed/x64-windows/debug/Program Files (x86)/authorization/bin/"
-      - "C:/tools/vcpkg/installed/x64-windows/debug/Program Files (x86)/authorization/sbin/"
-      - "C:/tools/vcpkg/installed/x64-windows/debug/Program Files (x86)/authorization/"
+      - "C:/tools/vcpkg/installed/x64-windows/debug/Program Files (x86)/auth/bin/"
+      - "C:/tools/vcpkg/installed/x64-windows/debug/Program Files (x86)/auth/sbin/"
+      - "C:/tools/vcpkg/installed/x64-windows/debug/Program Files (x86)/auth/"
       - "C:/tools/vcpkg/installed/x64-windows/debug/bin/"
       - "C:/tools/vcpkg/installed/x64-windows/debug/sbin/"
       - "C:/tools/vcpkg/installed/x64-windows/debug/"
@@ -4141,6 +3711,9 @@ events:
       - "C:/tools/vcpkg/installed/x64-windows/sbin/"
       - "C:/tools/vcpkg/installed/x64-windows/"
       - "C:/tools/vcpkg/installed/x64-windows/tools/"
+      - "C:/tools/vcpkg/installed/x64-windows/tools/libmysql/"
+      - "C:/tools/vcpkg/installed/x64-windows/tools/protobuf/"
+      - "C:/tools/vcpkg/installed/x64-windows/tools/curl/bin/"
       - "C:/tools/vcpkg/installed/x64-windows/Program Files/PowerShell/7/"
       - "C:/tools/vcpkg/installed/x64-windows/Windows/System32/"
       - "C:/tools/vcpkg/installed/x64-windows/Windows/"
@@ -4171,9 +3744,9 @@ events:
       - "C:/tools/vcpkg/installed/x64-windows/Program Files/CMake/bin/"
       - "C:/tools/vcpkg/installed/x64-windows/Program Files/CMake/sbin/"
       - "C:/tools/vcpkg/installed/x64-windows/Program Files/CMake/"
-      - "C:/tools/vcpkg/installed/x64-windows/Program Files (x86)/authorization/bin/"
-      - "C:/tools/vcpkg/installed/x64-windows/Program Files (x86)/authorization/sbin/"
-      - "C:/tools/vcpkg/installed/x64-windows/Program Files (x86)/authorization/"
+      - "C:/tools/vcpkg/installed/x64-windows/Program Files (x86)/auth/bin/"
+      - "C:/tools/vcpkg/installed/x64-windows/Program Files (x86)/auth/sbin/"
+      - "C:/tools/vcpkg/installed/x64-windows/Program Files (x86)/auth/"
       - "C:/tools/vcpkg/installed/x64-windows/debug/bin/"
       - "C:/tools/vcpkg/installed/x64-windows/debug/sbin/"
       - "C:/tools/vcpkg/installed/x64-windows/debug/"
@@ -4181,6 +3754,9 @@ events:
       - "C:/tools/vcpkg/installed/x64-windows/sbin/"
       - "C:/tools/vcpkg/installed/x64-windows/"
       - "C:/tools/vcpkg/installed/x64-windows/tools/"
+      - "C:/tools/vcpkg/installed/x64-windows/tools/libmysql/"
+      - "C:/tools/vcpkg/installed/x64-windows/tools/protobuf/"
+      - "C:/tools/vcpkg/installed/x64-windows/tools/curl/bin/"
       - "C:/Program Files/PowerShell/7/"
       - "C:/Windows/System32/"
       - "C:/Windows/"
@@ -4211,9 +3787,9 @@ events:
       - "C:/Program Files/CMake/bin/"
       - "C:/Program Files/CMake/sbin/"
       - "C:/Program Files/CMake/"
-      - "C:/Program Files (x86)/authorization/bin/"
-      - "C:/Program Files (x86)/authorization/sbin/"
-      - "C:/Program Files (x86)/authorization/"
+      - "C:/Program Files (x86)/auth/bin/"
+      - "C:/Program Files (x86)/auth/sbin/"
+      - "C:/Program Files (x86)/auth/"
     searched_directories:
       - "C:/tools/vcpkg/installed/x64-windows/debug/bin/pwsh.com"
       - "C:/tools/vcpkg/installed/x64-windows/debug/bin/pwsh.exe"
@@ -4236,6 +3812,15 @@ events:
       - "C:/tools/vcpkg/installed/x64-windows/debug/tools/vcpkg/installed/x64-windows/tools/pwsh.com"
       - "C:/tools/vcpkg/installed/x64-windows/debug/tools/vcpkg/installed/x64-windows/tools/pwsh.exe"
       - "C:/tools/vcpkg/installed/x64-windows/debug/tools/vcpkg/installed/x64-windows/tools/pwsh"
+      - "C:/tools/vcpkg/installed/x64-windows/debug/tools/vcpkg/installed/x64-windows/tools/libmysql/pwsh.com"
+      - "C:/tools/vcpkg/installed/x64-windows/debug/tools/vcpkg/installed/x64-windows/tools/libmysql/pwsh.exe"
+      - "C:/tools/vcpkg/installed/x64-windows/debug/tools/vcpkg/installed/x64-windows/tools/libmysql/pwsh"
+      - "C:/tools/vcpkg/installed/x64-windows/debug/tools/vcpkg/installed/x64-windows/tools/protobuf/pwsh.com"
+      - "C:/tools/vcpkg/installed/x64-windows/debug/tools/vcpkg/installed/x64-windows/tools/protobuf/pwsh.exe"
+      - "C:/tools/vcpkg/installed/x64-windows/debug/tools/vcpkg/installed/x64-windows/tools/protobuf/pwsh"
+      - "C:/tools/vcpkg/installed/x64-windows/debug/tools/vcpkg/installed/x64-windows/tools/curl/bin/pwsh.com"
+      - "C:/tools/vcpkg/installed/x64-windows/debug/tools/vcpkg/installed/x64-windows/tools/curl/bin/pwsh.exe"
+      - "C:/tools/vcpkg/installed/x64-windows/debug/tools/vcpkg/installed/x64-windows/tools/curl/bin/pwsh"
       - "C:/tools/vcpkg/installed/x64-windows/debug/Program Files/PowerShell/7/pwsh.com"
       - "C:/tools/vcpkg/installed/x64-windows/debug/Program Files/PowerShell/7/pwsh.exe"
       - "C:/tools/vcpkg/installed/x64-windows/debug/Program Files/PowerShell/7/pwsh"
@@ -4326,15 +3911,15 @@ events:
       - "C:/tools/vcpkg/installed/x64-windows/debug/Program Files/CMake/pwsh.com"
       - "C:/tools/vcpkg/installed/x64-windows/debug/Program Files/CMake/pwsh.exe"
       - "C:/tools/vcpkg/installed/x64-windows/debug/Program Files/CMake/pwsh"
-      - "C:/tools/vcpkg/installed/x64-windows/debug/Program Files (x86)/authorization/bin/pwsh.com"
-      - "C:/tools/vcpkg/installed/x64-windows/debug/Program Files (x86)/authorization/bin/pwsh.exe"
-      - "C:/tools/vcpkg/installed/x64-windows/debug/Program Files (x86)/authorization/bin/pwsh"
-      - "C:/tools/vcpkg/installed/x64-windows/debug/Program Files (x86)/authorization/sbin/pwsh.com"
-      - "C:/tools/vcpkg/installed/x64-windows/debug/Program Files (x86)/authorization/sbin/pwsh.exe"
-      - "C:/tools/vcpkg/installed/x64-windows/debug/Program Files (x86)/authorization/sbin/pwsh"
-      - "C:/tools/vcpkg/installed/x64-windows/debug/Program Files (x86)/authorization/pwsh.com"
-      - "C:/tools/vcpkg/installed/x64-windows/debug/Program Files (x86)/authorization/pwsh.exe"
-      - "C:/tools/vcpkg/installed/x64-windows/debug/Program Files (x86)/authorization/pwsh"
+      - "C:/tools/vcpkg/installed/x64-windows/debug/Program Files (x86)/auth/bin/pwsh.com"
+      - "C:/tools/vcpkg/installed/x64-windows/debug/Program Files (x86)/auth/bin/pwsh.exe"
+      - "C:/tools/vcpkg/installed/x64-windows/debug/Program Files (x86)/auth/bin/pwsh"
+      - "C:/tools/vcpkg/installed/x64-windows/debug/Program Files (x86)/auth/sbin/pwsh.com"
+      - "C:/tools/vcpkg/installed/x64-windows/debug/Program Files (x86)/auth/sbin/pwsh.exe"
+      - "C:/tools/vcpkg/installed/x64-windows/debug/Program Files (x86)/auth/sbin/pwsh"
+      - "C:/tools/vcpkg/installed/x64-windows/debug/Program Files (x86)/auth/pwsh.com"
+      - "C:/tools/vcpkg/installed/x64-windows/debug/Program Files (x86)/auth/pwsh.exe"
+      - "C:/tools/vcpkg/installed/x64-windows/debug/Program Files (x86)/auth/pwsh"
       - "C:/tools/vcpkg/installed/x64-windows/debug/bin/pwsh.com"
       - "C:/tools/vcpkg/installed/x64-windows/debug/bin/pwsh.exe"
       - "C:/tools/vcpkg/installed/x64-windows/debug/bin/pwsh"
@@ -4356,6 +3941,15 @@ events:
       - "C:/tools/vcpkg/installed/x64-windows/tools/pwsh.com"
       - "C:/tools/vcpkg/installed/x64-windows/tools/pwsh.exe"
       - "C:/tools/vcpkg/installed/x64-windows/tools/pwsh"
+      - "C:/tools/vcpkg/installed/x64-windows/tools/libmysql/pwsh.com"
+      - "C:/tools/vcpkg/installed/x64-windows/tools/libmysql/pwsh.exe"
+      - "C:/tools/vcpkg/installed/x64-windows/tools/libmysql/pwsh"
+      - "C:/tools/vcpkg/installed/x64-windows/tools/protobuf/pwsh.com"
+      - "C:/tools/vcpkg/installed/x64-windows/tools/protobuf/pwsh.exe"
+      - "C:/tools/vcpkg/installed/x64-windows/tools/protobuf/pwsh"
+      - "C:/tools/vcpkg/installed/x64-windows/tools/curl/bin/pwsh.com"
+      - "C:/tools/vcpkg/installed/x64-windows/tools/curl/bin/pwsh.exe"
+      - "C:/tools/vcpkg/installed/x64-windows/tools/curl/bin/pwsh"
       - "C:/tools/vcpkg/installed/x64-windows/Program Files/PowerShell/7/pwsh.com"
       - "C:/tools/vcpkg/installed/x64-windows/Program Files/PowerShell/7/pwsh.exe"
       - "C:/tools/vcpkg/installed/x64-windows/Program Files/PowerShell/7/pwsh"
@@ -4446,15 +4040,15 @@ events:
       - "C:/tools/vcpkg/installed/x64-windows/Program Files/CMake/pwsh.com"
       - "C:/tools/vcpkg/installed/x64-windows/Program Files/CMake/pwsh.exe"
       - "C:/tools/vcpkg/installed/x64-windows/Program Files/CMake/pwsh"
-      - "C:/tools/vcpkg/installed/x64-windows/Program Files (x86)/authorization/bin/pwsh.com"
-      - "C:/tools/vcpkg/installed/x64-windows/Program Files (x86)/authorization/bin/pwsh.exe"
-      - "C:/tools/vcpkg/installed/x64-windows/Program Files (x86)/authorization/bin/pwsh"
-      - "C:/tools/vcpkg/installed/x64-windows/Program Files (x86)/authorization/sbin/pwsh.com"
-      - "C:/tools/vcpkg/installed/x64-windows/Program Files (x86)/authorization/sbin/pwsh.exe"
-      - "C:/tools/vcpkg/installed/x64-windows/Program Files (x86)/authorization/sbin/pwsh"
-      - "C:/tools/vcpkg/installed/x64-windows/Program Files (x86)/authorization/pwsh.com"
-      - "C:/tools/vcpkg/installed/x64-windows/Program Files (x86)/authorization/pwsh.exe"
-      - "C:/tools/vcpkg/installed/x64-windows/Program Files (x86)/authorization/pwsh"
+      - "C:/tools/vcpkg/installed/x64-windows/Program Files (x86)/auth/bin/pwsh.com"
+      - "C:/tools/vcpkg/installed/x64-windows/Program Files (x86)/auth/bin/pwsh.exe"
+      - "C:/tools/vcpkg/installed/x64-windows/Program Files (x86)/auth/bin/pwsh"
+      - "C:/tools/vcpkg/installed/x64-windows/Program Files (x86)/auth/sbin/pwsh.com"
+      - "C:/tools/vcpkg/installed/x64-windows/Program Files (x86)/auth/sbin/pwsh.exe"
+      - "C:/tools/vcpkg/installed/x64-windows/Program Files (x86)/auth/sbin/pwsh"
+      - "C:/tools/vcpkg/installed/x64-windows/Program Files (x86)/auth/pwsh.com"
+      - "C:/tools/vcpkg/installed/x64-windows/Program Files (x86)/auth/pwsh.exe"
+      - "C:/tools/vcpkg/installed/x64-windows/Program Files (x86)/auth/pwsh"
       - "C:/tools/vcpkg/installed/x64-windows/debug/bin/pwsh.com"
       - "C:/tools/vcpkg/installed/x64-windows/debug/bin/pwsh.exe"
       - "C:/tools/vcpkg/installed/x64-windows/debug/bin/pwsh"
@@ -4476,11 +4070,23 @@ events:
       - "C:/tools/vcpkg/installed/x64-windows/tools/pwsh.com"
       - "C:/tools/vcpkg/installed/x64-windows/tools/pwsh.exe"
       - "C:/tools/vcpkg/installed/x64-windows/tools/pwsh"
+      - "C:/tools/vcpkg/installed/x64-windows/tools/libmysql/pwsh.com"
+      - "C:/tools/vcpkg/installed/x64-windows/tools/libmysql/pwsh.exe"
+      - "C:/tools/vcpkg/installed/x64-windows/tools/libmysql/pwsh"
+      - "C:/tools/vcpkg/installed/x64-windows/tools/protobuf/pwsh.com"
+      - "C:/tools/vcpkg/installed/x64-windows/tools/protobuf/pwsh.exe"
+      - "C:/tools/vcpkg/installed/x64-windows/tools/protobuf/pwsh"
+      - "C:/tools/vcpkg/installed/x64-windows/tools/curl/bin/pwsh.com"
+      - "C:/tools/vcpkg/installed/x64-windows/tools/curl/bin/pwsh.exe"
+      - "C:/tools/vcpkg/installed/x64-windows/tools/curl/bin/pwsh"
       - "C:/Program Files/PowerShell/7/pwsh.com"
     found: "C:/Program Files/PowerShell/7/pwsh.exe"
     search_context:
       CMAKE_PROGRAM_PATH:
         - "C:/tools/vcpkg/installed/x64-windows/tools"
+        - "C:/tools/vcpkg/installed/x64-windows/tools/libmysql"
+        - "C:/tools/vcpkg/installed/x64-windows/tools/protobuf"
+        - "C:/tools/vcpkg/installed/x64-windows/tools/curl/bin"
       CMAKE_PREFIX_PATH:
         - "C:/tools/vcpkg/installed/x64-windows/debug"
         - "C:/tools/vcpkg/installed/x64-windows"
@@ -4512,11 +4118,11 @@ events:
         - "C:\\msys64\\ucrt64\\bin"
         - "C:\\Users\\KSK-SHOP\\go\\bin"
         - "C:\\tools\\vcpkg"
-      CMAKE_INSTALL_PREFIX: "C:/Program Files (x86)/authorization"
+      CMAKE_INSTALL_PREFIX: "C:/Program Files (x86)/auth"
       CMAKE_SYSTEM_PREFIX_PATH:
         - "C:/Program Files"
         - "C:/Program Files (x86)"
         - "C:/Program Files/CMake"
-        - "C:/Program Files (x86)/authorization"
+        - "C:/Program Files (x86)/auth"
       CMAKE_FIND_ROOT_PATH: "C:/tools/vcpkg/installed/x64-windows/debug;C:/tools/vcpkg/installed/x64-windows"
 ...
