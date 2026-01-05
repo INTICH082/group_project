@@ -91,9 +91,8 @@ func CreateTest(courseID int, name string, questionIDs []int) (int, error) {
         RETURNING id`
 
 	var id int
-	// Используй "=", а не ":=" для id
+	// ВНИМАНИЕ: Обязательно добавь pq.Array(questionIDs)
 	err := db.QueryRow(query, courseID, name, pq.Array(questionIDs)).Scan(&id)
-
 	if err != nil {
 		return 0, err
 	}
