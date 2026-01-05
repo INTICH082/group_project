@@ -1,26 +1,44 @@
-FROM ubuntu:22.04
+# Dockerfile
+FROM alpine:latest
 
-# Установка зависимостей
-RUN apt-get update && apt-get install -y \
+# Устанавливаем ВСЕ необходимые зависимости
+RUN apk add --no-cache \
     g++ \
     make \
-    libcurl4-openssl-dev \
-    libmysqlclient-dev \
-    && rm -rf /var/lib/apt/lists/*
+    cmake \
+    libcurl-dev \
+    mariadb-dev \
+    mariadb-connector-c-dev \
+    musl-dev
+
+# Альтернатива: используем MySQL Connector/C из исходников
+RUN apk add --no-cache wget tar && \
+    wget https://dev.mysql.com/get/Downloads/Connector-C/mysql-connector-c-8.0.33-linux-glibc2.28-x86_64.tar.gz && \
+    tar -xzf mysql-connector-c-8.0.33-linux-glibc2.28-x86_64.tar.gz && \
+    mv mysql-connector-c-8.0.33-linux-glibc2.28-x86_64 /usr/local/mysql && \
+    rm mysql-connector-c-8.0.33-linux-glibc2.28-x86_64.tar.gz
+
+# Устанавливаем переменные окружения для компиляции
+ENV MYSQL_INCLUDE_DIR=/usr/include/mariadb
+ENV MYSQL_LIB_DIR=/usr/lib
+
+# Создаем рабочую директорию
+WORKDIR /app
 
 # Копируем исходники
-WORKDIR /app
-COPY . .
+COPY authorization/ ./authorization/
 
-# Компилируем
-RUN g++ -c authorization/database.cpp -Iauthorization -std=c++11
-RUN g++ -c authorization/auth.cpp -Iauthorization -std=c++11
-RUN g++ -c authorization/server.cpp -Iauthorization -std=c++11
-RUN g++ -c authorization/main.cpp -Iauthorization -std=c++11
-RUN g++ database.o auth.o server.o main.o -o auth.exe -lmysqlclient -lcurl
+# Компилируем с правильными путями
+RUN cd authorization && \
+    g++ -c database.cpp -I. -I/usr/include/mariadb -std=c++11 && \
+    g++ -c auth.cpp -I. -I/usr/include/mariadb -std=c++11 && \
+    g++ -c server.cpp -I. -I/usr/include/mariadb -std=c++11 && \
+    g++ -c main.cpp -I. -I/usr/include/mariadb -std=c++11 && \
+    g++ database.o auth.o server.o main.o -o auth.exe \
+        -L/usr/lib -lmariadb -lcurl
 
 # Открываем порт
 EXPOSE 8081
 
 # Запускаем сервер
-CMD ["./auth.exe"]
+CMD ["/group_project/authorization/auth.exe"]
