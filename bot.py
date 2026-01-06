@@ -51,9 +51,6 @@ TESTS = {
 def user_key(cid: int) -> str:
     return f"user:{cid}"
 
-def prev_msg_key(cid: int) -> str:
-    return f"prev_msg:{cid}"
-
 def moscow_time() -> datetime:
     return datetime.now(timezone(timedelta(hours=3)))
 
@@ -74,26 +71,6 @@ async def add_active_user(cid: int):
 
 async def get_active_users_count() -> int:
     return await r.scard("active_users")
-
-async def edit_or_send(message: types.Message, text: str, reply_markup=None):
-    cid = message.chat.id
-    prev_msg_id = await r.get(prev_msg_key(cid))
-    if prev_msg_id:
-        try:
-            await bot.edit_message_text(text, cid, int(prev_msg_id), reply_markup=reply_markup, parse_mode="HTML")
-            return
-        except MessageNotModified:
-            # Текст не изменился — ничего не делаем, оставляем как есть
-            return
-        except MessageCantBeEdited:
-            # Сообщение слишком старое или не от бота — отправляем новое
-            pass
-        except Exception as e:
-            # Другие ошибки — отправляем новое
-            print(f"Edit error: {e}")
-    # Отправляем новое и сохраняем ID
-    sent = await message.answer(text, reply_markup=reply_markup)
-    await r.set(prev_msg_key(cid), sent.message_id)
 
 # ================== COMMANDS ==================
 
@@ -144,7 +121,7 @@ async def start_cmd(m: types.Message):
     keyboard.add(InlineKeyboardButton("🔧 Сервисы", callback_data="services"))
     keyboard.add(InlineKeyboardButton("🆘 Помощь", callback_data="help"))
     keyboard.add(InlineKeyboardButton("🔐 Авторизация", callback_data="login"))
-    await edit_or_send(m, text, keyboard)
+    await m.answer(text, reply_markup=keyboard)
 
 @dp.message_handler(commands=["status"])
 async def status_cmd(m: types.Message):
@@ -172,7 +149,7 @@ async def status_cmd(m: types.Message):
 🌐 Веб-интерфейс: {WEB_CLIENT_URL}
 🔧 API Core: {AUTH_SERVICE_URL}
 🔐 API Auth: {AUTH_SERVICE_URL}"""
-    await edit_or_send(m, text)
+    await m.answer(text)
 
 @dp.message_handler(commands=["services"])
 async def services_cmd(m: types.Message):
@@ -206,7 +183,7 @@ URL: `{WEB_CLIENT_URL}`
 Статус: 🟢 Онлайн
 Порт: `6379`
 URL: `{REDIS_URL}`"""
-    await edit_or_send(m, text)
+    await m.answer(text)
 
 @dp.message_handler(commands=["help"])
 async def help_cmd(m: types.Message):
@@ -231,7 +208,7 @@ async def help_cmd(m: types.Message):
 🚧 <b>В РАЗРАБОТКЕ:</b> 
 • Полное прохождение тестов
 • Личный кабинет"""
-    await edit_or_send(m, text)
+    await m.answer(text)
 
 @dp.message_handler(commands=["login"])
 async def login_cmd(m: types.Message):
@@ -241,7 +218,7 @@ async def login_cmd(m: types.Message):
     keyboard.add(InlineKeyboardButton("GitHub", callback_data="login_github"))
     keyboard.add(InlineKeyboardButton("Yandex ID", callback_data="login_yandex"))
     keyboard.add(InlineKeyboardButton("Code", callback_data="login_code"))
-    await edit_or_send(m, text, keyboard)
+    await m.answer(text, reply_markup=keyboard)
 
 @dp.callback_query_handler(lambda c: c.data.startswith('login_'))
 async def login_callback(c: types.CallbackQuery):
@@ -269,7 +246,7 @@ async def complete_login_cmd(m: types.Message):
         # Simulate success
         await set_user(m.chat.id, {"status": UserStatus.AUTHORIZED})
         text = "✅ Авторизация завершена"
-    await edit_or_send(m, text)
+    await m.answer(text)
 
 @dp.message_handler(commands=["tests"])
 async def tests_cmd(m: types.Message):
@@ -282,7 +259,7 @@ async def tests_cmd(m: types.Message):
             text = "Нет доступных тестов"
         else:
             text = "Доступные тесты:\n" + "\n".join(f"{k}: {v}" for k, v in TESTS.items())
-    await edit_or_send(m, text)
+    await m.answer(text)
 
 @dp.message_handler(commands=["start_test"])
 async def start_test_cmd(m: types.Message):
@@ -297,7 +274,7 @@ async def start_test_cmd(m: types.Message):
         else:
             # Simulate no questions
             text = "В тесте нет вопросов" if not TESTS[tid] else f"🚀 Запуск теста: <b>{TESTS[tid]}</b>"
-    await edit_or_send(m, text)
+    await m.answer(text)
 
 @dp.message_handler(commands=["logout"])
 async def logout_cmd(m: types.Message):
@@ -315,13 +292,13 @@ async def logout_cmd(m: types.Message):
         else:
             text = "🚪 Сеанс завершён."
         await delete_user(m.chat.id)
-    await edit_or_send(m, text)
+    await m.answer(text)
 
 @dp.message_handler()
 async def unknown_cmd(m: types.Message):
     await inc_commands()
     text = "❓ Нет такой команды"
-    await edit_or_send(m, text)
+    await m.answer(text)
 
 # ================== CALLBACKS ==================
 
