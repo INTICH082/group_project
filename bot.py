@@ -112,9 +112,9 @@ class SystemMonitor:
 /start_test <test_id> - Начать тест (после авторизации)
 
 *Технические данные:*
-📊 PostgreSQL: `localhost:5432`
-🗄️ MongoDB: `localhost:27017`
-⚡ Redis: `localhost:6379`
+📊 PostgreSQL: localhost:5432
+🗄️ MongoDB: localhost:27017
+⚡ Redis: localhost:6379
 
 🚧 *В РАЗРАБОТКЕ:* 
 • Полное прохождение тестов
@@ -214,9 +214,14 @@ async def main():
         finally:
             await r.aclose()
 
-        link = f"{Config.WEB_CLIENT_URL}/auth/telegram?state={state_uuid}"
-        msg = f"Для авторизации перейдите по ссылке:\n{link}\n\nПосле успешной авторизации в веб-клиенте вернитесь сюда и используйте /complete_login для завершения."
-        await message.reply(msg)
+        keyboard = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text='GitHub', url=f"{Config.WEB_CLIENT_URL}/auth/github?state={state_uuid}")],
+            [InlineKeyboardButton(text='Yandex ID', url=f"{Config.WEB_CLIENT_URL}/auth/yandex?state={state_uuid}")],
+            [InlineKeyboardButton(text='Code', url=f"{Config.WEB_CLIENT_URL}/auth/code?state={state_uuid}")]
+        ])
+
+        msg = "Пожалуйста, выберите метод авторизации:"
+        await message.reply(msg, reply_markup=keyboard)
 
     @dp.message(Command("complete_login"))
     async def on_complete_login(message: types.Message):
