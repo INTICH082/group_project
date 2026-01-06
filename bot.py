@@ -8,6 +8,7 @@ from enum import Enum
 from aiogram import Bot, Dispatcher, types
 from aiogram.utils import executor
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+from aiogram.utils.exceptions import MessageNotModified, MessageCantBeEdited
 from dotenv import load_dotenv
 import redis.asyncio as redis
 
@@ -81,8 +82,16 @@ async def edit_or_send(message: types.Message, text: str, reply_markup=None):
         try:
             await bot.edit_message_text(text, cid, int(prev_msg_id), reply_markup=reply_markup, parse_mode="HTML")
             return
-        except:
-            pass  # If edit fails (e.g., message too old), send new
+        except MessageNotModified:
+            # Текст не изменился — ничего не делаем, оставляем как есть
+            return
+        except MessageCantBeEdited:
+            # Сообщение слишком старое или не от бота — отправляем новое
+            pass
+        except Exception as e:
+            # Другие ошибки — отправляем новое
+            print(f"Edit error: {e}")
+    # Отправляем новое и сохраняем ID
     sent = await message.answer(text, reply_markup=reply_markup)
     await r.set(prev_msg_key(cid), sent.message_id)
 
