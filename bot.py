@@ -34,7 +34,7 @@ class Config:
     REDIS_URL = "redis://redis:6379/0"
 
 
-# Global Redis connection pool
+# Global Redis connection pol
 redis_pool = redis.ConnectionPool.from_url(Config.REDIS_URL, decode_responses=True)
 
 
