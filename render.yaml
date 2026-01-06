@@ -3,18 +3,21 @@ services:
     name: auth-module
     env: docker
     dockerfilePath: ./Dockerfile
+    dockerContext: .
+    plan: free
     envVars:
       - key: PORT
         value: 8081
       - key: DB_HOST
-        value: your-database-host
+        sync: false
       - key: DB_USER
-        value: your-db-user
+        sync: false
       - key: DB_PASS
-        sync: false  # Будет задано в панели Render
+        sync: false
+      - key: DB_NAME
+        sync: false
       - key: GITHUB_CLIENT_ID
         sync: false
       - key: GITHUB_CLIENT_SECRET
         sync: false
-      - key: JWT_SECRET
-        sync: false
+    autoDeploy: true
