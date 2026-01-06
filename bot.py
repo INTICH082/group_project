@@ -5,11 +5,11 @@ import json
 from enum import Enum
 from datetime import datetime
 
-from aiogram.types import CallbackQuery
-from aiogram import F, Bot, Dispatcher
+from aiogram import Bot, Dispatcher, F
 from aiogram.filters import Command
 from aiogram.types import (
     Message,
+    CallbackQuery,
     InlineKeyboardMarkup,
     InlineKeyboardButton,
 )
@@ -60,15 +60,6 @@ class UserStatus(str, Enum):
     ANONYMOUS = "anonymous"
     AUTHORIZED = "authorized"
 
-# ---------- MARKDOWN V2 ----------
-
-MD_V2_SPECIALS = r"_*[]()~`>#+-=|{}.!"
-
-def md(text: str) -> str:
-    for ch in MD_V2_SPECIALS:
-        text = text.replace(ch, f"\\{ch}")
-    return text
-
 # ---------- REDIS HELPERS ----------
 
 async def get_user(chat_id: int):
@@ -102,11 +93,11 @@ async def require_auth(message: Message) -> bool:
     user = await get_user(message.chat.id)
 
     if not user:
-        await message.answer(md("❌ *Вы не авторизованы*"))
+        await message.answer("❌ *Вы не авторизованы*")
         return False
 
     if user.get("status") != UserStatus.AUTHORIZED:
-        await message.answer(md("⏳ *Ожидание подтверждения авторизации*"))
+        await message.answer("⏳ *Ожидание подтверждения авторизации*")
         return False
 
     return True
@@ -155,11 +146,11 @@ async def cmd_start(message: Message):
         f"• Auth API: {AUTH_SERVICE_URL}"
     )
 
-    await message.answer(md(text))
+    await message.answer(text)
 
 @dp.message(Command("help"))
 async def cmd_help(message: Message):
-    text = (
+    await message.answer(
         "🆘 *Справка по командам*\\n\\n"
         "🚀 *Старт:*\\n"
         "/start — начало работы\\n\\n"
@@ -176,13 +167,11 @@ async def cmd_help(message: Message):
         "/services — сервисы"
     )
 
-    await message.answer(md(text))
-
 @dp.message(Command("login"))
 async def cmd_login(message: Message):
     kb = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="🔑 GitHub (заглушка)", callback_data="login_stub_github")],
-        [InlineKeyboardButton(text="🟡 Яндекс (заглушка)", callback_data="login_stub_yandex")],
+        [InlineKeyboardButton(text="🔑 GitHub", callback_data="login_stub_github")],
+        [InlineKeyboardButton(text="🟡 Яндекс", callback_data="login_stub_yandex")],
         [InlineKeyboardButton(text="🔢 Код", callback_data="login_code")],
     ])
 
@@ -196,11 +185,11 @@ async def cmd_completelogin(message: Message):
     user = await get_user(message.chat.id)
 
     if not user:
-        await message.answer(md("❌ *Ошибка авторизации*"))
+        await message.answer("❌ *Ошибка авторизации*")
         return
 
     if user.get("status") == UserStatus.AUTHORIZED:
-        await message.answer(md("ℹ️ *Вы уже авторизованы*"))
+        await message.answer("ℹ️ *Вы уже авторизованы*")
         return
 
     await set_user(
@@ -211,27 +200,27 @@ async def cmd_completelogin(message: Message):
         },
     )
 
-    await message.answer(md("✅ *Авторизация успешно завершена*"))
+    await message.answer("✅ *Авторизация успешно завершена*")
 
 @dp.message(Command("logout"))
 async def cmd_logout(message: Message):
     if not await require_auth(message):
         return
     await delete_user(message.chat.id)
-    await message.answer(md("🚪 *Вы вышли из системы*"))
+    await message.answer("🚪 *Вы вышли из системы*")
 
 @dp.message(Command("logout_all"))
 async def cmd_logout_all(message: Message):
     if not await require_auth(message):
         return
     await delete_user(message.chat.id)
-    await message.answer(md("🚨 *Вы вышли со всех сессий*"))
+    await message.answer("🚨 *Вы вышли со всех сессий*")
 
 @dp.message(Command("status"))
 async def cmd_status(message: Message):
     status = await get_status(message.chat.id)
 
-    text = (
+    await message.answer(
         "📊 *СТАТУС СИСТЕМЫ*\\n\\n"
         f"👤 Пользователь: *{message.from_user.first_name}*\\n"
         f"🔐 Статус: *{status}*\\n\\n"
@@ -244,11 +233,9 @@ async def cmd_status(message: Message):
         "• redis — Онлайн :6379"
     )
 
-    await message.answer(md(text))
-
 @dp.message(Command("services"))
 async def cmd_services(message: Message):
-    text = (
+    await message.answer(
         "🧩 *СЕРВИСЫ*\\n\\n"
         "⚙️ *core\\-service*\\n"
         "— API логики тестирования\\n\\n"
@@ -263,8 +250,6 @@ async def cmd_services(message: Message):
         "⚡ *redis*\\n"
         "— Кэш и сессии"
     )
-
-    await message.answer(md(text))
 
 @dp.message(Command("tests"))
 async def cmd_tests(message: Message):
@@ -293,7 +278,7 @@ async def cmd_tests(message: Message):
     else:
         text += "🎉 *Все тесты пройдены!*"
 
-    await message.answer(md(text))
+    await message.answer(text)
 
 @dp.message(Command("starttest"))
 async def cmd_starttest(message: Message):
@@ -304,7 +289,7 @@ async def cmd_starttest(message: Message):
     available = [t for t in tests if not t["passed"]]
 
     if not available:
-        await message.answer(md("🎉 *У вас нет доступных тестов*"))
+        await message.answer("🎉 *У вас нет доступных тестов*")
         return
 
     keyboard = InlineKeyboardMarkup(
@@ -320,7 +305,7 @@ async def cmd_starttest(message: Message):
     )
 
     await message.answer(
-        md("🧪 *Выберите тест для прохождения:*"),
+        "🧪 *Выберите тест для прохождения:*",
         reply_markup=keyboard
     )
 
@@ -332,7 +317,7 @@ async def cb_starttest(callback: CallbackQuery):
 
     test_id = int(callback.data.split(":")[1])
     await callback.answer()
-    await callback.message.answer(md(f"▶️ *Тест {test_id} запущен*"))
+    await callback.message.answer(f"▶️ *Тест {test_id} запущен*")
 
 # =========================
 # MAIN
