@@ -3,7 +3,7 @@ import asyncio
 import logging
 import time
 from datetime import datetime, timezone, timedelta
-from typing import Optional
+from typing import Optional, Callable, Dict, Any, Awaitable
 import uuid
 import aiohttp
 import redis.asyncio as redis
@@ -409,7 +409,7 @@ async def on_callback(callback: CallbackQuery):
 @dp.errors()
 async def on_error(update: types.Update, exception: Exception):
     if isinstance(exception, (aiohttp.ClientError, redis.RedisError)):
-        logger.error(f"Error: {exception}")
+        logger.error(f"Error: {e}")
         if update.message:
             await update.message.reply(gettext("Ошибка, попробуйте позже."))
     return True  # Skip update
