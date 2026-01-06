@@ -204,13 +204,15 @@ async def main():
     async def on_login(message: types.Message):
         monitor.stats['total_commands'] += 1
         state_uuid = str(uuid.uuid4())
-        async with redis_pool.client() as r:
-            try:
-                await r.set(f"auth_state:{state_uuid}", str(message.from_user.id), ex=3600)
-            except Exception as e:
-                logger.error(f"Redis error: {e}")
-                await message.reply("Ошибка соединения с Redis. Попробуйте позже.")
-                return
+        r = redis.Redis(connection_pool=redis_pool)
+        try:
+            await r.set(f"auth_state:{state_uuid}", str(message.from_user.id), ex=3600)
+        except Exception as e:
+            logger.error(f"Redis error: {e}")
+            await message.reply("Ошибка соединения с Redis. Попробуйте позже.")
+            return
+        finally:
+            await r.aclose()
 
         link = f"{Config.WEB_CLIENT_URL}/auth/telegram?state={state_uuid}"
         msg = f"Для авторизации перейдите по ссылке:\n{link}\n\nПосле успешной авторизации в веб-клиенте вернитесь сюда и используйте /complete_login для завершения."
@@ -221,36 +223,39 @@ async def main():
         monitor.stats['total_commands'] += 1
         user_id = message.from_user.id
         state = None
-        async with redis_pool.client() as r:
-            try:
-                async for key in r.scan_iter("auth_state:*"):
-                    if await r.get(key) == str(user_id):
-                        state = key.split(':')[1]
-                        break
-            except Exception as e:
-                logger.error(f"Redis error: {e}")
-                await message.reply("Ошибка соединения с Redis. Попробуйте позже.")
-                return
+        r = redis.Redis(connection_pool=redis_pool)
+        try:
+            async for key in r.scan_iter("auth_state:*"):
+                if await r.get(key) == str(user_id):
+                    state = key.split(':')[1]
+                    break
+        except Exception as e:
+            logger.error(f"Redis error: {e}")
+            await message.reply("Ошибка соединения с Redis. Попробуйте позже.")
+            return
+        finally:
+            await r.aclose()
 
         if not state:
             await message.reply("Не найдена активная сессия авторизации. Начните заново с /login.")
             return
 
-        async with redis_pool.client() as r:
-            jwt_key = f"auth_jwt:{state}"
-            try:
-                jwt = await r.get(jwt_key)
-                if not jwt:
-                    await message.reply(
-                        "Авторизация еще не завершена в веб-клиенте. Попробуйте позже или начните заново.")
-                    return
-                await r.set(f"user_jwt:{user_id}", jwt, ex=86400)
-                await r.delete(f"auth_state:{state}")
-                await r.delete(jwt_key)
-            except Exception as e:
-                logger.error(f"Redis error: {e}")
-                await message.reply("Ошибка сохранения токена. Попробуйте позже.")
+        r = redis.Redis(connection_pool=redis_pool)
+        jwt_key = f"auth_jwt:{state}"
+        try:
+            jwt = await r.get(jwt_key)
+            if not jwt:
+                await message.reply("Авторизация еще не завершена в веб-клиенте. Попробуйте позже или начните заново.")
                 return
+            await r.set(f"user_jwt:{user_id}", jwt, ex=86400)
+            await r.delete(f"auth_state:{state}")
+            await r.delete(jwt_key)
+        except Exception as e:
+            logger.error(f"Redis error: {e}")
+            await message.reply("Ошибка сохранения токена. Попробуйте позже.")
+            return
+        finally:
+            await r.aclose()
 
         await message.reply(
             "Авторизация завершена успешно! Теперь вы можете использовать защищенные команды, такие как /tests и /start_test.")
@@ -259,8 +264,9 @@ async def main():
     async def on_tests(message: types.Message):
         monitor.stats['total_commands'] += 1
         user_id = message.from_user.id
-        async with redis_pool.client() as r:
-            jwt = await r.get(f"user_jwt:{user_id}")
+        r = redis.Redis(connection_pool=redis_pool)
+        jwt = await r.get(f"user_jwt:{user_id}")
+        await r.aclose()
         if not jwt:
             await message.reply("Сначала авторизуйтесь с помощью /login и /complete_login.")
             return
@@ -295,8 +301,9 @@ async def main():
             return
         test_id = args[1]
         user_id = message.from_user.id
-        async with redis_pool.client() as r:
-            jwt = await r.get(f"user_jwt:{user_id}")
+        r = redis.Redis(connection_pool=redis_pool)
+        jwt = await r.get(f"user_jwt:{user_id}")
+        await r.aclose()
         if not jwt:
             await message.reply("Сначала авторизуйтесь с помощью /login и /complete_login.")
             return
