@@ -18,7 +18,6 @@ from aiogram.enums import ParseMode
 
 import redis.asyncio as redis
 from dotenv import load_dotenv
-
 # ---------- ENV ----------
 
 load_dotenv()
@@ -73,13 +72,25 @@ def md(text: str) -> str:
 
 # ---------- REDIS HELPERS ----------
 
-async def get_user(chat_id: int) -> dict | None:
-    data = await redis_client.get(f"user:{chat_id}")
-    return json.loads(data) if data else None
+async def get_user(chat_id: int):
+    data = await redis.get(f"user:{chat_id}")
+    if not data:
+        return None
+
+    try:
+        return json.loads(data)
+    except json.JSONDecodeError:
+        await redis.delete(f"user:{chat_id}")  # 💥 очищаем мусор
+        return None
+
 
 
 async def set_user(chat_id: int, data: dict):
-    await redis_client.set(f"user:{chat_id}", json.dumps(data))
+    await redis.set(
+        f"user:{chat_id}",
+        json.dumps(data)   # ← ВАЖНО
+    )
+
 
 
 async def delete_user(chat_id: int):
@@ -175,15 +186,16 @@ async def cmd_help(message: Message):
 @dp.message(Command("login"))
 async def cmd_login(message: Message):
     kb = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="🔑 GitHub", url=f"{AUTH_SERVICE_URL}/github")],
-        [InlineKeyboardButton(text="🟡 Яндекс", url=f"{AUTH_SERVICE_URL}/yandex")],
+        [InlineKeyboardButton(text="🔑 GitHub (заглушка)", callback_data="login_stub_github")],
+        [InlineKeyboardButton(text="🟡 Яндекс (заглушка)", callback_data="login_stub_yandex")],
         [InlineKeyboardButton(text="🔢 Код", callback_data="login_code")],
     ])
 
     await message.answer(
-        md("🔐 *Авторизация*\n\nВыберите способ входа:"),
+        "🔐 Авторизация\n\nВыберите способ входа:",
         reply_markup=kb,
     )
+
 
 
 @dp.message(Command("completelogin"))
@@ -209,15 +221,9 @@ async def cmd_completelogin(message: Message):
         )
         return
 
-    # 3️⃣ Не в состоянии ожидания
-    if status != UserStatus.ANONYMOUS:
-        await message.answer(
-            md(
-                "⏳ *Ожидание подтверждения*\n\n"
-                "Завершите вход через /login"
-            )
-        )
-        return
+    # 🔧 STUB: auth-сервис еще не реализован
+    # временно пропускаем состояние ожидания
+    # (позже тут будет проверка токена / callback от auth-service)
 
     # 4️⃣ Всё корректно — завершаем вход
     await set_user(
