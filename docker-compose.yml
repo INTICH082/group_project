@@ -1,10 +1,46 @@
 services:
+  redis:
+    image: redis:7
+    container_name: redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+
   telegram-bot:
     build: .
     env_file:
       - .env
     depends_on:
       - redis
+      - postgres
+      - mongo
+    restart: unless-stopped
 
-  redis:
-    image: redis:7
+  postgres:
+    image: postgres:15
+    container_name: postgres
+    environment:
+      POSTGRES_USER: user  # Измените на свой
+      POSTGRES_PASSWORD: pass  # Измените на свой
+      POSTGRES_DB: db  # Измените на свой
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+
+  mongo:
+    image: mongo:7
+    container_name: mongo
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    restart: unless-stopped
+
+volumes:
+  redis_data:
+  postgres_data:
+  mongo_data:
