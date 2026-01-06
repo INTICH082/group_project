@@ -2,6 +2,7 @@ import asyncio
 import logging
 import os
 import json
+import re
 from enum import Enum
 from datetime import datetime
 
@@ -18,7 +19,9 @@ from aiogram.enums import ParseMode
 import redis.asyncio as redis
 from dotenv import load_dotenv
 
-# ---------- ENV ----------
+# =========================
+# ENV
+# =========================
 
 load_dotenv()
 
@@ -29,7 +32,9 @@ AUTH_SERVICE_URL = os.getenv("AUTH_SERVICE_URL", "")
 CORE_SERVICE_URL = os.getenv("CORE_SERVICE_URL", "")
 WEB_CLIENT_URL = os.getenv("WEB_CLIENT_URL", "https://localhost:3000")
 
-# ---------- LOGGING ----------
+# =========================
+# LOGGING
+# =========================
 
 logging.basicConfig(
     level=logging.INFO,
@@ -37,7 +42,16 @@ logging.basicConfig(
 )
 logger = logging.getLogger("telegram-client")
 
-# ---------- BOT ----------
+# =========================
+# MARKDOWN V2 SAFE
+# =========================
+
+def md(text: str) -> str:
+    return re.sub(r'([_*\[\]()~`>#+\-=|{}.!])', r'\\\1', text)
+
+# =========================
+# BOT
+# =========================
 
 bot = Bot(
     token=BOT_TOKEN,
@@ -46,63 +60,62 @@ bot = Bot(
 
 dp = Dispatcher()
 
-# ---------- REDIS ----------
+# =========================
+# REDIS
+# =========================
 
 redis_client = redis.from_url(
     REDIS_URL,
     decode_responses=True,
 )
 
-# ---------- USER STATUS ----------
+# =========================
+# USER STATUS
+# =========================
 
 class UserStatus(str, Enum):
     UNKNOWN = "unknown"
     ANONYMOUS = "anonymous"
     AUTHORIZED = "authorized"
 
-# ---------- REDIS HELPERS ----------
+# =========================
+# REDIS HELPERS
+# =========================
 
 async def get_user(chat_id: int):
     data = await redis_client.get(f"user:{chat_id}")
-    if not data:
-        return None
-    try:
-        return json.loads(data)
-    except json.JSONDecodeError:
-        await redis_client.delete(f"user:{chat_id}")
-        return None
+    return json.loads(data) if data else None
 
 async def set_user(chat_id: int, data: dict):
-    await redis_client.set(
-        f"user:{chat_id}",
-        json.dumps(data)
-    )
+    await redis_client.set(f"user:{chat_id}", json.dumps(data))
 
 async def delete_user(chat_id: int):
     await redis_client.delete(f"user:{chat_id}")
 
 async def get_status(chat_id: int) -> UserStatus:
     user = await get_user(chat_id)
-    if not user:
-        return UserStatus.UNKNOWN
-    return UserStatus(user.get("status", UserStatus.UNKNOWN))
+    return UserStatus(user["status"]) if user else UserStatus.UNKNOWN
 
-# ---------- AUTH GUARD ----------
+# =========================
+# AUTH GUARD
+# =========================
 
 async def require_auth(message: Message) -> bool:
     user = await get_user(message.chat.id)
 
     if not user:
-        await message.answer("❌ *Вы не авторизованы*")
+        await message.answer(md("❌ *Вы не авторизованы*"))
         return False
 
     if user.get("status") != UserStatus.AUTHORIZED:
-        await message.answer("⏳ *Ожидание подтверждения авторизации*")
+        await message.answer(md("⏳ *Ожидание завершения авторизации*"))
         return False
 
     return True
 
-# ---------- STUB TESTS ----------
+# =========================
+# STUB TESTS
+# =========================
 
 async def get_user_tests(chat_id: int):
     return [
@@ -118,80 +131,88 @@ async def get_user_tests(chat_id: int):
 async def cmd_start(message: Message):
     name = message.from_user.first_name or "пользователь"
 
-    text = (
-        f"👋 *Привет, {name}\\!*\\n\\n"
-        "🤖 *Я — Telegram\\-клиент системы массового тестирования*\\n"
-        "Система находится в стадии активной разработки\\.\\n\\n"
-        "📊 *Что уже работает:*\\n"
-        "• Контейнеры Docker подняты\\n"
-        "• Redis / Postgres / Mongo запущены\\n"
-        "• Core API доступен\\n"
-        "• Auth API доступен\\n"
-        "• Базовая авторизация через Web\\n\\n"
-        "🚧 *Что будет добавлено:*\\n"
-        "• Полное прохождение тестов\\n"
-        "• Уведомления\\n"
-        "• Расширенные роли пользователей\\n\\n"
-        "📌 *Доступные команды:*\\n"
-        "/start — Начало работы\\n"
-        "/help — Справка по командам\\n"
-        "/status — Статус системы и пользователя\\n"
-        "/services — Информация о сервисах\\n\\n"
-        "🧪 *Тестирование:*\\n"
-        "/tests — Список тестов\\n"
-        "/starttest <id> — Начать тест\\n\\n"
-        "🌐 *Ссылки:*\\n"
-        f"• Web\\-клиент: {WEB_CLIENT_URL}\\n"
-        f"• Core API: {CORE_SERVICE_URL}\\n"
-        f"• Auth API: {AUTH_SERVICE_URL}"
-    )
+    text = f"""
+👋 *Добро пожаловать, {name}*
 
-    await message.answer(text)
+🤖 *Telegram\\-клиент системы массового тестирования*
+
+━━━━━━━━━━━━━━━━━━
+📊 *Текущий статус проекта*
+━━━━━━━━━━━━━━━━━━
+🟢 Docker\\-инфраструктура  
+🟢 Core API  
+🟢 Auth API  
+🟢 Web\\-клиент  
+🟢 Redis / Postgres / Mongo  
+
+━━━━━━━━━━━━━━━━━━
+📌 *Основные команды*
+━━━━━━━━━━━━━━━━━━
+/start — старт  
+/help — справка  
+/status — статус  
+/services — сервисы  
+
+━━━━━━━━━━━━━━━━━━
+🧪 *Тестирование*
+━━━━━━━━━━━━━━━━━━
+/tests — список тестов  
+/starttest — начать тест  
+
+━━━━━━━━━━━━━━━━━━
+🌐 *Ссылки*
+━━━━━━━━━━━━━━━━━━
+Web: {WEB_CLIENT_URL}
+"""
+
+    await message.answer(md(text))
 
 @dp.message(Command("help"))
 async def cmd_help(message: Message):
-    await message.answer(
-        "🆘 *Справка по командам*\\n\\n"
-        "🚀 *Старт:*\\n"
-        "/start — начало работы\\n\\n"
-        "🔐 *Авторизация:*\\n"
-        "/login — начать вход\\n"
-        "/completelogin — завершить вход\\n"
-        "/logout — выйти\\n"
-        "/logout_all — выйти везде\\n\\n"
-        "🧪 *Тестирование:*\\n"
-        "/tests — список тестов\\n"
-        "/starttest <id> — начать тест\\n\\n"
-        "ℹ️ *Информация:*\\n"
-        "/status — статус системы\\n"
-        "/services — сервисы"
-    )
+    await message.answer(md("""
+🆘 *Справка по командам*
+
+━━━━━━━━━━━━━━━━━━
+🚀 *Начало*
+━━━━━━━━━━━━━━━━━━
+/start — старт работы  
+/help — эта справка  
+
+━━━━━━━━━━━━━━━━━━
+🔐 *Авторизация*
+━━━━━━━━━━━━━━━━━━
+/login — вход  
+/completelogin — завершить вход  
+/logout — выход  
+
+━━━━━━━━━━━━━━━━━━
+🧪 *Тестирование*
+━━━━━━━━━━━━━━━━━━
+/tests — список тестов  
+/starttest — начать тест  
+
+━━━━━━━━━━━━━━━━━━
+ℹ️ *Информация*
+━━━━━━━━━━━━━━━━━━
+/status — статус  
+/services — сервисы
+"""))
 
 @dp.message(Command("login"))
 async def cmd_login(message: Message):
     kb = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="🔑 GitHub", callback_data="login_stub_github")],
-        [InlineKeyboardButton(text="🟡 Яндекс", callback_data="login_stub_yandex")],
-        [InlineKeyboardButton(text="🔢 Код", callback_data="login_code")],
+        [InlineKeyboardButton(text="🔑 GitHub (заглушка)", callback_data="login_stub_github")],
+        [InlineKeyboardButton(text="🟡 Яндекс (заглушка)", callback_data="login_stub_yandex")],
+        [InlineKeyboardButton(text="🔢 Ввести код", callback_data="login_code")],
     ])
 
     await message.answer(
-        "🔐 Авторизация\n\nВыберите способ входа:",
+        md("🔐 *Авторизация*\n\nВыберите способ входа:"),
         reply_markup=kb,
     )
 
 @dp.message(Command("completelogin"))
 async def cmd_completelogin(message: Message):
-    user = await get_user(message.chat.id)
-
-    if not user:
-        await message.answer("❌ *Ошибка авторизации*")
-        return
-
-    if user.get("status") == UserStatus.AUTHORIZED:
-        await message.answer("ℹ️ *Вы уже авторизованы*")
-        return
-
     await set_user(
         message.chat.id,
         {
@@ -200,124 +221,62 @@ async def cmd_completelogin(message: Message):
         },
     )
 
-    await message.answer("✅ *Авторизация успешно завершена*")
+    await message.answer(md("✅ *Авторизация успешно завершена*"))
 
 @dp.message(Command("logout"))
 async def cmd_logout(message: Message):
     if not await require_auth(message):
         return
-    await delete_user(message.chat.id)
-    await message.answer("🚪 *Вы вышли из системы*")
 
-@dp.message(Command("logout_all"))
-async def cmd_logout_all(message: Message):
-    if not await require_auth(message):
-        return
     await delete_user(message.chat.id)
-    await message.answer("🚨 *Вы вышли со всех сессий*")
+    await message.answer(md("🚪 *Вы вышли из системы*"))
 
 @dp.message(Command("status"))
 async def cmd_status(message: Message):
     status = await get_status(message.chat.id)
 
-    await message.answer(
-        "📊 *СТАТУС СИСТЕМЫ*\\n\\n"
-        f"👤 Пользователь: *{message.from_user.first_name}*\\n"
-        f"🔐 Статус: *{status}*\\n\\n"
-        "🟢 *Сервисы:*\\n"
-        "• core\\-service — Онлайн :8082\\n"
-        "• auth\\-service — Онлайн :8081\\n"
-        "• web\\-client — Онлайн :3000\\n"
-        "• postgres — Онлайн :5432\\n"
-        "• mongodb — Онлайн :27017\\n"
-        "• redis — Онлайн :6379"
-    )
+    await message.answer(md(f"""
+📊 *Статус системы*
+
+━━━━━━━━━━━━━━━━━━
+👤 Пользователь: {message.from_user.first_name}
+🔐 Статус: {status}
+
+━━━━━━━━━━━━━━━━━━
+🟢 *Сервисы*
+━━━━━━━━━━━━━━━━━━
+• core\\-service — онлайн  
+• auth\\-service — онлайн  
+• web\\-client — онлайн  
+• postgres — онлайн  
+• mongodb — онлайн  
+• redis — онлайн
+"""))
 
 @dp.message(Command("services"))
 async def cmd_services(message: Message):
-    await message.answer(
-        "🧩 *СЕРВИСЫ*\\n\\n"
-        "⚙️ *core\\-service*\\n"
-        "— API логики тестирования\\n\\n"
-        "🔐 *auth\\-service*\\n"
-        "— Авторизация пользователей\\n\\n"
-        "🌐 *web\\-client*\\n"
-        "— Пользовательский интерфейс\\n\\n"
-        "🗄 *postgres*\\n"
-        "— Основная БД\\n\\n"
-        "📦 *mongodb*\\n"
-        "— Хранилище тестов\\n\\n"
-        "⚡ *redis*\\n"
-        "— Кэш и сессии"
-    )
+    await message.answer(md("""
+🧩 *Сервисы системы*
 
-@dp.message(Command("tests"))
-async def cmd_tests(message: Message):
-    if not await require_auth(message):
-        return
+━━━━━━━━━━━━━━━━━━
+⚙ *core\\-service*
+API логики тестирования
 
-    tests = await get_user_tests(message.chat.id)
+🔐 *auth\\-service*
+Авторизация пользователей
 
-    passed = [t for t in tests if t["passed"]]
-    available = [t for t in tests if not t["passed"]]
+🌐 *web\\-client*
+Пользовательский интерфейс
 
-    text = "📊 *Результаты тестирования:*\\n\\n"
+🗄 *postgres*
+Основная база данных
 
-    if passed:
-        text += "✅ *Пройденные тесты:*\\n"
-        for t in passed:
-            text += f"• {t['name']} — *{t['score']}/10*\\n"
-        text += "\\n"
-    else:
-        text += "❌ *Вы ещё не прошли ни одного теста*\\n\\n"
+📦 *mongodb*
+Хранилище тестов
 
-    if available:
-        text += "🟢 *Доступные тесты:*\\n"
-        for t in available:
-            text += f"• {t['name']}\\n"
-    else:
-        text += "🎉 *Все тесты пройдены!*"
-
-    await message.answer(text)
-
-@dp.message(Command("starttest"))
-async def cmd_starttest(message: Message):
-    if not await require_auth(message):
-        return
-
-    tests = await get_user_tests(message.chat.id)
-    available = [t for t in tests if not t["passed"]]
-
-    if not available:
-        await message.answer("🎉 *У вас нет доступных тестов*")
-        return
-
-    keyboard = InlineKeyboardMarkup(
-        inline_keyboard=[
-            [
-                InlineKeyboardButton(
-                    text=f"🧪 {t['name']}",
-                    callback_data=f"starttest:{t['id']}"
-                )
-            ]
-            for t in available
-        ]
-    )
-
-    await message.answer(
-        "🧪 *Выберите тест для прохождения:*",
-        reply_markup=keyboard
-    )
-
-@dp.callback_query(F.data.startswith("starttest:"))
-async def cb_starttest(callback: CallbackQuery):
-    if not await require_auth(callback.message):
-        await callback.answer()
-        return
-
-    test_id = int(callback.data.split(":")[1])
-    await callback.answer()
-    await callback.message.answer(f"▶️ *Тест {test_id} запущен*")
+⚡ *redis*
+Кэш и сессии
+"""))
 
 # =========================
 # MAIN
