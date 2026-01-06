@@ -101,15 +101,18 @@ async def get_status(chat_id: int) -> UserStatus:
 # ---------- AUTH GUARD ----------
 
 async def require_auth(message: Message) -> bool:
-    status = await get_status(message.chat.id)
+    user = await get_user(message.chat.id)
 
-    if status != UserStatus.AUTHORIZED:
-        await message.answer(
-            md("🚫 *Вы не авторизованы*\n\nВыход невозможен")
-        )
+    if not user:
+        await message.answer(md("❌ *Вы не авторизованы*"))
+        return False
+
+    if user.get("status") != UserStatus.AUTHORIZED:
+        await message.answer(md("⏳ *Ожидание подтверждения авторизации*"))
         return False
 
     return True
+
 
 
 
@@ -196,8 +199,8 @@ async def cmd_completelogin(message: Message):
     if not user:
         await message.answer(
             md(
-                "❌ *Ошибка авторизации*\n\n"
-                "Вы не начинали процесс входа"
+                "❌ *Ошибка авторизации\\*\n\n"
+                "Вы не начинали процесс входа\\"
             )
         )
         return
@@ -347,7 +350,7 @@ async def cmd_starttest(message: Message):
             [
                 InlineKeyboardButton(
                     text=f"🧪 {t['name']}",
-                    callback_data=f"starttest_{t['id']}"
+                    callback_data=f"starttest:{t['id']}"
                 )
             ]
             for t in available
@@ -365,9 +368,10 @@ async def cb_starttest(callback: CallbackQuery):
         await callback.answer()
         return
 
-    parts = callback.data.split("_")
+    parts = callback.data.split(":")
     if len(parts) != 2 or not parts[1].isdigit():
-        await callback.answer("Ошибка данных", show_alert=True)
+        await callback.answer(text=md("Ошибка данных"), show_alert=True)
+
         return
 
     test_id = int(parts[1])
