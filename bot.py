@@ -1,135 +1,151 @@
 import os
-import asyncio
 import logging
-import time
-from datetime import datetime, timezone, timedelta
-from typing import Optional, Callable, Dict, Any, Awaitable
+import asyncio
+from datetime import datetime
+from typing import Optional
 import uuid
-import aiohttp
 import redis.asyncio as redis
-from pymongo import MongoClient  # Для Mongo
-
+import aiohttp
 from aiogram import Bot, Dispatcher, types
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
+from aiogram.fsm.storage.memory import MemoryStorage
+from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.fsm.state import State, StatesGroup
-from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
-from aiogram.utils.keyboard import InlineKeyboardBuilder
-from aiogram.exceptions import TelegramBadRequest
-from aiogram import Router, F
-from aiogram.utils.markdown import hbold, hcode
 from dotenv import load_dotenv
-from aiogram.utils.i18n import I18n, I18nMiddleware, gettext, lazy_gettext  # Built-in i18n
 
 load_dotenv()
 
 # Настройка логирования
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    level=logging.INFO
+)
 logger = logging.getLogger(__name__)
 
+
 # Глобальные настройки
-BOT_TOKEN = os.getenv('BOT_TOKEN')
-REDIS_URL = os.getenv('REDIS_URL', 'redis://redis:6379/0')
-AUTH_SERVICE_URL = os.getenv('AUTH_SERVICE_URL', 'http://auth-service:8081')
-WEB_CLIENT_URL = os.getenv('WEB_CLIENT_URL', 'http://localhost:3000')
-POSTGRES_URL = os.getenv('POSTGRES_URL', 'postgres://user:pass@postgres:5432/db')
-MONGO_URL = os.getenv('MONGO_URL', 'mongodb://mongo:27017/db')  # Обновлено на mongodb://
+class Config:
+    """Конфигурация бота"""
+    TELEGRAM_TOKEN: Optional[str] = None
+    WEB_CLIENT_URL = "http://localhost:3000"
+    CORE_API_URL = "http://core-service:8082"
+    AUTH_API_URL = "http://auth-service:8081"
+    REDIS_URL = "redis://redis:6379/0"
 
-if not BOT_TOKEN:
-    raise RuntimeError('BOT_TOKEN is not set')
 
-bot = Bot(token=BOT_TOKEN, parse_mode='HTML')
-dp = Dispatcher()
+# Global Redis connection pool
+redis_pool = redis.ConnectionPool.from_url(Config.REDIS_URL, decode_responses=True)
 
-# Redis client
-r = redis.from_url(REDIS_URL, decode_responses=True)
 
-# Mongo client (async не нужен, используем sync для простоты, но в background task)
-mongo_client = MongoClient(MONGO_URL)
-mongo_db = mongo_client['db']  # База данных
-events_collection = mongo_db['events']  # Коллекция для events/notifications
+class SystemMonitor:
+    """Мониторинг состояния системы"""
 
-# FSM states
-class AuthStates(StatesGroup):
-    waiting_code = State()
+    def __init__(self):
+        self.services = {
+            'core-service': {'status': '🟢 Онлайн', 'port': 8082, 'url': Config.CORE_API_URL},
+            'auth-service': {'status': '🟢 Онлайн', 'port': 8081, 'url': Config.AUTH_API_URL},
+            'web-client': {'status': '🟢 Онлайн', 'port': 3000, 'url': Config.WEB_CLIENT_URL},
+            'postgres': {'status': '🟢 Онлайн', 'port': 5432},
+            'mongodb': {'status': '🟢 Онлайн', 'port': 27017},
+            'redis': {'status': '🟢 Онлайн', 'port': 6379, 'url': Config.REDIS_URL},
+        }
+
+        self.stats = {
+            'start_time': datetime.now(),
+            'total_commands': 0,
+            'active_users': set(),
+        }
+
+    def get_status(self) -> str:
+        """Получить статус системы"""
+        lines = [
+            "🖥️ *СТАТУС СИСТЕМЫ*",
+            f"Время: {datetime.now().strftime('%H:%M:%S')}",
+            f"Активна: {(datetime.now() - self.stats['start_time']).seconds // 60} мин",
+            "",
+            "*Сервисы:*"
+        ]
+
+        for service, info in self.services.items():
+            lines.append(f"• {service}: {info['status']} :{info['port']}")
+
+        lines.extend([
+            "",
+            "*Статистика:*",
+            f"Команд выполнено: {self.stats['total_commands']}",
+            f"Активных пользователей: {len(self.stats['active_users'])}",
+            "",
+            f"🌐 Веб-интерфейс: {Config.WEB_CLIENT_URL}",
+            f"🔧 API Core: {Config.CORE_API_URL}",
+            f"🔐 API Auth: {Config.AUTH_API_URL}",
+        ])
+
+        return "\n".join(lines)
+
+    def get_services(self) -> str:
+        """Получить детальную информацию о сервисах"""
+        lines = ["🔧 *СЕРВИСЫ СИСТЕМЫ*", ""]
+
+        for service, info in self.services.items():
+            lines.append(f"*{service.upper()}*")
+            lines.append(f"Статус: {info['status']}")
+            lines.append(f"Порт: `{info['port']}`")
+            if 'url' in info:
+                lines.append(f"URL: `{info['url']}`")
+            lines.append("")
+
+        return "\n".join(lines)
+
+    def get_help(self) -> str:
+        """Получить справку"""
+        return """🆘 *ПОМОЩЬ ПО КОМАНДАМ*
+
+*Основные команды:*
+/start - Начало работы
+/status - Статус системы
+/services - Информация о сервисах
+/help - Эта справка
+/login - Авторизация
+/complete_login - Завершить авторизацию после веб-клиента
+/tests - Список доступных тестов (после авторизации)
+/start_test <test_id> - Начать тест (после авторизации)
+
+*Технические данные:*
+📊 PostgreSQL: `localhost:5432`
+🗄️ MongoDB: `localhost:27017`
+⚡ Redis: `localhost:6379`
+
+🚧 *В РАЗРАБОТКЕ:* 
+• Полное прохождение тестов
+• Личный кабинет
+"""
+
 
 class TestStates(StatesGroup):
     answering = State()
 
-# Rate limiting middleware
-class ThrottlingMiddleware:
-    def __init__(self, rate_limit: int = 1, period: int = 1):  # 1 команда в секунду
-        self.rate_limit = rate_limit
-        self.period = period
-        self.user_timestamps = {}
 
-    async def __call__(
-        self,
-        handler: Callable[[types.Message, Dict[str, Any]], Awaitable[Any]],
-        event: types.Message,
-        data: Dict[str, Any]
-    ) -> Any:
-        user_id = event.from_user.id
-        now = time.time()
-        timestamps = self.user_timestamps.get(user_id, [])
-        timestamps = [ts for ts in timestamps if now - ts < self.period]
-        if len(timestamps) >= self.rate_limit:
-            await event.reply("🚫 Слишком много запросов. Подождите секунду.")
-            return
-        timestamps.append(now)
-        self.user_timestamps[user_id] = timestamps
-        return await handler(event, data)
+async def main():
+    token = os.getenv('TELEGRAM_BOT_TOKEN')
+    if not token:
+        logger.error("❌ Токен бота не установлен!")
+        return
 
-dp.message.middleware(ThrottlingMiddleware())
+    Config.TELEGRAM_TOKEN = token
 
-# i18n setup (для multi-lang ru/en)
-i18n = I18n(domain='messages', path='locales', default_locale='ru')
-dp.message.middleware(I18nMiddleware(i18n))
+    bot = Bot(token=token)
+    storage = MemoryStorage()
+    dp = Dispatcher(storage=storage)
 
-# System start time (MSK TZ)
-START_TIME = datetime.now(timezone(timedelta(hours=3)))
+    monitor = SystemMonitor()
 
-# Mock tests
-TESTS = {
-    "1": {"name": "API Test", "questions": [{"id": 1, "text": "Question 1?", "options": ["A", "B"]}]},
-    "2": {"name": "Load Test", "questions": [{"id": 2, "text": "Question 2?", "options": ["C", "D"]}]},
-    "3": {"name": "UI Test", "questions": [{"id": 3, "text": "Question 3?", "options": ["E", "F"]}]},
-}
+    @dp.message(Command("start"))
+    async def on_start(message: types.Message):
+        monitor.stats['total_commands'] += 1
+        monitor.stats['active_users'].add(message.from_user.id)
 
-# Background task для cyclic notifications (every 30 sec check Redis for ANONYMOUS, auth check, send updates)
-async def cyclic_notification_task():
-    while True:
-        try:
-            # Scan Redis for ANONYMOUS users
-            async for key in r.scan_iter('user:*:status'):
-                status = await r.get(key)
-                if status == 'ANONYMOUS':
-                    user_id = int(key.split(':')[1])
-                    # Check auth via API (mock)
-                    async with aiohttp.ClientSession() as session:
-                        async with session.get(f"{AUTH_SERVICE_URL}/check/{user_id}") as resp:
-                            if resp.status == 200:
-                                data = await resp.json()
-                                if data.get('authorized'):
-                                    await r.set(key, 'AUTHORIZED')
-                                    await bot.send_message(user_id, gettext("✅ Вы авторизованы!"))
-                                    # Save event to Mongo
-                                    events_collection.insert_one({'user_id': user_id, 'event': 'authorized', 'timestamp': datetime.now()})
-
-            # Poll Mongo for events (e.g., new notifications)
-            for event in events_collection.find({'processed': {'$ne': True}}):
-                user_id = event['user_id']
-                await bot.send_message(user_id, gettext(f"Уведомление: {event['event']}"))
-                events_collection.update_one({'_id': event['_id']}, {'$set': {'processed': True}})
-
-        except Exception as e:
-            logger.error(f"Cyclic task error: {e}")
-        await asyncio.sleep(30)  # Every 30 sec
-
-# Start handler
-@dp.message(Command('start'))
-async def on_start(message: types.Message, state: FSMContext):
-    text = gettext("""👋 Привет, {name}!
+        welcome_msg = f"""👋 Привет, {message.from_user.first_name}!
 
 🤖 Я - бот системы тестирования.
 Система находится в стадии активной разработки.
@@ -145,7 +161,7 @@ async def on_start(message: types.Message, state: FSMContext):
 • Полное прохождение тестов
 • Уведомления
 
-*Список команд:*
+*Основные команды:*
 /start - Начало работы
 /status - Статус системы
 /services - Информация о сервисах
@@ -156,274 +172,288 @@ async def on_start(message: types.Message, state: FSMContext):
 /start_test <id> - Начать тест
 
 🌐 *Ссылки:*
-• Веб-интерфейс: {web_url}
-• API Core: {core_url}
-• API Auth: {auth_url}""").format(
-        name=message.from_user.first_name,
-        web_url=WEB_CLIENT_URL,
-        core_url=AUTH_SERVICE_URL,  # Исправил на существующий, так как CORE_API_URL не определен
-        auth_url=AUTH_SERVICE_URL
-    )
+• Веб-интерфейс: {Config.WEB_CLIENT_URL}
+• API Core: {Config.CORE_API_URL}
+• API Auth: {Config.AUTH_API_URL}"""
 
-    keyboard = InlineKeyboardBuilder()
-    keyboard.button(text=gettext('📊 Статус'), callback_data='status')
-    keyboard.button(text=gettext('🔧 Сервисы'), callback_data='services')
-    keyboard.button(text=gettext('🆘 Помощь'), callback_data='help')
-    keyboard.button(text=gettext('🔐 Авторизация'), callback_data='login')
-    keyboard.adjust(2)
+        keyboard = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text='📊 Статус', callback_data='status')],
+            [InlineKeyboardButton(text='🔧 Сервисы', callback_data='services')],
+            [InlineKeyboardButton(text='🆘 Помощь', callback_data='help')],
+            [InlineKeyboardButton(text='🔐 Авторизация', callback_data='login')],
+        ])
 
-    await message.reply(text, reply_markup=keyboard.as_markup())
+        await message.reply(welcome_msg, parse_mode='Markdown', reply_markup=keyboard)
 
-# Status handler
-@dp.message(Command('status'))
-async def on_status(message: types.Message):
-    now = datetime.now(timezone(timedelta(hours=3)))
-    uptime = (now - START_TIME).seconds // 60
-    text = gettext("""🖥️ *СТАТУС СИСТЕМЫ*
-Время: {time}
-Активна: {uptime} мин
+    @dp.message(Command("status"))
+    async def on_status(message: types.Message):
+        monitor.stats['total_commands'] += 1
+        await message.reply(monitor.get_status(), parse_mode='Markdown')
 
-*Сервисы:*
-• core-service: 🟢 Онлайн :8082
-• auth-service: 🟢 Онлайн :8081
-• web-client: 🟢 Онлайн :3000
-• postgres: 🟢 Онлайн :5432
-• mongodb: 🟢 Онлайн :27017
-• redis: 🟢 Онлайн :6379
+    @dp.message(Command("services"))
+    async def on_services(message: types.Message):
+        monitor.stats['total_commands'] += 1
+        await message.reply(monitor.get_services(), parse_mode='Markdown')
 
-*Статистика:*
-Команд выполнено: {commands}
-Активных пользователей: {users}
+    @dp.message(Command("help"))
+    async def on_help(message: types.Message):
+        monitor.stats['total_commands'] += 1
+        await message.reply(monitor.get_help(), parse_mode='Markdown')
 
-🌐 Веб-интерфейс: {web_url}
-🔧 API Core: {core_url}
-🔐 API Auth: {auth_url}""").format(
-        time=now.strftime('%H:%M:%S'),
-        uptime=uptime,
-        commands=0,  # Mock, add counter if needed
-        users=0,  # Mock
-        web_url=WEB_CLIENT_URL,
-        core_url=AUTH_SERVICE_URL,  # Исправил
-        auth_url=AUTH_SERVICE_URL
-    )
-    await message.reply(text)
+    @dp.message(Command("login"))
+    async def on_login(message: types.Message):
+        monitor.stats['total_commands'] += 1
+        state_uuid = str(uuid.uuid4())
+        async with redis_pool.client() as r:
+            try:
+                await r.set(f"auth_state:{state_uuid}", str(message.from_user.id), ex=3600)
+            except Exception as e:
+                logger.error(f"Redis error: {e}")
+                await message.reply("Ошибка соединения с Redis. Попробуйте позже.")
+                return
 
-# Services handler
-@dp.message(Command('services'))
-async def on_services(message: types.Message):
-    text = gettext("""🔧 *СЕРВИСЫ СИСТЕМЫ*
+        link = f"{Config.WEB_CLIENT_URL}/auth/telegram?state={state_uuid}"
+        msg = f"Для авторизации перейдите по ссылке:\n{link}\n\nПосле успешной авторизации в веб-клиенте вернитесь сюда и используйте /complete_login для завершения."
+        await message.reply(msg)
 
-*CORE-SERVICE*
-Статус: 🟢 Онлайн
-Порт: `8082`
-URL: `{core_url}`
+    @dp.message(Command("complete_login"))
+    async def on_complete_login(message: types.Message):
+        monitor.stats['total_commands'] += 1
+        user_id = message.from_user.id
+        state = None
+        async with redis_pool.client() as r:
+            try:
+                async for key in r.scan_iter("auth_state:*"):
+                    if await r.get(key) == str(user_id):
+                        state = key.split(':')[1]
+                        break
+            except Exception as e:
+                logger.error(f"Redis error: {e}")
+                await message.reply("Ошибка соединения с Redis. Попробуйте позже.")
+                return
 
-*AUTH-SERVICE*
-Статус: 🟢 Онлайн
-Порт: `8081`
-URL: `{auth_url}`
+        if not state:
+            await message.reply("Не найдена активная сессия авторизации. Начните заново с /login.")
+            return
 
-*WEB-CLIENT*
-Статус: 🟢 Онлайн
-Порт: `3000`
-URL: `{web_url}`
+        async with redis_pool.client() as r:
+            jwt_key = f"auth_jwt:{state}"
+            try:
+                jwt = await r.get(jwt_key)
+                if not jwt:
+                    await message.reply(
+                        "Авторизация еще не завершена в веб-клиенте. Попробуйте позже или начните заново.")
+                    return
+                await r.set(f"user_jwt:{user_id}", jwt, ex=86400)
+                await r.delete(f"auth_state:{state}")
+                await r.delete(jwt_key)
+            except Exception as e:
+                logger.error(f"Redis error: {e}")
+                await message.reply("Ошибка сохранения токена. Попробуйте позже.")
+                return
 
-*POSTGRES*
-Статус: 🟢 Онлайн
-Порт: `5432`
+        await message.reply(
+            "Авторизация завершена успешно! Теперь вы можете использовать защищенные команды, такие как /tests и /start_test.")
 
-*MONGODB*
-Статус: 🟢 Онлайн
-Порт: `27017`
+    @dp.message(Command("tests"))
+    async def on_tests(message: types.Message):
+        monitor.stats['total_commands'] += 1
+        user_id = message.from_user.id
+        async with redis_pool.client() as r:
+            jwt = await r.get(f"user_jwt:{user_id}")
+        if not jwt:
+            await message.reply("Сначала авторизуйтесь с помощью /login и /complete_login.")
+            return
 
-*REDIS*
-Статус: 🟢 Онлайн
-Порт: `6379`
-URL: `{redis_url}`""").format(
-        core_url=AUTH_SERVICE_URL,  # Исправил
-        auth_url=AUTH_SERVICE_URL,
-        web_url=WEB_CLIENT_URL,
-        redis_url=REDIS_URL
-    )
-    await message.reply(text)
+        headers = {"Authorization": f"Bearer {jwt}"}
+        async with aiohttp.ClientSession() as session:
+            try:
+                async with session.get(f"{Config.CORE_API_URL}/tests", headers=headers, timeout=5) as response:
+                    if response.status != 200:
+                        await message.reply(f"Ошибка при получении тестов: {response.status}")
+                        return
+                    tests_data = await response.json()
+                    msg = "Доступные тесты:\n"
+                    tests = tests_data.get('tests', [])
+                    if not tests:
+                        msg = "Нет доступных тестов."
+                    else:
+                        for test in tests:
+                            msg += f"- {test.get('test_name', 'Без названия')} (ID: {test.get('id')})\n"
+            except Exception as e:
+                logger.error(f"API error: {e}")
+                msg = "Ошибка соединения с Core API. Попробуйте позже."
 
-# Help handler
-@dp.message(Command('help'))
-async def on_help(message: types.Message):
-    text = gettext("""🆘 *ПОМОЩЬ ПО КОМАНДАМ*
+        await message.reply(msg)
 
-*Основные команды:*
-/start - Начало работы
-/status - Статус системы
-/services - Информация о сервисах
-/help - Эта справка
-/login - Авторизация
-/complete_login - Завершить авторизацию после веб-клиента
-/tests - Список доступных тестов (после авторизации)
- /start_test <test_id> - Начать тест (после авторизации)
-
-*Технические данные:*
-📊 PostgreSQL: `localhost:5432`
-🗄️ MongoDB: `localhost:27017`
-⚡ Redis: `localhost:6379`
-
-🚧 *В РАЗРАБОТКЕ:* 
-• Полное прохождение тестов
-• Личный кабинет""")
-    await message.reply(text)
-
-# Login handler
-@dp.message(Command('login'))
-async def on_login(message: types.Message, state: FSMContext):
-    code = uuid.uuid4().hex[:8].upper()
-    user_id = message.from_user.id
-    await r.setex(f'auth_code:{code}', 300, user_id)  # 5 мин
-    text = gettext("🔐 Для авторизации перейдите в веб-клиент: {url}/login\nВаш код: {code}\nПосле ввода кода в веб-клиенте используйте /complete_login <code> здесь.").format(
-        url=WEB_CLIENT_URL,
-        code=hcode(code)
-    )
-    await message.reply(text)
-    await state.set_state(AuthStates.waiting_code)
-
-# Complete login
-@dp.message(Command('complete_login', 'completelogin'))
-async def on_complete_login(message: types.Message, state: FSMContext):
-    args = message.text.split()
-    if len(args) < 2:
-        return await message.reply(gettext("Используйте: /complete_login <code>"))
-    code = args[1]
-    user_id = message.from_user.id
-    stored_id = await r.get(f'auth_code:{code}')
-    if not stored_id or int(stored_id) != user_id:
-        return await message.reply(gettext("🚫 Вы не авторизованы. Начните с /login."))
-    # Mock auth check
-    async with aiohttp.ClientSession() as session:
-        async with session.get(f"{AUTH_SERVICE_URL}/complete/{code}") as resp:
-            if resp.status == 200:
-                token = (await resp.json()).get('token')
-                await state.update_data(token=token, status='AUTHORIZED')
-                await r.delete(f'auth_code:{code}')
-                await message.reply(gettext("✅ Авторизация завершена! Теперь доступны тесты."))
-            else:
-                await message.reply(gettext("Ошибка авторизации. Попробуйте позже."))
-    await state.clear()
-
-# Tests list with buttons
-@dp.message(Command('tests'))
-async def on_tests(message: types.Message, state: FSMContext):
-    data = await state.get_data()
-    if data.get('status') != 'AUTHORIZED':
-        return await message.reply(gettext("🚫 Вы не авторизованы. Используйте /login."))
-    text = gettext("📝 Доступные тесты:\n")
-    keyboard = InlineKeyboardBuilder()
-    for test_id, test in TESTS.items():
-        text += f"• {test_id}: {test['name']}\n"
-        keyboard.button(text=test['name'], callback_data=f"start_test:{test_id}")
-    keyboard.adjust(1)
-    await message.reply(text, reply_markup=keyboard.as_markup())
-
-# Start test (from command or button)
-@dp.message(Command('start_test', 'starttest'))
-@dp.callback_query(F.data.startswith('start_test:'))
-async def on_start_test(query: types.Message | CallbackQuery, state: FSMContext):
-    if isinstance(query, CallbackQuery):
-        test_id = query.data.split(':')[1]
-        await query.answer()
-        message = query.message
-    else:
-        args = query.text.split()
+    @dp.message(Command("start_test"))
+    async def on_start_test(message: types.Message, state: FSMContext):
+        monitor.stats['total_commands'] += 1
+        args = message.text.split()
         if len(args) < 2:
-            return await query.reply(gettext("Используйте: /start_test <test_id>"))
+            await message.reply("Использование: /start_test <test_id>")
+            return
         test_id = args[1]
-        message = query
+        user_id = message.from_user.id
+        async with redis_pool.client() as r:
+            jwt = await r.get(f"user_jwt:{user_id}")
+        if not jwt:
+            await message.reply("Сначала авторизуйтесь с помощью /login и /complete_login.")
+            return
 
-    data = await state.get_data()
-    if data.get('status') != 'AUTHORIZED':
-        return await message.reply(gettext("🚫 Вы не авторизованы. Используйте /login."))
+        headers = {"Authorization": f"Bearer {jwt}"}
+        async with aiohttp.ClientSession() as session:
+            try:
+                async with session.post(f"{Config.CORE_API_URL}/attempts", json={"test_id": test_id}, headers=headers,
+                                        timeout=5) as response:
+                    if response.status != 201:
+                        await message.reply(f"Ошибка при создании попытки: {response.status}")
+                        return
+                    data = await response.json()
+                    attempt_id = data.get('attempt_id')
+                    if not attempt_id:
+                        await message.reply("Ошибка: не получен ID попытки.")
+                        return
+            except Exception as e:
+                logger.error(f"API error: {e}")
+                await message.reply("Ошибка соединения с Core API. Попробуйте позже.")
+                return
 
-    test = TESTS.get(test_id)
-    if not test:
-        return await message.reply(gettext("Тест не найден."))
+        async with aiohttp.ClientSession() as session:
+            try:
+                async with session.get(f"{Config.CORE_API_URL}/tests/{test_id}/questions", headers=headers,
+                                       timeout=5) as response:
+                    if response.status != 200:
+                        await message.reply(f"Ошибка при получении вопросов: {response.status}")
+                        return
+                    questions_data = await response.json()
+                    questions = questions_data.get('questions', [])
+                    if not questions:
+                        await message.reply("В тесте нет вопросов.")
+                        return
+                    # Assume questions is list of {'question_id': id, 'order_index': n}
+                    questions.sort(key=lambda x: x['order_index'])
+                    question_ids = [q['question_id'] for q in questions]
+            except Exception as e:
+                logger.error(f"API error: {e}")
+                await message.reply("Ошибка соединения с Core API. Попробуйте позже.")
+                return
 
-    if not test['questions']:
-        return await message.reply(gettext("В тесте нет вопросов."))
+        await state.set_state(TestStates.answering)
+        await state.set_data({
+            'attempt_id': attempt_id,
+            'question_ids': question_ids,
+            'current_index': 0,
+            'headers': headers
+        })
+        await send_next_question(message, state)
 
-    # Mock attempt creation
-    attempt_id = uuid.uuid4().hex
-    question_ids = [q['id'] for q in test['questions']]
+    async def send_next_question(message_or_callback: types.Message | types.CallbackQuery, state: FSMContext):
+        data = await state.get_data()
+        index = data['current_index']
+        question_id = data['question_ids'][index]
+        headers = data['headers']
+        async with aiohttp.ClientSession() as session:
+            try:
+                async with session.get(f"{Config.CORE_API_URL}/questions/{question_id}", headers=headers,
+                                       timeout=5) as response:
+                    if response.status != 200:
+                        await message_or_callback.reply(f"Ошибка при получении вопроса: {response.status}")
+                        await state.clear()
+                        return
+                    q = await response.json()
+                    # Assume q = {'question_name': str, 'question_text': str, 'options': list[str]}
+            except Exception as e:
+                logger.error(f"API error: {e}")
+                await message_or_callback.reply("Ошибка соединения с Core API. Попробуйте позже.")
+                await state.clear()
+                return
 
-    await state.set_state(TestStates.answering)
-    await state.update_data(attempt_id=attempt_id, question_ids=question_ids, current_index=0, test_id=test_id)
+        msg = f"Вопрос {index + 1}/{len(data['question_ids'])}: {q['question_text']}"
+        inline_kb = [
+            [InlineKeyboardButton(text=option, callback_data=f"ans:{i}:{question_id}") for i, option in
+             enumerate(q['options'])]
+        ]
+        keyboard = InlineKeyboardMarkup(inline_keyboard=inline_kb)
+        if isinstance(message_or_callback, types.Message):
+            await message_or_callback.reply(msg, reply_markup=keyboard)
+        else:
+            await message_or_callback.message.edit_text(msg, reply_markup=keyboard)
 
-    await send_next_question(message, state)
+    @dp.callback_query(lambda c: c.data.startswith('ans:'), TestStates.answering)
+    async def on_answer(callback: types.CallbackQuery, state: FSMContext):
+        parts = callback.data.split(':')
+        ans_index = int(parts[1])
+        question_id = int(parts[2])
+        data = await state.get_data()
+        if data['question_ids'][data['current_index']] != question_id:
+            await callback.answer("Неверный вопрос.")
+            return
+        attempt_id = data['attempt_id']
+        headers = data['headers']
+        async with aiohttp.ClientSession() as session:
+            try:
+                async with session.post(
+                        f"{Config.CORE_API_URL}/attempts/{attempt_id}/answers",
+                        json={"question_id": question_id, "selected_answer": ans_index},
+                        headers=headers,
+                        timeout=5
+                ) as response:
+                    if response.status != 200:
+                        await callback.message.reply(f"Ошибка сохранения ответа: {response.status}")
+                        await state.clear()
+                        return
+            except Exception as e:
+                logger.error(f"API error: {e}")
+                await callback.message.reply("Ошибка соединения с Core API. Попробуйте позже.")
+                await state.clear()
+                return
 
-async def send_next_question(message: types.Message, state: FSMContext):
-    data = await state.get_data()
-    index = data['current_index']
-    q_id = data['question_ids'][index]
-    q = next(q for q in TESTS[data['test_id']]['questions'] if q['id'] == q_id)  # Mock
-    text = gettext(f"Вопрос {index + 1}/{len(data['question_ids'])}: {q['text']}")
-    keyboard = InlineKeyboardBuilder()
-    for i, opt in enumerate(q['options']):
-        keyboard.button(text=opt, callback_data=f"ans:{i}:{q_id}")
-    keyboard.adjust(1)
-    await message.reply(text, reply_markup=keyboard.as_markup())
+        new_index = data['current_index'] + 1
+        if new_index >= len(data['question_ids']):
+            async with aiohttp.ClientSession() as session:
+                try:
+                    async with session.post(
+                            f"{Config.CORE_API_URL}/attempts/{attempt_id}/complete",
+                            headers=headers,
+                            timeout=5
+                    ) as response:
+                        if response.status != 200:
+                            await callback.message.reply(f"Ошибка завершения теста: {response.status}")
+                        else:
+                            res = await response.json()
+                            score = res.get('score', 'N/A')
+                            await callback.message.reply(f"Тест завершен! Результат: {score}")
+                except Exception as e:
+                    logger.error(f"API error: {e}")
+                    await callback.message.reply("Ошибка соединения с Core API. Попробуйте позже.")
+            await state.clear()
+        else:
+            await state.update_data(current_index=new_index)
+            await send_next_question(callback, state)
+        await callback.answer()
 
-# Answer callback
-@dp.callback_query(F.data.startswith('ans:'), TestStates.answering)
-async def on_answer(callback: CallbackQuery, state: FSMContext):
-    parts = callback.data.split(':')
-    ans_index = int(parts[1])
-    q_id = int(parts[2])
-    data = await state.get_data()
-    if data['question_ids'][data['current_index']] != q_id:
-        return await callback.answer(gettext("Неверный вопрос."))
-    # Mock save answer
-    new_index = data['current_index'] + 1
-    if new_index >= len(data['question_ids']):
-        # Complete test
-        await callback.message.reply(gettext("Тест завершен! Результат: N/A"))
-        await state.clear()
-    else:
-        await state.update_data(current_index=new_index)
-        await send_next_question(callback.message, state)
-    await callback.answer()
+    @dp.callback_query()
+    async def on_callback(callback: types.CallbackQuery):
+        if callback.data == 'status':
+            await callback.message.edit_text(monitor.get_status(), parse_mode='Markdown')
+        elif callback.data == 'services':
+            await callback.message.edit_text(monitor.get_services(), parse_mode='Markdown')
+        elif callback.data == 'help':
+            await callback.message.edit_text(monitor.get_help(), parse_mode='Markdown')
+        elif callback.data == 'login':
+            await on_login(callback.message)
+        await callback.answer()
 
-# Callback handler
-@dp.callback_query()
-async def on_callback(callback: CallbackQuery):
-    if callback.data == 'status':
-        text = await on_status(callback.message)
-        await callback.message.edit_text(text)
-    elif callback.data == 'services':
-        text = await on_services(callback.message)
-        await callback.message.edit_text(text)
-    elif callback.data == 'help':
-        text = await on_help(callback.message)
-        await callback.message.edit_text(text)
-    elif callback.data == 'login':
-        await on_login(callback.message, FSMContext(callback.message))
-    await callback.answer()
+    @dp.message()
+    async def on_unknown(message: types.Message):
+        if message.text and message.text.startswith('/'):
+            await message.reply("❓ Неизвестная команда.\nИспользуйте /help для списка доступных команд.",
+                                parse_mode='Markdown')
 
-# Error handling
-@dp.errors()
-async def on_error(update: types.Update, exception: Exception):
-    if isinstance(exception, (aiohttp.ClientError, redis.RedisError)):
-        logger.error(f"Error: {e}")
-        if update.message:
-            await update.message.reply(gettext("Ошибка, попробуйте позже."))
-    return True  # Skip update
+    logger.info("🤖 Бот запущен. Нажмите Ctrl+C для остановки")
+    await dp.start_polling(bot)
 
-# Unknown
-@dp.message()
-async def on_unknown(message: types.Message):
-    if message.text.startswith('/'):
-        await message.reply(gettext("❓ Неизвестная команда.\nИспользуйте /help для списка доступных команд."))
-
-async def main():
-    # Start cyclic task
-    asyncio.create_task(cyclic_notification_task())
-    await dp.start_polling(bot, skip_updates=True)
 
 if __name__ == '__main__':
     asyncio.run(main())
