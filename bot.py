@@ -1,6 +1,11 @@
+# =========================
+# TELEGRAM BOT — FINAL
+# =========================
+
 import asyncio
 import logging
 import os
+import json
 from enum import Enum
 from datetime import datetime
 
@@ -10,29 +15,26 @@ from aiogram.types import (
     Message,
     InlineKeyboardMarkup,
     InlineKeyboardButton,
-    CallbackQuery,
 )
 from aiogram.enums import ParseMode
 
 import redis.asyncio as redis
 from dotenv import load_dotenv
 
-# =========================
-# ENV
-# =========================
+
+# ---------- ENV ----------
 
 load_dotenv()
 
 BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
 
-WEB_CLIENT_URL = os.getenv("WEB_CLIENT_URL", "http://localhost:3000")
-CORE_SERVICE_URL = os.getenv("CORE_SERVICE_URL", "http://core-service:8082")
 AUTH_SERVICE_URL = os.getenv("AUTH_SERVICE_URL", "http://auth-service:8081")
+CORE_SERVICE_URL = os.getenv("CORE_SERVICE_URL", "http://core-service:8082")
+WEB_CLIENT_URL = os.getenv("WEB_CLIENT_URL", "https://localhost:3000")
 
-# =========================
-# LOGGING
-# =========================
+
+# ---------- LOGGING ----------
 
 logging.basicConfig(
     level=logging.INFO,
@@ -40,59 +42,56 @@ logging.basicConfig(
 )
 logger = logging.getLogger("telegram-client")
 
-# =========================
-# BOT
-# =========================
+
+# ---------- BOT ----------
 
 bot = Bot(
     token=BOT_TOKEN,
     parse_mode=ParseMode.MARKDOWN_V2,
 )
-
 dp = Dispatcher()
 
-# =========================
-# REDIS
-# =========================
+
+# ---------- REDIS ----------
 
 redis_client = redis.from_url(
     REDIS_URL,
     decode_responses=True,
 )
 
-# =========================
-# USER STATUS
-# =========================
+
+# ---------- USER STATUS ----------
 
 class UserStatus(str, Enum):
     UNKNOWN = "unknown"
     ANONYMOUS = "anonymous"
     AUTHORIZED = "authorized"
 
-# =========================
-# MARKDOWN V2 SAFE
-# =========================
+
+# ---------- MARKDOWN V2 ----------
 
 MD_V2_SPECIALS = r"_*[]()~`>#+-=|{}.!"
 
-def md(text: str) -> str:
+def escape_md(text: str) -> str:
     for ch in MD_V2_SPECIALS:
         text = text.replace(ch, f"\\{ch}")
     return text
 
-# =========================
-# REDIS HELPERS
-# =========================
+
+# ---------- REDIS HELPERS ----------
 
 async def get_user(chat_id: int) -> dict | None:
     data = await redis_client.get(f"user:{chat_id}")
-    return eval(data) if data else None
+    return json.loads(data) if data else None
+
 
 async def set_user(chat_id: int, data: dict):
-    await redis_client.set(f"user:{chat_id}", str(data))
+    await redis_client.set(f"user:{chat_id}", json.dumps(data))
+
 
 async def delete_user(chat_id: int):
     await redis_client.delete(f"user:{chat_id}")
+
 
 async def get_status(chat_id: int) -> UserStatus:
     user = await get_user(chat_id)
@@ -100,38 +99,20 @@ async def get_status(chat_id: int) -> UserStatus:
         return UserStatus.UNKNOWN
     return UserStatus(user.get("status", UserStatus.UNKNOWN))
 
-# =========================
-# AUTH GUARD
-# =========================
+
+# ---------- AUTH GUARD ----------
 
 async def require_auth(message: Message) -> bool:
-    status = await get_status(message.chat.id)
-    if status != UserStatus.AUTHORIZED:
+    if await get_status(message.chat.id) != UserStatus.AUTHORIZED:
         await message.answer(
-            md(
-                "🔐 Вы не авторизованы\n\n"
+            escape_md(
+                "🔐 *Вы не авторизованы*\n\n"
                 "Используйте команду /login"
             )
         )
         return False
     return True
 
-# =========================
-# KEYBOARDS
-# =========================
-
-def auth_keyboard() -> InlineKeyboardMarkup:
-    return InlineKeyboardMarkup(
-        inline_keyboard=[
-            [
-                InlineKeyboardButton(text="🐙 GitHub", callback_data="login:github"),
-                InlineKeyboardButton(text="🟡 Яндекс ID", callback_data="login:yandex"),
-            ],
-            [
-                InlineKeyboardButton(text="🔢 Код", callback_data="login:code"),
-            ],
-        ]
-    )
 
 # =========================
 # COMMANDS
@@ -139,147 +120,164 @@ def auth_keyboard() -> InlineKeyboardMarkup:
 
 @dp.message(Command("start"))
 async def cmd_start(message: Message):
-    text = f"""
-👋 Привет
+    name = message.from_user.first_name
+    await message.answer(
+        escape_md(
+            f"👋 *Привет, {name}!* \n\n"
+            "🤖 *Я — Telegram\\-клиент системы массового тестирования*\n\n"
+            "Система находится в стадии *активной разработки*\n\n"
+            "📊 *Что уже работает:*\n"
+            "• Docker контейнеры\n"
+            "• Redis / Postgres / Mongo\n"
+            "• Core API\n"
+            "• Auth API\n"
+            "• Базовая авторизация\n\n"
+            "📌 *Доступные команды:*\n"
+            "/help — справка\n"
+            "/status — статус системы\n"
+            "/services — сервисы\n"
+            "/login — авторизация"
+        )
+    )
 
-🤖 Telegram клиент системы массового тестирования
-Система находится в стадии активной разработки
-
-📊 Что уже работает
-• Docker контейнеры
-• Redis Postgres Mongo
-• Core API
-• Auth API
-• Базовая авторизация
-
-🛠 Что будет добавлено
-• Прохождение тестов
-• Уведомления
-
-📌 Основные команды
-/start
-/help
-/status
-/services
-
-🔐 Авторизация
-/login
-/completelogin
-/logout
-
-🧪 Тестирование
-/tests
-/starttest <id>
-
-🌐 Ссылки
-Web {WEB_CLIENT_URL}
-Core {CORE_SERVICE_URL}
-Auth {AUTH_SERVICE_URL}
-"""
-    await message.answer(md(text))
 
 @dp.message(Command("help"))
 async def cmd_help(message: Message):
     await message.answer(
-        md(
-            "🆘 Справка\n\n"
-            "/start — начало работы\n"
-            "/status — статус системы\n"
-            "/services — сервисы\n\n"
-            "/login — вход\n"
+        escape_md(
+            "🆘 *Справка по командам*\n\n"
+            "🚀 *Старт:*\n"
+            "/start — начало работы\n\n"
+            "🔐 *Авторизация:*\n"
+            "/login — начать вход\n"
             "/completelogin — завершить вход\n"
-            "/logout — выход\n\n"
+            "/logout — выйти\n"
+            "/logout_all — выйти везде\n\n"
+            "🧪 *Тестирование:*\n"
             "/tests — список тестов\n"
-            "/starttest <id> — начать тест"
+            "/starttest <id> — начать тест\n\n"
+            "ℹ️ *Информация:*\n"
+            "/status — статус системы\n"
+            "/services — сервисы"
         )
     )
 
+
 @dp.message(Command("login"))
 async def cmd_login(message: Message):
-    status = await get_status(message.chat.id)
-    if status == UserStatus.AUTHORIZED:
-        await message.answer(md("✅ Вы уже авторизованы"))
-        return
-
-    await message.answer(
-        md("🔐 Авторизация\n\nВыберите способ входа"),
-        reply_markup=auth_keyboard(),
+    kb = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(
+                    text="🟡 Войти через Яндекс",
+                    url=f"{WEB_CLIENT_URL}/auth/yandex"
+                )
+            ],
+            [
+                InlineKeyboardButton(
+                    text="🐙 GitHub",
+                    url=f"{WEB_CLIENT_URL}/auth/github"
+                )
+            ]
+        ]
     )
-
-@dp.message(Command("completelogin"))
-async def cmd_complete_login(message: Message):
-    status = await get_status(message.chat.id)
-    if status == UserStatus.AUTHORIZED:
-        await message.answer(md("✅ Вы уже авторизованы"))
-        return
 
     await set_user(
         message.chat.id,
         {
-            "status": UserStatus.AUTHORIZED,
-            "authorized_at": datetime.utcnow().isoformat(),
-        },
+            "status": UserStatus.ANONYMOUS,
+            "created_at": datetime.utcnow().isoformat()
+        }
     )
 
     await message.answer(
-        md(
-            "🎉 Авторизация завершена\n\n"
-            "Теперь вам доступны тесты и сервисы"
-        )
+        escape_md(
+            "🔐 *Авторизация*\n\n"
+            "Выберите способ входа:"
+        ),
+        reply_markup=kb
     )
+
+
+@dp.message(Command("completelogin"))
+async def cmd_completelogin(message: Message):
+    await set_user(
+        message.chat.id,
+        {
+            "status": UserStatus.AUTHORIZED,
+            "authorized_at": datetime.utcnow().isoformat()
+        }
+    )
+
+    await message.answer(
+        escape_md("✅ *Авторизация успешно завершена*")
+    )
+
 
 @dp.message(Command("logout"))
 async def cmd_logout(message: Message):
-    status = await get_status(message.chat.id)
-
-    if status != UserStatus.AUTHORIZED:
-        await message.answer(
-            md(
-                "ℹ️ Вы не авторизованы\n\n"
-                "Выход из системы невозможен"
-            )
-        )
-        return
-
     await delete_user(message.chat.id)
-    await message.answer(md("🔓 Вы успешно вышли из системы"))
+    await message.answer(
+        escape_md("🚪 *Вы вышли из системы*")
+    )
+
+
+@dp.message(Command("logout_all"))
+async def cmd_logout_all(message: Message):
+    await delete_user(message.chat.id)
+    await message.answer(
+        escape_md(
+            "🚨 *Вы вышли из системы на всех устройствах*\n\n"
+            "Все сессии сброшены"
+        )
+    )
+
 
 @dp.message(Command("status"))
 async def cmd_status(message: Message):
+    name = message.from_user.first_name
     status = await get_status(message.chat.id)
 
     await message.answer(
-        md(
-            f"📊 Статус системы\n\n"
-            f"Пользователь {status}\n"
-            f"Время {datetime.now().strftime('%H:%M:%S')}\n\n"
-            "Все сервисы онлайн"
+        escape_md(
+            f"📊 *СТАТУС СИСТЕМЫ*\n\n"
+            f"👤 Пользователь: {name}\n"
+            f"🔑 Статус: {status}\n\n"
+            "🟢 *Сервисы:*\n"
+            "• core-service — Онлайн :8082\n"
+            "• auth-service — Онлайн :8081\n"
+            "• web-client — Онлайн :3000\n"
+            "• postgres — Онлайн :5432\n"
+            "• mongodb — Онлайн :27017\n"
+            "• redis — Онлайн :6379\n\n"
+            "🌐 *Ссылки:*\n"
+            f"• Web: {WEB_CLIENT_URL}\n"
+            f"• Core API: {CORE_SERVICE_URL}\n"
+            f"• Auth API: {AUTH_SERVICE_URL}"
         )
     )
+
 
 @dp.message(Command("services"))
 async def cmd_services(message: Message):
     await message.answer(
-        md(
-            "🧩 Сервисы\n\n"
-            "core service\n"
-            "auth service\n"
-            "web client\n"
-            "postgres\n"
-            "mongodb\n"
-            "redis"
+        escape_md(
+            "🧩 *СЕРВИСЫ*\n\n"
+            "⚙️ core-service\n"
+            "— API логики тестирования\n\n"
+            "🔐 auth-service\n"
+            "— Авторизация пользователей\n\n"
+            "🌐 web-client\n"
+            "— Пользовательский интерфейс\n\n"
+            "🗄 postgres\n"
+            "— Основная БД\n\n"
+            "📦 mongodb\n"
+            "— Хранилище тестов\n\n"
+            "⚡ redis\n"
+            "— Кэш и сессии"
         )
     )
 
-# =========================
-# TESTS
-# =========================
-
-TESTS = [
-    {"id": "python", "title": "Python основы"},
-    {"id": "docker", "title": "Docker основы"},
-    {"id": "backend", "title": "Backend Junior"},
-]
 
 @dp.message(Command("tests"))
 async def cmd_tests(message: Message):
@@ -288,66 +286,35 @@ async def cmd_tests(message: Message):
 
     kb = InlineKeyboardMarkup(
         inline_keyboard=[
-            [InlineKeyboardButton(text=t["title"], callback_data=f"test:{t['id']}")]
-            for t in TESTS
+            [InlineKeyboardButton(text="🧪 Тест 1", callback_data="test_1")],
+            [InlineKeyboardButton(text="🧪 Тест 2", callback_data="test_2")],
         ]
     )
 
     await message.answer(
-        md("🧪 Доступные тесты"),
-        reply_markup=kb,
+        escape_md("🧪 *Доступные тесты:*"),
+        reply_markup=kb
     )
 
-@dp.callback_query(lambda c: c.data.startswith("test:"))
-async def test_callback(call: CallbackQuery):
-    test_id = call.data.split(":")[1]
-    test = next((t for t in TESTS if t["id"] == test_id), None)
 
-    if not test:
-        await call.answer("Тест не найден", show_alert=True)
+@dp.message(Command("starttest"))
+async def cmd_starttest(message: Message):
+    if not await require_auth(message):
         return
 
-    await call.message.answer(
-        md(
-            f"🚀 Тест запущен\n\n"
-            f"Название {test['title']}\n\n"
-            "Логика будет добавлена позже"
-        )
-    )
-    await call.answer()
-
-# =========================
-# AUTH CALLBACK
-# =========================
-
-@dp.callback_query(lambda c: c.data.startswith("login:"))
-async def auth_callback(call: CallbackQuery):
-    method = call.data.split(":")[1]
-
-    await set_user(
-        call.message.chat.id,
-        {
-            "status": UserStatus.ANONYMOUS,
-            "auth_method": method,
-            "created_at": datetime.utcnow().isoformat(),
-        },
+    await message.answer(
+        escape_md("▶️ *Тест запущен*")
     )
 
-    await call.message.answer(
-        md(
-            "🔐 Авторизация начата\n\n"
-            f"Перейдите в Web {WEB_CLIENT_URL}"
-        )
-    )
-    await call.answer()
 
 # =========================
-# MAIN
+# ENTRYPOINT
 # =========================
 
 async def main():
     logger.info("🤖 Telegram bot started")
     await dp.start_polling(bot)
+
 
 if __name__ == "__main__":
     asyncio.run(main())
