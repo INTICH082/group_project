@@ -90,9 +90,9 @@ class SystemMonitor:
         for service, info in self.services.items():
             lines.append(f"*{service.upper()}*")
             lines.append(f"Статус: {info['status']}")
-            lines.append(f"Порт: `{info['port']}`")
+            lines.append(f"Порт: {info['port']}")
             if 'url' in info:
-                lines.append(f"URL: `{info['url']}`")
+                lines.append(f"URL: {info['url']}")
             lines.append("")
 
         return "\n".join(lines)
@@ -214,14 +214,11 @@ async def main():
         finally:
             await r.aclose()
 
-        keyboard = InlineKeyboardMarkup(inline_keyboard=[
-            [InlineKeyboardButton(text='GitHub', url=f"{Config.WEB_CLIENT_URL}/auth/github?state={state_uuid}")],
-            [InlineKeyboardButton(text='Yandex ID', url=f"{Config.WEB_CLIENT_URL}/auth/yandex?state={state_uuid}")],
-            [InlineKeyboardButton(text='Code', url=f"{Config.WEB_CLIENT_URL}/auth/code?state={state_uuid}")]
-        ])
-
-        msg = "Пожалуйста, выберите метод авторизации:"
-        await message.reply(msg, reply_markup=keyboard)
+        msg = f"Пожалуйста, выберите метод авторизации:\n" \
+              f"[GitHub]({Config.WEB_CLIENT_URL}/auth/github?state={state_uuid})\n" \
+              f"[Yandex ID]({Config.WEB_CLIENT_URL}/auth/yandex?state={state_uuid})\n" \
+              f"[Code]({Config.WEB_CLIENT_URL}/auth/code?state={state_uuid})"
+        await message.reply(msg, parse_mode='MarkdownV2')
 
     @dp.message(Command("complete_login"))
     async def on_complete_login(message: types.Message):
