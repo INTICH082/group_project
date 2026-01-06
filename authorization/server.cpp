@@ -1,36 +1,62 @@
 #include "server.h"
 #include "auth.h"
 #include "config.h"
+
+// Кросс-платформенные заголовки для сетевых сокетов
+#ifdef _WIN32
 #include <winsock2.h>
 #include <ws2tcpip.h>
+#pragma comment(lib, "ws2_32.lib")
+#define close closesocket
+#define SHUT_RDWR SD_BOTH
+#else
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <unistd.h>
+#include <cstring>
+#include <cerrno>
+#include <cstdlib>
+#endif
+
 #include <iostream>
 #include <sstream>
 
 using namespace std;
 
-#pragma comment(lib, "ws2_32.lib")
+// Определения для кросс-платформенности
+#ifdef _WIN32
+typedef SOCKET SocketType;
+#define INVALID_SOCKET_VAL INVALID_SOCKET
+#else
+typedef int SocketType;
+#define INVALID_SOCKET_VAL (-1)
+#endif
 
-void sendResponse(int client, const string& content, bool json = false) {
+void sendResponse(SocketType client, const string& content, bool json = false) {
     string response = "HTTP/1.1 200 OK\r\nContent-Type: " + 
                      string(json ? "application/json" : "text/plain") + 
                      "\r\nConnection: close\r\n\r\n" + content;
     send(client, response.c_str(), response.length(), 0);
 }
 
-void sendError(int client, const string& error) {
+void sendError(SocketType client, const string& error) {
     string response = "HTTP/1.1 400 Bad Request\r\nContent-Type: application/json\r\n\r\n{\"error\":\"" + error + "\"}";
     send(client, response.c_str(), response.length(), 0);
 }
 
-string readRequest(int client) {
+string readRequest(SocketType client) {
     char buffer[4096] = {0};
     int bytes = recv(client, buffer, sizeof(buffer), 0);
     return bytes > 0 ? string(buffer, bytes) : "";
 }
 
-void handleClient(int client) {
+void handleClient(SocketType client) {
     string request = readRequest(client);
-    if (request.empty()) return;
+    if (request.empty()) {
+        close(client);
+        return;
+    }
     
     istringstream ss(request);
     string method, path;
@@ -52,6 +78,7 @@ void handleClient(int client) {
     }
 })";
         sendResponse(client, apiInfo, true);
+        close(client);
         return;
     }
     
@@ -59,6 +86,7 @@ void handleClient(int client) {
         size_t body_start = request.find("\r\n\r\n");
         if (body_start == string::npos) {
             sendError(client, "Нет тела запроса");
+            close(client);
             return;
         }
         
@@ -81,6 +109,7 @@ void handleClient(int client) {
         
         string result = Auth::registerUser(login, password, fullname, email);
         sendResponse(client, result, true);
+        close(client);
         return;
     }
     
@@ -88,6 +117,7 @@ void handleClient(int client) {
         size_t body_start = request.find("\r\n\r\n");
         if (body_start == string::npos) {
             sendError(client, "Нет тела запроса");
+            close(client);
             return;
         }
         
@@ -107,6 +137,7 @@ void handleClient(int client) {
         
         string result = Auth::loginUser(login, password);
         sendResponse(client, result, true);
+        close(client);
         return;
     }
     
@@ -114,6 +145,7 @@ void handleClient(int client) {
         size_t body_start = request.find("\r\n\r\n");
         if (body_start == string::npos) {
             sendError(client, "Нет тела запроса");
+            close(client);
             return;
         }
         
@@ -133,6 +165,7 @@ void handleClient(int client) {
         
         string result = Auth::telegramAuth(telegram_id, name);
         sendResponse(client, result, true);
+        close(client);
         return;
     }
     
@@ -145,6 +178,7 @@ void handleClient(int client) {
         } else {
             sendError(client, "Нет токена");
         }
+        close(client);
         return;
     }
     
@@ -152,6 +186,7 @@ void handleClient(int client) {
         size_t body_start = request.find("\r\n\r\n");
         if (body_start == string::npos) {
             sendError(client, "Нет тела запроса");
+            close(client);
             return;
         }
         
@@ -164,6 +199,7 @@ void handleClient(int client) {
         } else {
             sendError(client, "Нет refresh_token");
         }
+        close(client);
         return;
     }
     
@@ -176,6 +212,7 @@ void handleClient(int client) {
         } else {
             sendError(client, "Нет login_token");
         }
+        close(client);
         return;
     }
     
@@ -198,6 +235,7 @@ void handleClient(int client) {
         } else {
             sendError(client, "Нет кода");
         }
+        close(client);
         return;
     }
     
@@ -221,6 +259,7 @@ void handleClient(int client) {
             string result = Auth::telegramAuth(telegram_id, name);
             sendResponse(client, result, true);
         }
+        close(client);
         return;
     }
     
@@ -231,40 +270,83 @@ void handleClient(int client) {
             string result = Auth::verifyToken(token);
             sendResponse(client, result, true);
         }
+        close(client);
         return;
     }
     
     sendError(client, "Эндпоинт не найден");
+    close(client);
 }
 
 void HttpServer::start(int port) {
+#ifdef _WIN32
     WSADATA wsa;
     if (WSAStartup(MAKEWORD(2, 2), &wsa) != 0) {
         cerr << "Ошибка WSAStartup" << endl;
         return;
     }
+#endif
     
-    SOCKET server = socket(AF_INET, SOCK_STREAM, 0);
+    SocketType server = socket(AF_INET, SOCK_STREAM, 0);
+    if (server == INVALID_SOCKET_VAL) {
+        cerr << "Ошибка создания сокета" << endl;
+#ifdef _WIN32
+        WSACleanup();
+#endif
+        return;
+    }
+    
+    // Позволяем переиспользовать порт
+    int reuse = 1;
+#ifdef _WIN32
+    setsockopt(server, SOL_SOCKET, SO_REUSEADDR, (char*)&reuse, sizeof(reuse));
+#else
+    setsockopt(server, SOL_SOCKET, SO_REUSEADDR, &reuse, sizeof(reuse));
+#endif
     
     sockaddr_in addr;
+    memset(&addr, 0, sizeof(addr));
     addr.sin_family = AF_INET;
     addr.sin_addr.s_addr = INADDR_ANY;
     addr.sin_port = htons(port);
     
-    bind(server, (sockaddr*)&addr, sizeof(addr));
-    listen(server, 10);
+    if (bind(server, (sockaddr*)&addr, sizeof(addr)) < 0) {
+        cerr << "Ошибка bind" << endl;
+        close(server);
+#ifdef _WIN32
+        WSACleanup();
+#endif
+        return;
+    }
+    
+    if (listen(server, 10) < 0) {
+        cerr << "Ошибка listen" << endl;
+        close(server);
+#ifdef _WIN32
+        WSACleanup();
+#endif
+        return;
+    }
     
     cout << "🚀 Модуль авторизации запущен на порту " << port << endl;
     cout << "📡 API доступен по адресу: http://localhost:" << port << endl;
     
     while (true) {
-        SOCKET client = accept(server, nullptr, nullptr);
-        if (client != INVALID_SOCKET) {
-            handleClient(client);
-            closesocket(client);
+        sockaddr_in client_addr;
+        socklen_t client_len = sizeof(client_addr);
+        
+        SocketType client = accept(server, (sockaddr*)&client_addr, &client_len);
+        if (client == INVALID_SOCKET_VAL) {
+            cerr << "Ошибка accept" << endl;
+            continue;
         }
+        
+        handleClient(client);
     }
     
-    closesocket(server);
+    close(server);
+    
+#ifdef _WIN32
     WSACleanup();
+#endif
 }

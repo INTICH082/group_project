@@ -223,7 +223,13 @@ string Auth::startOAuth(const string& login_token) {
         return "{\"error\":\"Требуется login_token\"}";
     }
     
-    int user_id = 999;
+    // Проверяем токен и получаем user_id
+    int user_id = TokenManager::validateLoginToken(login_token);
+    if (user_id == 0) {
+        return "{\"error\":\"Неверный login_token\"}";
+    }
+    
+    // Создаем state токен для этого пользователя
     string state_token = TokenManager::createLoginToken(user_id);
     
     string url = "https://github.com/login/oauth/authorize?client_id=" + Config::GITHUB_CLIENT_ID +

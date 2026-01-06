@@ -1,3 +1,4 @@
+# Используем более свежий образ Ubuntu
 FROM ubuntu:22.04
 
 # Устанавливаем таймзону
@@ -12,21 +13,24 @@ RUN apt-get update && apt-get install -y \
     libmysqlclient-dev \
     && rm -rf /var/lib/apt/lists/*
 
+# Создаем рабочую директорию
 WORKDIR /app
 
-# Копируем исходный код
+# Копируем все файлы проекта
 COPY . .
 
-# Патчим код для Linux
-RUN sed -i 's/#include <mysql.h>/#include <mysql\/mysql.h>/' authorization/database.cpp
+# Создаем папку для билда
+WORKDIR /app/authorization
 
-# Компилируем
-RUN g++ -c authorization/database.cpp -std=c++11 -I/usr/include/mysql \
-    && g++ -c authorization/auth.cpp -std=c++11 -I/usr/include/mysql \
-    && g++ -c authorization/server.cpp -std=c++11 -I/usr/include/mysql \
-    && g++ -c authorization/main.cpp -std=c++11 -I/usr/include/mysql \
+# Компилируем проект
+RUN g++ -c database.cpp -std=c++11 -I/usr/include/mysql \
+    && g++ -c auth.cpp -std=c++11 -I/usr/include/mysql \
+    && g++ -c server.cpp -std=c++11 -I/usr/include/mysql \
+    && g++ -c main.cpp -std=c++11 -I/usr/include/mysql \
     && g++ database.o auth.o server.o main.o -o auth_server -lmysqlclient -lcurl -lpthread
 
+# Открываем порт
 EXPOSE 8081
 
+# Запускаем сервер
 CMD ["./auth_server"]

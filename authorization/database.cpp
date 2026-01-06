@@ -1,6 +1,13 @@
 #include "database.h"
 #include "config.h"
-#include <mysql.h>  
+
+// Кросс-платформенный include для MySQL
+#ifdef _WIN32
+#include <mysql.h>
+#else
+#include <mysql/mysql.h>
+#endif
+
 #include <iostream>
 
 using namespace std;
