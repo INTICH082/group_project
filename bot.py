@@ -5,7 +5,6 @@ import json
 from enum import Enum
 from datetime import datetime
 
-from aiogram.filters import Text
 from aiogram.types import CallbackQuery
 from aiogram import F
 from aiogram import Bot, Dispatcher
@@ -360,7 +359,7 @@ async def cmd_starttest(message: Message):
         reply_markup=keyboard
     )
 
-@dp.callback_query(Text(startswith="starttest_"))
+@dp.callback_query(F.data.startswith("starttest_"))
 async def cb_starttest(callback: CallbackQuery):
     if not await require_auth(callback.message):
         await callback.answer()
@@ -377,6 +376,7 @@ async def cb_starttest(callback: CallbackQuery):
     await callback.message.answer(
         md(f"▶️ *Тест {test_id} запущен*")
     )
+
 
 
 # =========================
