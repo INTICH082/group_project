@@ -28,7 +28,7 @@ logger = logging.getLogger(__name__)
 class Config:
     """Конфигурация бота"""
     TELEGRAM_TOKEN: Optional[str] = None
-    WEB_CLIENT_URL = "http://localhost:3000"
+    WEB_CLIENT_URL = "https://localhost:3000"
     CORE_API_URL = "http://core-service:8082"
     AUTH_API_URL = "http://auth-service:8081"
     REDIS_URL = "redis://redis:6379/0"
@@ -107,9 +107,9 @@ class SystemMonitor:
 /services - Информация о сервисах
 /help - Эта справка
 /login - Авторизация
-/complete_login - Завершить авторизацию после веб-клиента
+/completelogin - Завершить авторизацию после веб-клиента
 /tests - Список доступных тестов (после авторизации)
-/start_test <test_id> - Начать тест (после авторизации)
+/starttest <test_id> - Начать тест (после авторизации)
 
 *Технические данные:*
 📊 PostgreSQL: localhost:5432
@@ -167,9 +167,9 @@ async def main():
 /services - Информация о сервисах
 /help - Справка
 /login - Начать авторизацию
-/complete_login - Завершить авторизацию
+/completelogin - Завершить авторизацию
 /tests - Список тестов
-/start_test <id> - Начать тест
+/starttest <id> - Начать тест
 
 🌐 *Ссылки:*
 • Веб-интерфейс: {Config.WEB_CLIENT_URL}
@@ -214,14 +214,17 @@ async def main():
         finally:
             await r.aclose()
 
-        msg = f"Пожалуйста, выберите метод авторизации:\n" \
-              f"[GitHub]({Config.WEB_CLIENT_URL}/auth/github?state={state_uuid})\n" \
-              f"[Yandex ID]({Config.WEB_CLIENT_URL}/auth/yandex?state={state_uuid})\n" \
-              f"[Code]({Config.WEB_CLIENT_URL}/auth/code?state={state_uuid})"
-        await message.reply(msg, parse_mode='MarkdownV2')
+        keyboard = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text='GitHub', url=f"{Config.WEB_CLIENT_URL}/auth/github?state={state_uuid}")],
+            [InlineKeyboardButton(text='Yandex ID', url=f"{Config.WEB_CLIENT_URL}/auth/yandex?state={state_uuid}")],
+            [InlineKeyboardButton(text='Code', url=f"{Config.WEB_CLIENT_URL}/auth/code?state={state_uuid}")]
+        ])
 
-    @dp.message(Command("complete_login"))
-    async def on_complete_login(message: types.Message):
+        msg = "Пожалуйста, выберите метод авторизации:"
+        await message.reply(msg, reply_markup=keyboard)
+
+    @dp.message(Command("completelogin"))
+    async def on_completelogin(message: types.Message):
         monitor.stats['total_commands'] += 1
         user_id = message.from_user.id
         state = None
@@ -260,7 +263,7 @@ async def main():
             await r.aclose()
 
         await message.reply(
-            "Авторизация завершена успешно! Теперь вы можете использовать защищенные команды, такие как /tests и /start_test.")
+            "Авторизация завершена успешно! Теперь вы можете использовать защищенные команды, такие как /tests и /starttest.")
 
     @dp.message(Command("tests"))
     async def on_tests(message: types.Message):
@@ -270,7 +273,7 @@ async def main():
         jwt = await r.get(f"user_jwt:{user_id}")
         await r.aclose()
         if not jwt:
-            await message.reply("Сначала авторизуйтесь с помощью /login и /complete_login.")
+            await message.reply("Сначала авторизуйтесь с помощью /login и /completelogin.")
             return
 
         headers = {"Authorization": f"Bearer {jwt}"}
@@ -281,25 +284,25 @@ async def main():
                         await message.reply(f"Ошибка при получении тестов: {response.status}")
                         return
                     tests_data = await response.json()
-                    msg = "Доступные тесты:\n"
+                    msg = "Доступные тесты:\n\n"
                     tests = tests_data.get('tests', [])
                     if not tests:
-                        msg = "Нет доступных тестов."
+                        msg += "Нет доступных тестов."
                     else:
                         for test in tests:
-                            msg += f"- {test.get('test_name', 'Без названия')} (ID: {test.get('id')})\n"
+                            msg += f"**{test.get('test_name', 'Без названия')}** (ID: {test.get('id')})\n"
             except Exception as e:
                 logger.error(f"API error: {e}")
                 msg = "Ошибка соединения с Core API. Попробуйте позже."
 
-        await message.reply(msg)
+        await message.reply(msg, parse_mode='Markdown')
 
-    @dp.message(Command("start_test"))
-    async def on_start_test(message: types.Message, state: FSMContext):
+    @dp.message(Command("starttest"))
+    async def on_starttest(message: types.Message, state: FSMContext):
         monitor.stats['total_commands'] += 1
         args = message.text.split()
         if len(args) < 2:
-            await message.reply("Использование: /start_test <test_id>")
+            await message.reply("Использование: /starttest <test_id>")
             return
         test_id = args[1]
         user_id = message.from_user.id
@@ -307,7 +310,7 @@ async def main():
         jwt = await r.get(f"user_jwt:{user_id}")
         await r.aclose()
         if not jwt:
-            await message.reply("Сначала авторизуйтесь с помощью /login и /complete_login.")
+            await message.reply("Сначала авторизуйтесь с помощью /login и /completelogin.")
             return
 
         headers = {"Authorization": f"Bearer {jwt}"}
