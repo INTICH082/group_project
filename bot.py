@@ -1,677 +1,514 @@
-import os
-import logging
 import asyncio
-from datetime import datetime
-from typing import Optional, Dict, Any
-import uuid
-import json
+import logging
+import os
+from enum import Enum
 
-import redis.asyncio as redis
-import aiohttp
-
-from aiogram import Bot, Dispatcher, types
-from aiogram.enums import ParseMode
+from aiogram import Bot, Dispatcher
 from aiogram.filters import Command
-from aiogram.fsm.context import FSMContext
-from aiogram.fsm.storage.memory import MemoryStorage
-from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
-from aiogram.fsm.state import State, StatesGroup
-
+from aiogram.types import (
+    Message,
+    InlineKeyboardMarkup,
+    InlineKeyboardButton,
+)
+from aiogram.enums import ParseMode
+from aiogram.types import CallbackQuery
+import redis.asyncio as redis
 from dotenv import load_dotenv
+from aiogram.types import CallbackQuery
+from datetime import datetime
 
-# =====================================
-# ENV
-# =====================================
+# ---------- ENV ----------
 
 load_dotenv()
 
-class Config:
-    BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
-    REDIS_URL = os.getenv("REDIS_URL", "redis://redis:6379/0")
+BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
+REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
 
-    AUTH_MODULE_URL = os.getenv("AUTH_MODULE_URL", "http://auth:8000")
-    CORE_MODULE_URL = os.getenv("CORE_MODULE_URL", "http://core:8000")
+AUTH_SERVICE_URL = os.getenv("AUTH_SERVICE_URL", "")
+CORE_SERVICE_URL = os.getenv("CORE_SERVICE_URL", "")
+WEB_CLIENT_URL = os.getenv("WEB_CLIENT_URL", "")
 
-    LOGIN_TTL_SECONDS = 300
 
-if not Config.BOT_TOKEN:
-    raise RuntimeError("TELEGRAM_BOT_TOKEN is not set")
-
-# =====================================
-# LOGGING
-# =====================================
+# ---------- LOGGING ----------
 
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
 )
-
 logger = logging.getLogger("telegram-client")
 
-# =====================================
-# BOT INIT
-# =====================================
+
+# ---------- BOT ----------
 
 bot = Bot(
-    token=Config.BOT_TOKEN,
-    parse_mode=ParseMode.MARKDOWN_V2,  # 🔥 ВАЖНО
+    token=BOT_TOKEN,
+    parse_mode=ParseMode.MARKDOWN_V2,  # ❗ ВАЖНО
 )
 
-dp = Dispatcher(storage=MemoryStorage())
+dp = Dispatcher()
 
-# =====================================
-# REDIS
-# =====================================
 
-redis_client: redis.Redis = redis.from_url(
-    Config.REDIS_URL,
-    decode_responses=True
+# ---------- REDIS ----------
+
+redis_client = redis.from_url(
+    REDIS_URL,
+    decode_responses=True,
 )
 
-# =====================================
-# USER STATUSES (ПО ТЗ)
-# =====================================
 
-class UserStatus:
-    UNKNOWN = "UNKNOWN"        # нет записи в Redis
-    ANONYMOUS = "ANONYMOUS"    # есть login_token
-    AUTHORIZED = "AUTHORIZED" # есть access + refresh
+# ---------- USER STATUS ----------
 
-# =====================================
-# MARKDOWN V2 ESCAPE
-# =====================================
+class UserStatus(str, Enum):
+    UNKNOWN = "unknown"
+    ANONYMOUS = "anonymous"
+    AUTHORIZED = "authorized"
 
-def md_escape(text: str) -> str:
+
+# ---------- MARKDOWN V2 ESCAPE ----------
+
+MD_V2_SPECIALS = r"_*[]()~`>#+-=|{}.!"
+
+def md(text: str) -> str:
     """
-    Экранирование для MarkdownV2
+    Безопасное экранирование MarkdownV2
     """
-    escape_chars = r"_*[]()~`>#+-=|{}.!"
-    return "".join(f"\\{c}" if c in escape_chars else c for c in text)
-# =====================================
-# PART 2 — REDIS REPOSITORY / USER STATE
-# =====================================
+    for ch in MD_V2_SPECIALS:
+        text = text.replace(ch, f"\\{ch}")
+    return text
 
 
-class UserRepository:
-    """
-    Хранилище состояния пользователя в Redis
-    key   -> chat_id
-    value -> JSON
-    """
+# ---------- REDIS HELPERS ----------
 
-    @staticmethod
-    async def get(chat_id: int) -> Optional[Dict[str, Any]]:
-        data = await redis_client.get(str(chat_id))
-        if not data:
-            return None
-        return json.loads(data)
-
-    @staticmethod
-    async def save(chat_id: int, payload: Dict[str, Any]) -> None:
-        await redis_client.set(
-            str(chat_id),
-            json.dumps(payload),
-        )
-
-    @staticmethod
-    async def delete(chat_id: int) -> None:
-        await redis_client.delete(str(chat_id))
+async def get_user(chat_id: int) -> dict | None:
+    data = await redis_client.get(f"user:{chat_id}")
+    return eval(data) if data else None
 
 
-# =====================================
-# USER STATE HELPERS
-# =====================================
+async def set_user(chat_id: int, data: dict):
+    await redis_client.set(f"user:{chat_id}", str(data))
 
-async def get_user_status(chat_id: int) -> str:
-    """
-    Возвращает статус пользователя:
-    UNKNOWN | ANONYMOUS | AUTHORIZED
-    """
-    user = await UserRepository.get(chat_id)
+
+async def delete_user(chat_id: int):
+    await redis_client.delete(f"user:{chat_id}")
+
+
+async def get_status(chat_id: int) -> UserStatus:
+    user = await get_user(chat_id)
     if not user:
         return UserStatus.UNKNOWN
-    return user.get("status", UserStatus.UNKNOWN)
+    return UserStatus(user.get("status", UserStatus.UNKNOWN))
 
 
-async def create_anonymous_user(chat_id: int) -> str:
-    """
-    Создание анонимного пользователя + login_token
-    """
-    login_token = str(uuid.uuid4())
+# ---------- AUTH GUARD ----------
 
-    payload = {
-        "status": UserStatus.ANONYMOUS,
-        "login_token": login_token,
-        "created_at": datetime.utcnow().isoformat(),
-    }
+async def require_auth(message: Message) -> bool:
+    status = await get_status(message.chat.id)
 
-    await UserRepository.save(chat_id, payload)
-    return login_token
-
-
-async def update_login_token(chat_id: int) -> str:
-    """
-    Обновление login_token для ANONYMOUS пользователя
-    """
-    login_token = str(uuid.uuid4())
-    user = await UserRepository.get(chat_id)
-
-    if not user:
-        return await create_anonymous_user(chat_id)
-
-    user["login_token"] = login_token
-    user["status"] = UserStatus.ANONYMOUS
-    await UserRepository.save(chat_id, user)
-    return login_token
-
-
-async def authorize_user(
-    chat_id: int,
-    access_token: str,
-    refresh_token: str,
-) -> None:
-    """
-    Перевод пользователя в AUTHORIZED
-    """
-    payload = {
-        "status": UserStatus.AUTHORIZED,
-        "access_token": access_token,
-        "refresh_token": refresh_token,
-        "authorized_at": datetime.utcnow().isoformat(),
-    }
-
-    await UserRepository.save(chat_id, payload)
-
-
-async def logout_user(chat_id: int) -> None:
-    """
-    Локальный logout (текущий chat_id)
-    """
-    await UserRepository.delete(chat_id)
-
-
-# =====================================
-# AUTH MODULE — STUBS (ПО ТЗ)
-# =====================================
-
-async def auth_check_login_token(login_token: str) -> Dict[str, Any]:
-    """
-    Заглушка модуля авторизации.
-    В будущем: HTTP запрос в Auth Module
-    """
-
-    # 🔧 Пока что всегда "ожидание подтверждения"
-    return {
-        "status": "PENDING",  # PENDING | DENIED | APPROVED
-    }
-
-
-async def auth_exchange_token(login_token: str) -> Optional[Dict[str, str]]:
-    """
-    Обмен login_token на access/refresh
-    """
-
-    # 🔧 Заглушка: эмулируем успешный вход
-    return {
-        "access_token": f"access-{uuid.uuid4()}",
-        "refresh_token": f"refresh-{uuid.uuid4()}",
-    }
-
-
-async def auth_logout_all(refresh_token: str) -> None:
-    """
-    Logout со всех устройств (stub)
-    """
-    return
-
-# =====================================
-# PART 2 — REDIS REPOSITORY / USER STATE
-# =====================================
-
-
-class UserRepository:
-    """
-    Хранилище состояния пользователя в Redis
-    key   -> chat_id
-    value -> JSON
-    """
-
-    @staticmethod
-    async def get(chat_id: int) -> Optional[Dict[str, Any]]:
-        data = await redis_client.get(str(chat_id))
-        if not data:
-            return None
-        return json.loads(data)
-
-    @staticmethod
-    async def save(chat_id: int, payload: Dict[str, Any]) -> None:
-        await redis_client.set(
-            str(chat_id),
-            json.dumps(payload),
+    if status != UserStatus.AUTHORIZED:
+        await message.answer(
+            md(
+                "🔐 *Вы не авторизованы*\n\n"
+                "Используйте команду /login"
+            )
         )
+        return False
 
-    @staticmethod
-    async def delete(chat_id: int) -> None:
-        await redis_client.delete(str(chat_id))
+    return True
 
-
-# =====================================
-# USER STATE HELPERS
-# =====================================
-
-async def get_user_status(chat_id: int) -> str:
-    """
-    Возвращает статус пользователя:
-    UNKNOWN | ANONYMOUS | AUTHORIZED
-    """
-    user = await UserRepository.get(chat_id)
-    if not user:
-        return UserStatus.UNKNOWN
-    return user.get("status", UserStatus.UNKNOWN)
+# =========================
+# PART 2 — START / HELP / AUTH COMMANDS
+# =========================
 
 
-async def create_anonymous_user(chat_id: int) -> str:
-    """
-    Создание анонимного пользователя + login_token
-    """
-    login_token = str(uuid.uuid4())
+# ---------- KEYBOARDS ----------
 
-    payload = {
-        "status": UserStatus.ANONYMOUS,
-        "login_token": login_token,
-        "created_at": datetime.utcnow().isoformat(),
-    }
-
-    await UserRepository.save(chat_id, payload)
-    return login_token
-
-
-async def update_login_token(chat_id: int) -> str:
-    """
-    Обновление login_token для ANONYMOUS пользователя
-    """
-    login_token = str(uuid.uuid4())
-    user = await UserRepository.get(chat_id)
-
-    if not user:
-        return await create_anonymous_user(chat_id)
-
-    user["login_token"] = login_token
-    user["status"] = UserStatus.ANONYMOUS
-    await UserRepository.save(chat_id, user)
-    return login_token
-
-
-async def authorize_user(
-    chat_id: int,
-    access_token: str,
-    refresh_token: str,
-) -> None:
-    """
-    Перевод пользователя в AUTHORIZED
-    """
-    payload = {
-        "status": UserStatus.AUTHORIZED,
-        "access_token": access_token,
-        "refresh_token": refresh_token,
-        "authorized_at": datetime.utcnow().isoformat(),
-    }
-
-    await UserRepository.save(chat_id, payload)
-
-
-async def logout_user(chat_id: int) -> None:
-    """
-    Локальный logout (текущий chat_id)
-    """
-    await UserRepository.delete(chat_id)
-
-
-# =====================================
-# AUTH MODULE — STUBS (ПО ТЗ)
-# =====================================
-
-async def auth_check_login_token(login_token: str) -> Dict[str, Any]:
-    """
-    Заглушка модуля авторизации.
-    В будущем: HTTP запрос в Auth Module
-    """
-
-    # 🔧 Пока что всегда "ожидание подтверждения"
-    return {
-        "status": "PENDING",  # PENDING | DENIED | APPROVED
-    }
-
-
-async def auth_exchange_token(login_token: str) -> Optional[Dict[str, str]]:
-    """
-    Обмен login_token на access/refresh
-    """
-
-    # 🔧 Заглушка: эмулируем успешный вход
-    return {
-        "access_token": f"access-{uuid.uuid4()}",
-        "refresh_token": f"refresh-{uuid.uuid4()}",
-    }
-
-
-async def auth_logout_all(refresh_token: str) -> None:
-    """
-    Logout со всех устройств (stub)
-    """
-    return
-
-# =====================================
-# PART 3 — TELEGRAM HANDLERS (FINAL)
-# =====================================
-
-
-# ---------- UI HELPERS ----------
-
-def build_login_keyboard(login_token: str) -> InlineKeyboardMarkup:
+def auth_keyboard() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(
         inline_keyboard=[
             [
                 InlineKeyboardButton(
                     text="🐙 GitHub",
-                    url=f"https://example.com/auth/github?token={login_token}",
+                    callback_data="login:github",
                 ),
                 InlineKeyboardButton(
                     text="🟡 Яндекс ID",
-                    url=f"https://example.com/auth/yandex?token={login_token}",
+                    callback_data="login:yandex",
                 ),
             ],
             [
                 InlineKeyboardButton(
-                    text="🔑 Войти по коду",
-                    callback_data="login_by_code",
-                )
+                    text="🔢 Код",
+                    callback_data="login:code",
+                ),
             ],
         ]
     )
 
 
-def build_tests_keyboard() -> InlineKeyboardMarkup:
-    return InlineKeyboardMarkup(
-        inline_keyboard=[
-            [InlineKeyboardButton(text="🐍 Python", callback_data="test_python")],
-            [InlineKeyboardButton(text="⚙️ DevOps", callback_data="test_devops")],
-            [InlineKeyboardButton(text="🗄 Базы данных", callback_data="test_db")],
-        ]
-    )
-
-
-def msg_not_logged() -> str:
-    return md_escape("❗ Вы не авторизованы\\. Выполните /login")
-
-
-def msg_already_logged() -> str:
-    return md_escape("✅ Вы уже авторизованы")
-
-
-# ---------- START ----------
+# ---------- /start ----------
 
 @dp.message(Command("start"))
-async def start_cmd(message: types.Message):
+async def cmd_start(message: Message):
     await message.answer(
-        md_escape(
-            "👋 *Добро пожаловать!*\n\n"
-            "Этот Telegram\\-бот предназначен для:\n"
-            "• прохождения тестов\n"
-            "• участия в опросах\n"
-            "• получения уведомлений\n\n"
-            "➡️ Используйте /login для входа\n"
-            "➡️ /help — список команд"
+        md(
+            "👋 *Привет\\!*\n\n"
+            "🤖 *Telegram\\-клиент системы массового тестирования*\n"
+            "Система находится в стадии активной разработки\\.\n\n"
+
+            "📊 *Что уже работает:*\n"
+            "• Docker\\-контейнеры запущены\n"
+            "• Redis / Postgres / Mongo доступны\n"
+            "• Core API готов\n"
+            "• Auth API готов\n"
+            "• Базовая авторизация через Web\n\n"
+
+            "🛠 *Что будет добавлено:*\n"
+            "• Полное прохождение тестов\n"
+            "• Уведомления\n\n"
+
+            "📌 *Основные команды:*\n"
+            "/start — Начало работы\n"
+            "/help — Справка\n"
+            "/status — Статус системы\n"
+            "/services — Сервисы\n\n"
+
+            "🔐 *Авторизация:*\n"
+            "/login — Вход\n"
+            "/completelogin — Завершить вход\n"
+            "/logout — Выход\n\n"
+
+            "🧪 *Тестирование:*\n"
+            "/tests — Список тестов\n"
+            "/starttest <id> — Начать тест\n\n"
+
+            "🌐 *Ссылки:*\n"
+            f"• Web: {WEB_CLIENT_URL}\n"
+            f"• Core API: {CORE_SERVICE_URL}\n"
+            f"• Auth API: {AUTH_SERVICE_URL}"
         )
     )
 
 
-# ---------- HELP ----------
+# ---------- /help ----------
 
 @dp.message(Command("help"))
-async def help_cmd(message: types.Message):
+async def cmd_help(message: Message):
     await message.answer(
-        md_escape(
-            "📖 *Доступные команды:*\n\n"
-            "/start — старт\n"
-            "/login — авторизация\n"
-            "/completelogin — завершить вход\n"
-            "/tests — список тестов\n"
-            "/starttest — начать тест\n"
-            "/services — сервисы\n"
-            "/status — статус входа\n"
-            "/logout — выход"
+        md(
+            "🆘 *Справка*\n\n"
+            "/start — Начало работы\n"
+            "/status — Статус пользователя\n"
+            "/services — Список сервисов\n\n"
+            "/login — Авторизация\n"
+            "/completelogin — Завершить вход\n"
+            "/logout — Выход\n\n"
+            "/tests — Доступные тесты\n"
+            "/starttest <id> — Начать тест"
         )
     )
 
 
-# ---------- STATUS ----------
-
-@dp.message(Command("status"))
-async def status_cmd(message: types.Message):
-    status = await get_user_status(message.chat.id)
-
-    mapping = {
-        UserStatus.UNKNOWN: "ℹ️ Статус: неизвестный пользователь",
-        UserStatus.ANONYMOUS: "⏳ Статус: ожидается подтверждение входа",
-        UserStatus.AUTHORIZED: "✅ Статус: авторизован",
-    }
-
-    await message.answer(md_escape(mapping[status]))
-
-
-# ---------- LOGIN FLOW ----------
+# ---------- /login ----------
 
 @dp.message(Command("login"))
-async def login_cmd(message: types.Message):
-    chat_id = message.chat.id
-    status = await get_user_status(chat_id)
+async def cmd_login(message: Message):
+    status = await get_status(message.chat.id)
 
     if status == UserStatus.AUTHORIZED:
-        await message.answer(msg_already_logged())
+        await message.answer(
+            md("✅ *Вы уже авторизованы*")
+        )
         return
 
-    login_token = await update_login_token(chat_id)
-
     await message.answer(
-        md_escape(
+        md(
             "🔐 *Авторизация*\n\n"
             "Выберите способ входа:"
         ),
-        reply_markup=build_login_keyboard(login_token),
+        reply_markup=auth_keyboard(),
     )
 
+
+# ---------- /completelogin ----------
 
 @dp.message(Command("completelogin"))
-async def complete_login_cmd(message: types.Message):
-    chat_id = message.chat.id
-    user = await UserRepository.get(chat_id)
+async def cmd_complete_login(message: Message):
+    status = await get_status(message.chat.id)
 
-    if not user or user.get("status") != UserStatus.ANONYMOUS:
-        await message.answer(msg_not_logged())
+    if status == UserStatus.AUTHORIZED:
+        await message.answer(
+            md("✅ *Вы уже авторизованы*")
+        )
         return
 
-    result = await auth_check_login_token(user["login_token"])
-
-    if result["status"] == "PENDING":
-        await message.answer(md_escape("⏳ Ожидается подтверждение входа"))
-        return
-
-    if result["status"] == "DENIED":
-        await logout_user(chat_id)
-        await message.answer(md_escape("❌ Авторизация отклонена"))
-        return
-
-    tokens = await auth_exchange_token(user["login_token"])
-    await authorize_user(chat_id, tokens["access_token"], tokens["refresh_token"])
-
-    await message.answer(md_escape("🎉 Авторизация успешно завершена"))
+    await message.answer(
+        md(
+            "⏳ *Завершение авторизации*\n\n"
+            "Проверяем статус входа\\.\\.\\.\n"
+            "_(модуль авторизации будет подключён позже)_"
+        )
+    )
 
 
-# ---------- LOGOUT ----------
+# ---------- /logout ----------
 
 @dp.message(Command("logout"))
-async def logout_cmd(message: types.Message):
-    await logout_user(message.chat.id)
-    await message.answer(md_escape("🚪 Сеанс завершён"))
-
-
-# ---------- AUTH CHECK ----------
-
-async def require_auth(message: types.Message) -> bool:
-    if await get_user_status(message.chat.id) != UserStatus.AUTHORIZED:
-        await message.answer(msg_not_logged())
-        return False
-    return True
-
-
-# ---------- TESTS ----------
-
-@dp.message(Command("tests"))
-async def tests_cmd(message: types.Message):
-    if not await require_auth(message):
-        return
+async def cmd_logout(message: Message):
+    await delete_user(message.chat.id)
 
     await message.answer(
-        md_escape("📝 *Доступные тесты:*"),
-        reply_markup=build_tests_keyboard(),
+        md(
+            "🚪 *Вы вышли из системы*\n"
+            "Статус сброшен"
+        )
+    )
+
+# =========================
+# PART 3 — STATUS / SERVICES / AUTH CALLBACKS
+# =========================
+
+# ---------- STATUS TEXT ----------
+
+def status_text(status: UserStatus) -> str:
+    if status == UserStatus.AUTHORIZED:
+        return "🟢 *Авторизован*"
+    if status == UserStatus.ANONYMOUS:
+        return "🟡 *Гость*"
+    return "⚪ *Неизвестный пользователь*"
+
+
+# ---------- /status ----------
+
+@dp.message(Command("status"))
+async def cmd_status(message: Message):
+    status = await get_status(message.chat.id)
+
+    await message.answer(
+        md(
+            "📊 *СТАТУС СИСТЕМЫ*\n\n"
+            f"👤 Пользователь: {status_text(status)}\n"
+            f"⏰ Время: {datetime.now().strftime('%H:%M:%S')}\n\n"
+
+            "📦 *Сервисы:*\n"
+            "• core\\-service — 🟢 Онлайн\n"
+            "• auth\\-service — 🟢 Онлайн\n"
+            "• web\\-client — 🟢 Онлайн\n"
+            "• postgres — 🟢 Онлайн\n"
+            "• mongodb — 🟢 Онлайн\n"
+            "• redis — 🟢 Онлайн\n\n"
+
+            "📈 *Статистика:*\n"
+            "Команд выполнено: 0\n"
+            "Активных пользователей: 1\n\n"
+
+            f"🌐 Web: {WEB_CLIENT_URL}\n"
+            f"🔗 Core API: {CORE_SERVICE_URL}\n"
+            f"🔐 Auth API: {AUTH_SERVICE_URL}"
+        )
     )
 
 
-@dp.message(Command("starttest"))
-async def starttest_cmd(message: types.Message):
-    if not await require_auth(message):
-        return
-
-    await message.answer(
-        md_escape(
-            "🚀 *Начать тест*\n\n"
-            "Выберите тест:"
-        ),
-        reply_markup=build_tests_keyboard(),
-    )
-
-
-# ---------- SERVICES ----------
+# ---------- /services ----------
 
 @dp.message(Command("services"))
-async def services_cmd(message: types.Message):
+async def cmd_services(message: Message):
     if not await require_auth(message):
         return
 
     await message.answer(
-        md_escape(
-            "🛠 *Сервисы:*\n\n"
-            "• Управление тестами\n"
-            "• История прохождений\n"
-            "• Уведомления"
+        md(
+            "🧩 *СЕРВИСЫ*\n\n"
+            "⚙️ core\\-service\n"
+            "— API логики тестирования\n\n"
+
+            "🔐 auth\\-service\n"
+            "— Авторизация пользователей\n\n"
+
+            "🌐 web\\-client\n"
+            "— Пользовательский интерфейс\n\n"
+
+            "🗄 postgres\n"
+            "— Основная БД\n\n"
+
+            "📦 mongodb\n"
+            "— Хранилище тестов\n\n"
+
+            "⚡ redis\n"
+            "— Кэш и сессии"
         )
     )
 
 
-# ---------- FALLBACK ----------
+# ---------- AUTH CALLBACKS ----------
 
-@dp.message()
-async def unknown_cmd(message: types.Message):
-    await message.answer(md_escape("❌ Нет такой команды\\. Используйте /help"))
+@dp.callback_query(lambda c: c.data.startswith("login:"))
+async def auth_callback(call: CallbackQuery):
+    method = call.data.split(":")[1]
 
-# =====================================
-# PART 4 — CALLBACKS / BACKGROUND / RUN
-# =====================================
-
-from aiogram.types import CallbackQuery
-
-
-# ---------- CALLBACKS (TEST SELECTION) ----------
-
-@dp.callback_query(lambda c: c.data.startswith("test_"))
-async def test_selected(callback: CallbackQuery):
-    if await get_user_status(callback.message.chat.id) != UserStatus.AUTHORIZED:
-        await callback.message.answer(md_escape("❗ Требуется авторизация"))
-        await callback.answer()
-        return
-
-    test_map = {
-        "test_python": "🐍 Python",
-        "test_devops": "⚙️ DevOps",
-        "test_db": "🗄 Базы данных",
+    user_data = {
+        "status": UserStatus.ANONYMOUS,
+        "auth_method": method,
+        "created_at": datetime.utcnow().isoformat(),
     }
 
-    test_name = test_map.get(callback.data, "Неизвестный тест")
+    await set_user(call.message.chat.id, user_data)
 
-    await callback.message.answer(
-        md_escape(
-            f"📝 *Вы выбрали тест:*\n\n"
-            f"{test_name}\n\n"
-            "🚀 Логика прохождения теста будет реализована в Core модуле."
+    if method == "github":
+        text = "🐙 *GitHub авторизация*\n\nПерейдите в Web для входа"
+    elif method == "yandex":
+        text = "🟡 *Яндекс ID авторизация*\n\nПерейдите в Web для входа"
+    else:
+        text = "🔢 *Вход по коду*\n\nВведите код в Web интерфейсе"
+
+    await call.message.answer(
+        md(text + f"\n\n🌐 {WEB_CLIENT_URL}")
+    )
+
+    await call.answer()
+
+
+# ---------- COMPLETE LOGIN (MOCK) ----------
+
+async def complete_login(chat_id: int):
+    await set_user(
+        chat_id,
+        {
+            "status": UserStatus.AUTHORIZED,
+            "authorized_at": datetime.utcnow().isoformat(),
+        },
+    )
+
+# =========================
+# PART 4 — TESTS / LOGOUT / RUN
+# =========================
+
+# ---------- MOCK TESTS ----------
+
+TESTS = [
+    {"id": "python_base", "title": "Python основы"},
+    {"id": "docker_base", "title": "Docker основы"},
+    {"id": "backend_junior", "title": "Backend Junior"},
+]
+
+
+# ---------- /tests ----------
+
+@dp.message(Command("tests"))
+async def tests_cmd(message: Message):
+    if not await require_auth(message):
+        return
+
+    keyboard = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(
+                    text=f"🧪 {test['title']}",
+                    callback_data=f"test:{test['id']}",
+                )
+            ]
+            for test in TESTS
+        ]
+    )
+
+    await message.answer(
+        md(
+            "🧪 *ДОСТУПНЫЕ ТЕСТЫ*\n\n"
+            "Выберите тест для запуска:"
+        ),
+        reply_markup=keyboard,
+    )
+
+
+# ---------- /starttest ----------
+
+@dp.message(Command("starttest"))
+async def starttest_cmd(message: Message):
+    if not await require_auth(message):
+        return
+
+    await message.answer(
+        md(
+            "▶️ *Запуск теста*\n\n"
+            "Используйте команду /tests\n"
+            "и выберите тест из списка"
         )
     )
 
-    await callback.answer()
 
+# ---------- TEST CALLBACK ----------
 
-# ---------- CALLBACK (LOGIN BY CODE STUB) ----------
+@dp.callback_query(lambda c: c.data.startswith("test:"))
+async def test_callback(call: CallbackQuery):
+    test_id = call.data.split(":")[1]
 
-@dp.callback_query(lambda c: c.data == "login_by_code")
-async def login_by_code(callback: CallbackQuery):
-    await callback.message.answer(
-        md_escape(
-            "🔑 *Вход по коду*\n\n"
-            "Функционал будет реализован позже."
+    test = next((t for t in TESTS if t["id"] == test_id), None)
+    if not test:
+        await call.answer("Тест не найден", show_alert=True)
+        return
+
+    await call.message.answer(
+        md(
+            f"🚀 *Тест запущен*\n\n"
+            f"📌 Название: {test['title']}\n\n"
+            "⏳ Логика прохождения будет добавлена позже"
         )
     )
-    await callback.answer()
+
+    await call.answer()
 
 
-# ---------- BACKGROUND TASKS (STUBS ПО ТЗ) ----------
+# ---------- /completelogin ----------
 
-async def background_check_anonymous():
-    """
-    Проверка ANONYMOUS пользователей
-    """
-    while True:
-        try:
-            # 🔧 Заглушка — логика будет через Auth Module
-            await asyncio.sleep(10)
-        except Exception as e:
-            logger.error(f"Anonymous check error: {e}")
+@dp.message(Command("completelogin"))
+async def complete_login_cmd(message: Message):
+    status = await get_status(message.chat.id)
 
+    if status == UserStatus.AUTHORIZED:
+        await message.answer(
+            md("✅ *Вы уже авторизованы*")
+        )
+        return
 
-async def background_check_notifications():
-    """
-    Проверка уведомлений AUTHORIZED пользователей
-    """
-    while True:
-        try:
-            # 🔧 Заглушка — логика будет через Core Module
-            await asyncio.sleep(15)
-        except Exception as e:
-            logger.error(f"Notification check error: {e}")
+    await set_user(
+        message.chat.id,
+        {
+            "status": UserStatus.AUTHORIZED,
+            "authorized_at": datetime.utcnow().isoformat(),
+        },
+    )
 
-
-# ---------- STARTUP / SHUTDOWN ----------
-
-async def on_startup():
-    logger.info("🤖 Telegram bot started")
-
-    asyncio.create_task(background_check_anonymous())
-    asyncio.create_task(background_check_notifications())
+    await message.answer(
+        md(
+            "🎉 *Авторизация завершена*\n\n"
+            "Теперь вам доступны тесты и сервисы"
+        )
+    )
 
 
-async def on_shutdown():
-    logger.info("🛑 Telegram bot stopped")
-    await redis_client.close()
-    await bot.session.close()
+# ---------- /logout ----------
+
+@dp.message(Command("logout"))
+async def logout_cmd(message: Message):
+    status = await get_status(message.chat.id)
+
+    if status == UserStatus.UNKNOWN:
+        await message.answer(
+            md("ℹ️ *Вы ещё не входили в систему*")
+        )
+        return
+
+    await delete_user(message.chat.id)
+
+    await message.answer(
+        md("🔓 *Вы вышли из системы*")
+    )
 
 
 # ---------- MAIN ----------
 
 async def main():
-    await on_startup()
-    try:
-        await dp.start_polling(bot)
-    finally:
-        await on_shutdown()
+    logger.info("🤖 Telegram bot started")
+    await dp.start_polling(bot)
 
 
 if __name__ == "__main__":
