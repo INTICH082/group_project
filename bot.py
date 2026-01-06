@@ -42,11 +42,6 @@ logger = logging.getLogger("telegram-client")
 
 # ---------- BOT ----------
 
-bot = Bot(
-    token=BOT_TOKEN,
-    parse_mode=ParseMode.MARKDOWN_V2,
-)
-
 dp = Dispatcher()
 
 
