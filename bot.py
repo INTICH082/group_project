@@ -19,8 +19,8 @@ from aiogram.exceptions import TelegramBadRequest
 from aiogram import Router, F
 from aiogram.utils.markdown import hbold, hcode
 from dotenv import load_dotenv
-from aiogram_i18n import create_middleware, set_default_locale  # Правильный импорт для aiogram-i18n
-from aiogram_i18n.types import Locale
+from aiogram_i18n import I18nMiddleware  # Правильный импорт
+from aiogram_i18n.core import I18nCore
 
 load_dotenv()
 
@@ -58,10 +58,7 @@ class TestStates(StatesGroup):
     answering = State()
 
 # Rate limiting middleware
-from aiogram.dispatcher.middlewares import BaseMiddleware
-from typing import Callable, Dict, Any, Awaitable
-
-class ThrottlingMiddleware(BaseMiddleware):
+class ThrottlingMiddleware:
     def __init__(self, rate_limit: int = 1, period: int = 1):  # 1 команда в секунду
         self.rate_limit = rate_limit
         self.period = period
@@ -87,8 +84,10 @@ class ThrottlingMiddleware(BaseMiddleware):
 dp.message.middleware(ThrottlingMiddleware())
 
 # i18n setup (для multi-lang ru/en)
-i18n_middleware = create_middleware(domain='messages', locales=['ru', 'en'], default_locale='ru')
-dp.message.middleware(i18n_middleware)
+i18n_core = I18nCore(domain='messages', path='locales', default_locale='ru', locales=['ru', 'en'])
+i18n = I18nMiddleware(core=i18n_core)
+
+dp.message.middleware(i18n)
 
 # System start time (MSK TZ)
 START_TIME = datetime.now(timezone(timedelta(hours=3)))
@@ -382,7 +381,7 @@ async def on_answer(callback: CallbackQuery, state: FSMContext):
     data = await state.get_data()
     if data['question_ids'][data['current_index']] != q_id:
         return await callback.answer("Неверный вопрос.")
-    # Mock save save
+    # Mock save answer
     new_index = data['current_index'] + 1
     if new_index >= len(data['question_ids']):
         # Complete test
@@ -397,12 +396,14 @@ async def on_answer(callback: CallbackQuery, state: FSMContext):
 @dp.callback_query()
 async def on_callback(callback: CallbackQuery):
     if callback.data == 'status':
-        await on_status(callback.message)
-        await callback.message.edit_text(await on_status(callback.message))  # Wait for text
+        text = await on_status(callback.message)
+        await callback.message.edit_text(text)
     elif callback.data == 'services':
-        await callback.message.edit_text(await on_services(callback.message))
+        text = await on_services(callback.message)
+        await callback.message.edit_text(text)
     elif callback.data == 'help':
-        await callback.message.edit_text(await on_help(callback.message))
+        text = await on_help(callback.message)
+        await callback.message.edit_text(text)
     elif callback.data == 'login':
         await on_login(callback.message, FSMContext(callback.message))
     await callback.answer()
