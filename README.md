@@ -12,12 +12,11 @@
 2. Базы данных запущены (PostgreSQL, MongoDB, Redis)
 3. Веб-интерфейс доступен
 4. API сервисы готовы
-5. Базовая авторизация через веб
-6. Cyclic notifications (background task: every 30 sec scan Redis for ANONYMOUS users, check at Auth, send updates)
-7. Rate limiting (1 команда в сек на user для предотвращения abuse)
-8. Error handling для Redis/Auth failures с сообщением "Ошибка, попробуйте позже"
-9. Localization (multi-lang ru/en с i18n)
-10. Inline-кнопки для /start_test после /tests (no ID input)
+5. Cyclic notifications (background task: every 30 sec scan Redis for ANONYMOUS users, check at Auth, send updates)
+6. Rate limiting (1 команда в сек на user для предотвращения abuse)
+7. Error handling для Redis/Auth failures с сообщением "Ошибка, попробуйте позже"
+8. Localization (multi-lang ru/en с i18n)
+9. Inline-кнопки для /start_test после /tests (no ID input)
 
 ## 🛠️ Команды
 1. /start - Начало работы
