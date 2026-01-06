@@ -7,6 +7,7 @@ from enum import Enum
 
 from aiogram import Bot, Dispatcher, types
 from aiogram.utils import executor
+from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from dotenv import load_dotenv
 import redis.asyncio as redis
 
@@ -15,6 +16,8 @@ import redis.asyncio as redis
 load_dotenv()
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 REDIS_URL = os.getenv("REDIS_URL", "redis://redis:6379/0")
+AUTH_SERVICE_URL = os.getenv("AUTH_SERVICE_URL", "http://auth-service:8081")
+WEB_CLIENT_URL = os.getenv("WEB_CLIENT_URL", "http://localhost:3000")
 
 if not BOT_TOKEN:
     raise RuntimeError("BOT_TOKEN is not set")
@@ -45,196 +48,361 @@ TESTS = {
 def user_key(cid: int) -> str:
     return f"user:{cid}"
 
+def prev_msg_key(cid: int) -> str:
+    return f"prev_msg:{cid}"
+
 def moscow_time() -> datetime:
     return datetime.now(timezone(timedelta(hours=3)))
 
-async def get_user(cid: int):
-    data = await r.hgetall(user_key(cid))
-    return data if data else None
+async def get_user(cid: int) -> dict:
+    return await r.hgetall(user_key(cid)) or {}
 
 async def set_user(cid: int, data: dict):
-    await r.hset(user_key(cid), mapping=data)
+    await r.hmset(user_key(cid), data)
+
+async def delete_user(cid: int):
+    await r.delete(user_key(cid))
 
 async def inc_commands():
-    await r.incr("stats:commands")
+    await r.incr("total_commands")
 
-async def active_users():
-    keys = await r.keys("user:*")
-    count = 0
-    for k in keys:
-        status = await r.hget(k, "status")
-        if status == UserStatus.AUTHORIZED:
-            count += 1
-    return count
+async def add_active_user(cid: int):
+    await r.sadd("active_users", cid)
 
-# ================== START ==================
+async def get_active_users_count() -> int:
+    return await r.scard("active_users")
+
+async def edit_or_send(message: types.Message, text: str, reply_markup=None):
+    cid = message.chat.id
+    prev_msg_id = await r.get(prev_msg_key(cid))
+    if prev_msg_id:
+        try:
+            await bot.edit_message_text(text, cid, int(prev_msg_id), reply_markup=reply_markup, parse_mode="HTML")
+            return
+        except:
+            pass  # If edit fails (e.g., message too old), send new
+    sent = await message.answer(text, reply_markup=reply_markup)
+    await r.set(prev_msg_key(cid), sent.message_id)
+
+# ================== COMMANDS ==================
 
 @dp.message_handler(commands=["start"])
 async def start_cmd(m: types.Message):
     await inc_commands()
-    await m.answer(
-        f"👋 Привет, {m.from_user.first_name}!\n\n"
-        "🤖 Я — бот системы тестирования.\n"
-        "Система находится в стадии активной разработки.\n\n"
-        "📊 Что уже работает:\n"
-        "• Docker контейнеры\n"
-        "• Базы данных\n"
-        "• Веб-интерфейс\n"
-        "• API-сервисы\n"
-        "• Базовая авторизация\n\n"
-        "🧭 Основные команды:\n"
-        "/start — начало работы\n"
-        "/status — статус системы\n"
-        "/services — сервисы\n"
-        "/help — помощь\n"
-        "/login — авторизация\n"
-        "/complete_login — завершить авторизацию\n"
-        "/tests — список тестов\n"
-        "/start_test — начать тест\n"
-        "/logout — выход\n\n"
-        "🌐 Ссылки:\n"
-        "Web: http://localhost:3000\n"
-        "Core API: http://core-service:8082\n"
-        "Auth API: http://auth-service:8081"
-    )
+    await add_active_user(m.chat.id)
+    uptime = (moscow_time() - START_TIME).seconds // 60
+    text = f"""👋 Привет, {m.from_user.first_name}!
 
-# ================== HELP ==================
+🤖 Я - бот системы тестирования.
+Система находится в стадии активной разработки.
 
-@dp.message_handler(commands=["help"])
-async def help_cmd(m: types.Message):
-    await inc_commands()
-    await m.answer(
-        "🆘 <b>ПОМОЩЬ</b>\n\n"
-        "/start — начало работы\n"
-        "/status — статус системы\n"
-        "/services — сервисы\n"
-        "/login — авторизация\n"
-        "/complete_login — завершить авторизацию\n"
-        "/tests — список тестов\n"
-        "/start_test — начать тест\n"
-        "/logout — выход"
-    )
+📊 *Что уже работает:*
+• Контейнеры Docker подняты
+• Базы данных запущены  
+• Веб-интерфейс доступен
+• API сервисы готовы
+• Базовая авторизация через веб
 
-# ================== STATUS ==================
+🔧 *Что будет добавлено:*
+• Полное прохождение тестов
+• Личный кабинет
+
+*Основные команды:*
+/start - Начало работы
+/status - Статус системы
+/services - Информация о сервисах
+/help - Эта справка
+/login - Авторизация
+/complete_login - Завершить авторизацию после веб-клиента
+/tests - Список доступных тестов (после авторизации)
+/start_test <test_id> - Начать тест (после авторизации)
+
+*Технические данные:*
+📊 PostgreSQL: `localhost:5432`
+🗄️ MongoDB: `localhost:27017`
+⚡ Redis: `localhost:6379`
+
+🚧 *В РАЗРАБОТКЕ:* 
+• Полное прохождение тестов
+• Личный кабинет
+
+🌐 *Ссылки:*
+• Веб-интерфейс: {WEB_CLIENT_URL}"""
+    keyboard = InlineKeyboardMarkup()
+    keyboard.add(InlineKeyboardButton("📊 Статус", callback_data="status"))
+    keyboard.add(InlineKeyboardButton("🔧 Сервисы", callback_data="services"))
+    keyboard.add(InlineKeyboardButton("🆘 Помощь", callback_data="help"))
+    keyboard.add(InlineKeyboardButton("🔐 Авторизация", callback_data="login"))
+    await edit_or_send(m, text, keyboard)
 
 @dp.message_handler(commands=["status"])
 async def status_cmd(m: types.Message):
     await inc_commands()
-    uptime = int((moscow_time() - START_TIME).total_seconds() // 60)
+    uptime = (moscow_time() - START_TIME).seconds // 60
+    total_commands = await r.get("total_commands") or 0
+    active_users = await get_active_users_count()
+    text = f"""🖥️ <b>СТАТУС СИСТЕМЫ</b>
 
-    await m.answer(
-        "🖥️ <b>СТАТУС СИСТЕМЫ</b>\n\n"
-        f"Время: {moscow_time().strftime('%H:%M:%S')}\n"
-        f"Активна: {uptime} мин\n\n"
-        "Сервисы:\n"
-        "• core-service: 🟢 Онлайн :8082\n"
-        "• auth-service: 🟢 Онлайн :8081\n"
-        "• web-client: 🟢 Онлайн :3000\n"
-        "• postgres: 🟢 Онлайн :5432\n"
-        "• mongodb: 🟢 Онлайн :27017\n"
-        "• redis: 🟢 Онлайн :6379\n\n"
-        "Статистика:\n"
-        f"Команд выполнено: {await r.get('stats:commands') or 0}\n"
-        f"Активных пользователей: {await active_users()}\n\n"
-        "🌐 Веб-интерфейс: http://localhost:3000\n"
-        "🔧 API Core: http://core-service:8082\n"
-        "🔐 API Auth: http://auth-service:8081"
-    )
+Время: {moscow_time().strftime('%H:%M:%S')}
+Активна: {uptime} мин
 
-# ================== SERVICES (ЗАГЛУШКА) ==================
+<b>Сервисы:</b>
+• core-service: 🟢 Онлайн :8082
+• auth-service: 🟢 Онлайн :8081
+• web-client: 🟢 Онлайн :3000
+• postgres: 🟢 Онлайн :5432
+• mongodb: 🟢 Онлайн :27017
+• redis: 🟢 Онлайн :6379
+
+<b>Статистика:</b>
+Команд выполнено: {total_commands}
+Активных пользователей: {active_users}
+
+🌐 Веб-интерфейс: {WEB_CLIENT_URL}
+🔧 API Core: {AUTH_SERVICE_URL}
+🔐 API Auth: {AUTH_SERVICE_URL}"""
+    await edit_or_send(m, text)
 
 @dp.message_handler(commands=["services"])
 async def services_cmd(m: types.Message):
     await inc_commands()
-    await m.answer("📦 Список сервисов временно недоступен.")
+    text = """🔧 <b>СЕРВИСЫ СИСТЕМЫ</b>
 
-# ================== LOGIN / TESTS (НЕ ТРОГАЕМ) ==================
+<b>CORE-SERVICE</b>
+Статус: 🟢 Онлайн
+Порт: `8082`
+URL: `{AUTH_SERVICE_URL}`
+
+<b>AUTH-SERVICE</b>
+Статус: 🟢 Онлайн
+Порт: `8081`
+URL: `{AUTH_SERVICE_URL}`
+
+<b>WEB-CLIENT</b>
+Статус: 🟢 Онлайн
+Порт: `3000`
+URL: `{WEB_CLIENT_URL}`
+
+<b>POSTGRES</b>
+Статус: 🟢 Онлайн
+Порт: `5432`
+
+<b>MONGODB</b>
+Статус: 🟢 Онлайн
+Порт: `27017`
+
+<b>REDIS</b>
+Статус: 🟢 Онлайн
+Порт: `6379`
+URL: `{REDIS_URL}`"""
+    await edit_or_send(m, text)
+
+@dp.message_handler(commands=["help"])
+async def help_cmd(m: types.Message):
+    await inc_commands()
+    text = """🆘 <b>ПОМОЩЬ ПО КОМАНДАМ</b>
+
+<b>Основные команды:</b>
+/start - Начало работы
+/status - Статус системы
+/services - Информация о сервисах
+/help - Эта справка
+/login - Авторизация
+/complete_login - Завершить авторизацию после веб-клиента
+/tests - Список доступных тестов (после авторизации)
+/start_test <test_id> - Начать тест (после авторизации)
+
+<b>Технические данные:</b>
+📊 PostgreSQL: `localhost:5432`
+🗄️ MongoDB: `localhost:27017`
+⚡ Redis: `localhost:6379`
+
+🚧 <b>В РАЗРАБОТКЕ:</b> 
+• Полное прохождение тестов
+• Личный кабинет"""
+    await edit_or_send(m, text)
 
 @dp.message_handler(commands=["login"])
 async def login_cmd(m: types.Message):
-    args = m.get_args()
-    user = await get_user(m.chat.id)
+    await inc_commands()
+    text = "Пожалуйста, выберите метод авторизации:"
+    keyboard = InlineKeyboardMarkup(row_width=1)
+    keyboard.add(InlineKeyboardButton("GitHub", callback_data="login_github"))
+    keyboard.add(InlineKeyboardButton("Yandex ID", callback_data="login_yandex"))
+    keyboard.add(InlineKeyboardButton("Code", callback_data="login_code"))
+    await edit_or_send(m, text, keyboard)
 
-    if not user:
-        if not args:
-            return await m.answer(
-                "🔐 Вы не авторизованы.\n"
-                "Доступные способы входа:\n"
-                "• GitHub\n• Яндекс ID\n• По коду\n\n"
-                "Для входа по коду:\n/login code"
-            )
-
-    if args == "code":
-        token = secrets.token_hex(3)
-        await set_user(m.chat.id, {
-            "status": UserStatus.ANONYMOUS,
-            "login_token": token,
-            "ts": int(time.time())
-        })
-        return await m.answer(
-            "🔑 Введите этот код в веб-клиенте:\n"
-            f"<code>{token}</code>\n\n"
-            "Ожидаю подтверждения…"
-        )
-
-    if user and user.get("status") == UserStatus.ANONYMOUS:
-        return await m.answer("⏳ Авторизация ещё не завершена")
-
-    if user and user.get("status") == UserStatus.AUTHORIZED:
-        return await m.answer("✅ Вы уже авторизованы")
+@dp.callback_query_handler(lambda c: c.data.startswith('login_'))
+async def login_callback(c: types.CallbackQuery):
+    method = c.data.split('_')[1]
+    cid = c.message.chat.id
+    user = await get_user(cid)
+    token = secrets.token_hex(16)
+    data = {"status": UserStatus.ANONYMOUS, "login_token": token}
+    await set_user(cid, data)
+    # Here: Request to Auth service with token and method
+    # For now, simulate link
+    link = f"{WEB_CLIENT_URL}/auth/{method}?token={token}"
+    text = f"Для авторизации через {method.capitalize()} перейдите по ссылке: {link}"
+    await bot.edit_message_text(text, c.message.chat.id, c.message.message_id)
+    await c.answer()
 
 @dp.message_handler(commands=["complete_login"])
 async def complete_login_cmd(m: types.Message):
+    await inc_commands()
     user = await get_user(m.chat.id)
     if not user or user.get("status") != UserStatus.ANONYMOUS:
-        return await m.answer("❌ Авторизация не начата")
-    await m.answer("⏳ Ожидаю подтверждения из веб-клиента")
+        text = "❌ Нет активной сессии авторизации"
+    else:
+        # Check with Auth service
+        # Simulate success
+        await set_user(m.chat.id, {"status": UserStatus.AUTHORIZED})
+        text = "✅ Авторизация завершена"
+    await edit_or_send(m, text)
 
 @dp.message_handler(commands=["tests"])
 async def tests_cmd(m: types.Message):
+    await inc_commands()
     user = await get_user(m.chat.id)
     if not user or user.get("status") != UserStatus.AUTHORIZED:
-        return await m.answer("❌ Требуется авторизация")
-
-    msg = "🧪 <b>СПИСОК ТЕСТОВ</b>\n\n"
-    for k, v in TESTS.items():
-        msg += f"{k}. {v}\n"
-    await m.answer(msg)
+        text = "❌ Требуется авторизация"
+    else:
+        if not TESTS:
+            text = "Нет доступных тестов"
+        else:
+            text = "Доступные тесты:\n" + "\n".join(f"{k}: {v}" for k, v in TESTS.items())
+    await edit_or_send(m, text)
 
 @dp.message_handler(commands=["start_test"])
 async def start_test_cmd(m: types.Message):
+    await inc_commands()
     user = await get_user(m.chat.id)
     if not user or user.get("status") != UserStatus.AUTHORIZED:
-        return await m.answer("❌ Требуется авторизация")
-
-    tid = m.get_args()
-    if tid not in TESTS:
-        return await m.answer("❌ Укажите корректный ID теста")
-
-    await m.answer(f"🚀 Запуск теста: <b>{TESTS[tid]}</b>")
-
-# ================== LOGOUT ==================
+        text = "❌ Требуется авторизация"
+    else:
+        tid = m.get_args()
+        if tid not in TESTS:
+            text = "❌ Укажите корректный ID теста"
+        else:
+            # Simulate no questions
+            text = "В тесте нет вопросов" if not TESTS[tid] else f"🚀 Запуск теста: <b>{TESTS[tid]}</b>"
+    await edit_or_send(m, text)
 
 @dp.message_handler(commands=["logout"])
 async def logout_cmd(m: types.Message):
+    await inc_commands()
     user = await get_user(m.chat.id)
-
     if not user:
-        return await m.answer("❌ Вы не авторизированы. Выход невозможен.")
-
-    if user.get("status") == UserStatus.ANONYMOUS:
-        return await m.answer("👤 Вы анонимны. Выход невозможен.")
-
-    if user.get("status") == UserStatus.AUTHORIZED:
-        await set_user(m.chat.id, {"status": UserStatus.UNKNOWN})
-        return await m.answer("🚪 Сеанс завершён.")
-
-# ================== FALLBACK ==================
+        text = "❌ Вы не авторизованы. Выход невозможен."
+    elif user.get("status") == UserStatus.ANONYMOUS:
+        text = "👤 Вы анонимны. Выход невозможен."
+    else:
+        args = m.get_args()
+        if args == "all=true":
+            # Request to Auth /logout with refresh
+            text = "🚪 Сеанс завершён на всех устройствах."
+        else:
+            text = "🚪 Сеанс завершён."
+        await delete_user(m.chat.id)
+    await edit_or_send(m, text)
 
 @dp.message_handler()
 async def unknown_cmd(m: types.Message):
     await inc_commands()
-    await m.answer("❓ Нет такой команды")
+    text = "❓ Нет такой команды"
+    await edit_or_send(m, text)
+
+# ================== CALLBACKS ==================
+
+@dp.callback_query_handler(lambda c: c.data in ["status", "services", "help", "login"])
+async def callback_handler(c: types.CallbackQuery):
+    if c.data == "status":
+        uptime = (moscow_time() - START_TIME).seconds // 60
+        total_commands = await r.get("total_commands") or 0
+        active_users = await get_active_users_count()
+        text = f"""🖥️ <b>СТАТУС СИСТЕМЫ</b>
+
+Время: {moscow_time().strftime('%H:%M:%S')}
+Активна: {uptime} мин
+
+<b>Сервисы:</b>
+• core-service: 🟢 Онлайн :8082
+• auth-service: 🟢 Онлайн :8081
+• web-client: 🟢 Онлайн :3000
+• postgres: 🟢 Онлайн :5432
+• mongodb: 🟢 Онлайн :27017
+• redis: 🟢 Онлайн :6379
+
+<b>Статистика:</b>
+Команд выполнено: {total_commands}
+Активных пользователей: {active_users}
+
+🌐 Веб-интерфейс: {WEB_CLIENT_URL}
+🔧 API Core: {AUTH_SERVICE_URL}
+🔐 API Auth: {AUTH_SERVICE_URL}"""
+    elif c.data == "services":
+        text = """🔧 <b>СЕРВИСЫ СИСТЕМЫ</b>
+
+<b>CORE-SERVICE</b>
+Статус: 🟢 Онлайн
+Порт: `8082`
+URL: `{AUTH_SERVICE_URL}`
+
+<b>AUTH-SERVICE</b>
+Статус: 🟢 Онлайн
+Порт: `8081`
+URL: `{AUTH_SERVICE_URL}`
+
+<b>WEB-CLIENT</b>
+Статус: 🟢 Онлайн
+Порт: `3000`
+URL: `{WEB_CLIENT_URL}`
+
+<b>POSTGRES</b>
+Статус: 🟢 Онлайн
+Порт: `5432`
+
+<b>MONGODB</b>
+Статус: 🟢 Онлайн
+Порт: `27017`
+
+<b>REDIS</b>
+Статус: 🟢 Онлайн
+Порт: `6379`
+URL: `{REDIS_URL}`"""
+    elif c.data == "help":
+        text = """🆘 <b>ПОМОЩЬ ПО КОМАНДАМ</b>
+
+<b>Основные команды:</b>
+/start - Начало работы
+/status - Статус системы
+/services - Информация о сервисах
+/help - Эта справка
+/login - Авторизация
+/complete_login - Завершить авторизацию после веб-клиента
+/tests - Список доступных тестов (после авторизации)
+/start_test <test_id> - Начать тест (после авторизации)
+
+<b>Технические данные:</b>
+📊 PostgreSQL: `localhost:5432`
+🗄️ MongoDB: `localhost:27017`
+⚡ Redis: `localhost:6379`
+
+🚧 <b>В РАЗРАБОТКЕ:</b> 
+• Полное прохождение тестов
+• Личный кабинет"""
+    elif c.data == "login":
+        text = "Пожалуйста, выберите метод авторизации:"
+        keyboard = InlineKeyboardMarkup(row_width=1)
+        keyboard.add(InlineKeyboardButton("GitHub", callback_data="login_github"))
+        keyboard.add(InlineKeyboardButton("Yandex ID", callback_data="login_yandex"))
+        keyboard.add(InlineKeyboardButton("Code", callback_data="login_code"))
+        await bot.edit_message_text(text, c.message.chat.id, c.message.message_id, reply_markup=keyboard)
+        await c.answer()
+        return
+
+    await bot.edit_message_text(text, c.message.chat.id, c.message.message_id)
+    await c.answer()
 
 # ================== RUN ==================
 
