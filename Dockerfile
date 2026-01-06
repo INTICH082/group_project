@@ -12,23 +12,21 @@ RUN apt-get update && apt-get install -y \
     libmysqlclient-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Создаем пользователя и рабочую директорию
-RUN useradd -m -u 1000 appuser
-USER appuser
-WORKDIR /home/appuser/app
+WORKDIR /app
 
 # Копируем исходный код
-COPY --chown=appuser:appuser authorization/*.h authorization/*.cpp ./
+COPY . .
 
-# Компилируем проект
-RUN g++ -c database.cpp -std=c++11
-RUN g++ -c auth.cpp -std=c++11
-RUN g++ -c server.cpp -std=c++11
-RUN g++ -c main.cpp -std=c++11
-RUN g++ database.o auth.o server.o main.o -o auth_server -lmysqlclient -lcurl -lpthread
+# Патчим код для Linux
+RUN sed -i 's/#include <mysql.h>/#include <mysql\/mysql.h>/' authorization/database.cpp
 
-# Открываем порт
+# Компилируем
+RUN g++ -c authorization/database.cpp -std=c++11 -I/usr/include/mysql \
+    && g++ -c authorization/auth.cpp -std=c++11 -I/usr/include/mysql \
+    && g++ -c authorization/server.cpp -std=c++11 -I/usr/include/mysql \
+    && g++ -c authorization/main.cpp -std=c++11 -I/usr/include/mysql \
+    && g++ database.o auth.o server.o main.o -o auth_server -lmysqlclient -lcurl -lpthread
+
 EXPOSE 8081
 
-# Запускаем сервер
 CMD ["./auth_server"]
