@@ -19,8 +19,7 @@ from aiogram.exceptions import TelegramBadRequest
 from aiogram import Router, F
 from aiogram.utils.markdown import hbold, hcode
 from dotenv import load_dotenv
-from aiogram_i18n import I18nMiddleware  # Правильный импорт
-from aiogram_i18n.core import I18nCore
+from aiogram.utils.i18n import I18n, I18nMiddleware, gettext, lazy_gettext  # Built-in i18n
 
 load_dotenv()
 
@@ -84,10 +83,8 @@ class ThrottlingMiddleware:
 dp.message.middleware(ThrottlingMiddleware())
 
 # i18n setup (для multi-lang ru/en)
-i18n_core = I18nCore(domain='messages', path='locales', default_locale='ru', locales=['ru', 'en'])
-i18n = I18nMiddleware(core=i18n_core)
-
-dp.message.middleware(i18n)
+i18n = I18n(domain='messages', path='locales', default_locale='ru', locales=['ru', 'en'])
+dp.message.middleware(I18nMiddleware(i18n))
 
 # System start time (MSK TZ)
 START_TIME = datetime.now(timezone(timedelta(hours=3)))
@@ -115,14 +112,14 @@ async def cyclic_notification_task():
                                 data = await resp.json()
                                 if data.get('authorized'):
                                     await r.set(key, 'AUTHORIZED')
-                                    await bot.send_message(user_id, "✅ Вы авторизованы!")
+                                    await bot.send_message(user_id, gettext("✅ Вы авторизованы!"))
                                     # Save event to Mongo
                                     events_collection.insert_one({'user_id': user_id, 'event': 'authorized', 'timestamp': datetime.now()})
 
             # Poll Mongo for events (e.g., new notifications)
             for event in events_collection.find({'processed': {'$ne': True}}):
                 user_id = event['user_id']
-                await bot.send_message(user_id, f"Уведомление: {event['event']}")
+                await bot.send_message(user_id, gettext(f"Уведомление: {event['event']}"))
                 events_collection.update_one({'_id': event['_id']}, {'$set': {'processed': True}})
 
         except Exception as e:
@@ -132,7 +129,7 @@ async def cyclic_notification_task():
 # Start handler
 @dp.message(Command('start'))
 async def on_start(message: types.Message, state: FSMContext):
-    text = """👋 Привет, {name}!
+    text = gettext("""👋 Привет, {name}!
 
 🤖 Я - бот системы тестирования.
 Система находится в стадии активной разработки.
@@ -161,7 +158,7 @@ async def on_start(message: types.Message, state: FSMContext):
 🌐 *Ссылки:*
 • Веб-интерфейс: {web_url}
 • API Core: {core_url}
-• API Auth: {auth_url}""".format(
+• API Auth: {auth_url}""").format(
         name=message.from_user.first_name,
         web_url=WEB_CLIENT_URL,
         core_url=AUTH_SERVICE_URL,  # Исправил на существующий, так как CORE_API_URL не определен
@@ -169,10 +166,10 @@ async def on_start(message: types.Message, state: FSMContext):
     )
 
     keyboard = InlineKeyboardBuilder()
-    keyboard.button(text='📊 Статус', callback_data='status')
-    keyboard.button(text='🔧 Сервисы', callback_data='services')
-    keyboard.button(text='🆘 Помощь', callback_data='help')
-    keyboard.button(text='🔐 Авторизация', callback_data='login')
+    keyboard.button(text=gettext('📊 Статус'), callback_data='status')
+    keyboard.button(text=gettext('🔧 Сервисы'), callback_data='services')
+    keyboard.button(text=gettext('🆘 Помощь'), callback_data='help')
+    keyboard.button(text=gettext('🔐 Авторизация'), callback_data='login')
     keyboard.adjust(2)
 
     await message.reply(text, reply_markup=keyboard.as_markup())
@@ -182,7 +179,7 @@ async def on_start(message: types.Message, state: FSMContext):
 async def on_status(message: types.Message):
     now = datetime.now(timezone(timedelta(hours=3)))
     uptime = (now - START_TIME).seconds // 60
-    text = """🖥️ *СТАТУС СИСТЕМЫ*
+    text = gettext("""🖥️ *СТАТУС СИСТЕМЫ*
 Время: {time}
 Активна: {uptime} мин
 
@@ -200,7 +197,7 @@ async def on_status(message: types.Message):
 
 🌐 Веб-интерфейс: {web_url}
 🔧 API Core: {core_url}
-🔐 API Auth: {auth_url}""".format(
+🔐 API Auth: {auth_url}""").format(
         time=now.strftime('%H:%M:%S'),
         uptime=uptime,
         commands=0,  # Mock, add counter if needed
@@ -214,7 +211,7 @@ async def on_status(message: types.Message):
 # Services handler
 @dp.message(Command('services'))
 async def on_services(message: types.Message):
-    text = """🔧 *СЕРВИСЫ СИСТЕМЫ*
+    text = gettext("""🔧 *СЕРВИСЫ СИСТЕМЫ*
 
 *CORE-SERVICE*
 Статус: 🟢 Онлайн
@@ -242,7 +239,7 @@ URL: `{web_url}`
 *REDIS*
 Статус: 🟢 Онлайн
 Порт: `6379`
-URL: `{redis_url}`""".format(
+URL: `{redis_url}`""").format(
         core_url=AUTH_SERVICE_URL,  # Исправил
         auth_url=AUTH_SERVICE_URL,
         web_url=WEB_CLIENT_URL,
@@ -253,7 +250,7 @@ URL: `{redis_url}`""".format(
 # Help handler
 @dp.message(Command('help'))
 async def on_help(message: types.Message):
-    text = """🆘 *ПОМОЩЬ ПО КОМАНДАМ*
+    text = gettext("""🆘 *ПОМОЩЬ ПО КОМАНДАМ*
 
 *Основные команды:*
 /start - Начало работы
@@ -272,7 +269,7 @@ async def on_help(message: types.Message):
 
 🚧 *В РАЗРАБОТКЕ:* 
 • Полное прохождение тестов
-• Личный кабинет"""
+• Личный кабинет""")
     await message.reply(text)
 
 # Login handler
@@ -281,7 +278,7 @@ async def on_login(message: types.Message, state: FSMContext):
     code = uuid.uuid4().hex[:8].upper()
     user_id = message.from_user.id
     await r.setex(f'auth_code:{code}', 300, user_id)  # 5 мин
-    text = "🔐 Для авторизации перейдите в веб-клиент: {url}/login\nВаш код: {code}\nПосле ввода кода в веб-клиенте используйте /complete_login <code> здесь.".format(
+    text = gettext("🔐 Для авторизации перейдите в веб-клиент: {url}/login\nВаш код: {code}\nПосле ввода кода в веб-клиенте используйте /complete_login <code> здесь.").format(
         url=WEB_CLIENT_URL,
         code=hcode(code)
     )
@@ -293,12 +290,12 @@ async def on_login(message: types.Message, state: FSMContext):
 async def on_complete_login(message: types.Message, state: FSMContext):
     args = message.text.split()
     if len(args) < 2:
-        return await message.reply("Используйте: /complete_login <code>")
+        return await message.reply(gettext("Используйте: /complete_login <code>"))
     code = args[1]
     user_id = message.from_user.id
     stored_id = await r.get(f'auth_code:{code}')
     if not stored_id or int(stored_id) != user_id:
-        return await message.reply("🚫 Вы не авторизованы. Начните с /login.")
+        return await message.reply(gettext("🚫 Вы не авторизованы. Начните с /login."))
     # Mock auth check
     async with aiohttp.ClientSession() as session:
         async with session.get(f"{AUTH_SERVICE_URL}/complete/{code}") as resp:
@@ -306,9 +303,9 @@ async def on_complete_login(message: types.Message, state: FSMContext):
                 token = (await resp.json()).get('token')
                 await state.update_data(token=token, status='AUTHORIZED')
                 await r.delete(f'auth_code:{code}')
-                await message.reply("✅ Авторизация завершена! Теперь доступны тесты.")
+                await message.reply(gettext("✅ Авторизация завершена! Теперь доступны тесты."))
             else:
-                await message.reply("Ошибка авторизации. Попробуйте позже.")
+                await message.reply(gettext("Ошибка авторизации. Попробуйте позже."))
     await state.clear()
 
 # Tests list with buttons
@@ -316,8 +313,8 @@ async def on_complete_login(message: types.Message, state: FSMContext):
 async def on_tests(message: types.Message, state: FSMContext):
     data = await state.get_data()
     if data.get('status') != 'AUTHORIZED':
-        return await message.reply("🚫 Вы не авторизованы. Используйте /login.")
-    text = "📝 Доступные тесты:\n"
+        return await message.reply(gettext("🚫 Вы не авторизованы. Используйте /login."))
+    text = gettext("📝 Доступные тесты:\n")
     keyboard = InlineKeyboardBuilder()
     for test_id, test in TESTS.items():
         text += f"• {test_id}: {test['name']}\n"
@@ -336,20 +333,20 @@ async def on_start_test(query: types.Message | CallbackQuery, state: FSMContext)
     else:
         args = query.text.split()
         if len(args) < 2:
-            return await query.reply("Используйте: /start_test <test_id>")
+            return await query.reply(gettext("Используйте: /start_test <test_id>"))
         test_id = args[1]
         message = query
 
     data = await state.get_data()
     if data.get('status') != 'AUTHORIZED':
-        return await message.reply("🚫 Вы не авторизованы. Используйте /login.")
+        return await message.reply(gettext("🚫 Вы не авторизованы. Используйте /login."))
 
     test = TESTS.get(test_id)
     if not test:
-        return await message.reply("Тест не найден.")
+        return await message.reply(gettext("Тест не найден."))
 
     if not test['questions']:
-        return await message.reply("В тесте нет вопросов.")
+        return await message.reply(gettext("В тесте нет вопросов."))
 
     # Mock attempt creation
     attempt_id = uuid.uuid4().hex
@@ -365,7 +362,7 @@ async def send_next_question(message: types.Message, state: FSMContext):
     index = data['current_index']
     q_id = data['question_ids'][index]
     q = next(q for q in TESTS[data['test_id']]['questions'] if q['id'] == q_id)  # Mock
-    text = f"Вопрос {index + 1}/{len(data['question_ids'])}: {q['text']}"
+    text = gettext(f"Вопрос {index + 1}/{len(data['question_ids'])}: {q['text']}")
     keyboard = InlineKeyboardBuilder()
     for i, opt in enumerate(q['options']):
         keyboard.button(text=opt, callback_data=f"ans:{i}:{q_id}")
@@ -380,12 +377,12 @@ async def on_answer(callback: CallbackQuery, state: FSMContext):
     q_id = int(parts[2])
     data = await state.get_data()
     if data['question_ids'][data['current_index']] != q_id:
-        return await callback.answer("Неверный вопрос.")
+        return await callback.answer(gettext("Неверный вопрос."))
     # Mock save answer
     new_index = data['current_index'] + 1
     if new_index >= len(data['question_ids']):
         # Complete test
-        await callback.message.reply("Тест завершен! Результат: N/A")
+        await callback.message.reply(gettext("Тест завершен! Результат: N/A"))
         await state.clear()
     else:
         await state.update_data(current_index=new_index)
@@ -414,14 +411,14 @@ async def on_error(update: types.Update, exception: Exception):
     if isinstance(exception, (aiohttp.ClientError, redis.RedisError)):
         logger.error(f"Error: {exception}")
         if update.message:
-            await update.message.reply("Ошибка, попробуйте позже.")
+            await update.message.reply(gettext("Ошибка, попробуйте позже."))
     return True  # Skip update
 
 # Unknown
 @dp.message()
 async def on_unknown(message: types.Message):
     if message.text.startswith('/'):
-        await message.reply("❓ Неизвестная команда.\nИспользуйте /help для списка доступных команд.")
+        await message.reply(gettext("❓ Неизвестная команда.\nИспользуйте /help для списка доступных команд."))
 
 async def main():
     # Start cyclic task
