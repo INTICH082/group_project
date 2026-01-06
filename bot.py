@@ -34,7 +34,7 @@ class Config:
     REDIS_URL = "redis://redis:6379/0"
 
 
-# Global Redis connection pol
+# Global Redis connection pool
 redis_pool = redis.ConnectionPool.from_url(Config.REDIS_URL, decode_responses=True)
 
 
@@ -263,7 +263,8 @@ async def main():
             await r.aclose()
 
         await message.reply(
-            "Авторизация завершена успешно! Теперь вы можете использовать защищенные команды, такие как /tests и /starttest.")
+            "**Авторизация завершена успешно!** 🎉\nТеперь вы можете использовать защищенные команды, такие как /tests и /starttest.",
+            parse_mode='Markdown')
 
     @dp.message(Command("tests"))
     async def on_tests(message: types.Message):
@@ -284,13 +285,13 @@ async def main():
                         await message.reply(f"Ошибка при получении тестов: {response.status}")
                         return
                     tests_data = await response.json()
-                    msg = "Доступные тесты:\n\n"
+                    msg = "📚 **Доступные тесты:**\n\n"
                     tests = tests_data.get('tests', [])
                     if not tests:
-                        msg += "Нет доступных тестов."
+                        msg += "Нет доступных тестов. 😔"
                     else:
                         for test in tests:
-                            msg += f"**{test.get('test_name', 'Без названия')}** (ID: {test.get('id')})\n"
+                            msg += f"🔹 **{test.get('test_name', 'Без названия')}** (ID: {test.get('id')})\n"
             except Exception as e:
                 logger.error(f"API error: {e}")
                 msg = "Ошибка соединения с Core API. Попробуйте позже."
@@ -435,7 +436,7 @@ async def main():
                         else:
                             res = await response.json()
                             score = res.get('score', 'N/A')
-                            await callback.message.reply(f"Тест завершен! Результат: {score}")
+                            await callback.message.reply(f"**Тест завершен!** 🎉\nРезультат: {score}")
                 except Exception as e:
                     logger.error(f"API error: {e}")
                     await callback.message.reply("Ошибка соединения с Core API. Попробуйте позже.")
