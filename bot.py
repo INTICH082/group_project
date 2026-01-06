@@ -6,8 +6,7 @@ from enum import Enum
 from datetime import datetime
 
 from aiogram.types import CallbackQuery
-from aiogram import F
-from aiogram import Bot, Dispatcher
+from aiogram import F, Bot, Dispatcher
 from aiogram.filters import Command
 from aiogram.types import (
     Message,
@@ -18,6 +17,7 @@ from aiogram.enums import ParseMode
 
 import redis.asyncio as redis
 from dotenv import load_dotenv
+
 # ---------- ENV ----------
 
 load_dotenv()
@@ -29,7 +29,6 @@ AUTH_SERVICE_URL = os.getenv("AUTH_SERVICE_URL", "")
 CORE_SERVICE_URL = os.getenv("CORE_SERVICE_URL", "")
 WEB_CLIENT_URL = os.getenv("WEB_CLIENT_URL", "https://localhost:3000")
 
-
 # ---------- LOGGING ----------
 
 logging.basicConfig(
@@ -38,11 +37,14 @@ logging.basicConfig(
 )
 logger = logging.getLogger("telegram-client")
 
-
 # ---------- BOT ----------
 
-dp = Dispatcher()
+bot = Bot(
+    token=BOT_TOKEN,
+    parse_mode=ParseMode.MARKDOWN_V2,
+)
 
+dp = Dispatcher()
 
 # ---------- REDIS ----------
 
@@ -51,14 +53,12 @@ redis_client = redis.from_url(
     decode_responses=True,
 )
 
-
 # ---------- USER STATUS ----------
 
 class UserStatus(str, Enum):
     UNKNOWN = "unknown"
     ANONYMOUS = "anonymous"
     AUTHORIZED = "authorized"
-
 
 # ---------- MARKDOWN V2 ----------
 
@@ -69,40 +69,32 @@ def md(text: str) -> str:
         text = text.replace(ch, f"\\{ch}")
     return text
 
-
 # ---------- REDIS HELPERS ----------
 
 async def get_user(chat_id: int):
-    data = await redis.get(f"user:{chat_id}")
+    data = await redis_client.get(f"user:{chat_id}")
     if not data:
         return None
-
     try:
         return json.loads(data)
     except json.JSONDecodeError:
-        await redis.delete(f"user:{chat_id}")  # 💥 очищаем мусор
+        await redis_client.delete(f"user:{chat_id}")
         return None
 
-
-
 async def set_user(chat_id: int, data: dict):
-    await redis.set(
+    await redis_client.set(
         f"user:{chat_id}",
-        json.dumps(data)   # ← ВАЖНО
+        json.dumps(data)
     )
-
-
 
 async def delete_user(chat_id: int):
     await redis_client.delete(f"user:{chat_id}")
-
 
 async def get_status(chat_id: int) -> UserStatus:
     user = await get_user(chat_id)
     if not user:
         return UserStatus.UNKNOWN
     return UserStatus(user.get("status", UserStatus.UNKNOWN))
-
 
 # ---------- AUTH GUARD ----------
 
@@ -119,8 +111,13 @@ async def require_auth(message: Message) -> bool:
 
     return True
 
+# ---------- STUB TESTS ----------
 
-
+async def get_user_tests(chat_id: int):
+    return [
+        {"id": 1, "name": "Python Basics", "passed": False, "score": 0},
+        {"id": 2, "name": "Async IO", "passed": True, "score": 8},
+    ]
 
 # =========================
 # COMMANDS
@@ -160,7 +157,6 @@ async def cmd_start(message: Message):
 
     await message.answer(md(text))
 
-
 @dp.message(Command("help"))
 async def cmd_help(message: Message):
     text = (
@@ -182,7 +178,6 @@ async def cmd_help(message: Message):
 
     await message.answer(md(text))
 
-
 @dp.message(Command("login"))
 async def cmd_login(message: Message):
     kb = InlineKeyboardMarkup(inline_keyboard=[
@@ -196,36 +191,18 @@ async def cmd_login(message: Message):
         reply_markup=kb,
     )
 
-
-
 @dp.message(Command("completelogin"))
 async def cmd_completelogin(message: Message):
     user = await get_user(message.chat.id)
 
-    # 1️⃣ Пользователь вообще не начинал вход
     if not user:
-        await message.answer(
-            md(
-                "❌ *Ошибка авторизации\\*\n\n"
-                "Вы не начинали процесс входа\\"
-            )
-        )
+        await message.answer(md("❌ *Ошибка авторизации*"))
         return
 
-    status = UserStatus(user.get("status"))
-
-    # 2️⃣ Уже авторизован
-    if status == UserStatus.AUTHORIZED:
-        await message.answer(
-            md("ℹ️ *Вы уже авторизованы*")
-        )
+    if user.get("status") == UserStatus.AUTHORIZED:
+        await message.answer(md("ℹ️ *Вы уже авторизованы*"))
         return
 
-    # 🔧 STUB: auth-сервис еще не реализован
-    # временно пропускаем состояние ожидания
-    # (позже тут будет проверка токена / callback от auth-service)
-
-    # 4️⃣ Всё корректно — завершаем вход
     await set_user(
         message.chat.id,
         {
@@ -234,31 +211,21 @@ async def cmd_completelogin(message: Message):
         },
     )
 
-    await message.answer(
-        md("✅ *Авторизация успешно завершена*")
-    )
-
+    await message.answer(md("✅ *Авторизация успешно завершена*"))
 
 @dp.message(Command("logout"))
 async def cmd_logout(message: Message):
     if not await require_auth(message):
         return
-
     await delete_user(message.chat.id)
     await message.answer(md("🚪 *Вы вышли из системы*"))
-
-
-
 
 @dp.message(Command("logout_all"))
 async def cmd_logout_all(message: Message):
     if not await require_auth(message):
         return
-
     await delete_user(message.chat.id)
     await message.answer(md("🚨 *Вы вышли со всех сессий*"))
-
-
 
 @dp.message(Command("status"))
 async def cmd_status(message: Message):
@@ -278,7 +245,6 @@ async def cmd_status(message: Message):
     )
 
     await message.answer(md(text))
-
 
 @dp.message(Command("services"))
 async def cmd_services(message: Message):
@@ -300,37 +266,34 @@ async def cmd_services(message: Message):
 
     await message.answer(md(text))
 
-
 @dp.message(Command("tests"))
 async def cmd_tests(message: Message):
     if not await require_auth(message):
         return
 
-    tests = await get_user_tests(message.chat.id)  # ⬅️ из БД
+    tests = await get_user_tests(message.chat.id)
 
     passed = [t for t in tests if t["passed"]]
     available = [t for t in tests if not t["passed"]]
 
-    text = "📊 *Результаты тестирования:*\n\n"
+    text = "📊 *Результаты тестирования:*\\n\\n"
 
     if passed:
-        text += "✅ *Пройденные тесты:*\n"
+        text += "✅ *Пройденные тесты:*\\n"
         for t in passed:
-            text += f"• {t['name']} — *{t['score']}/10*\n"
-        text += "\n"
+            text += f"• {t['name']} — *{t['score']}/10*\\n"
+        text += "\\n"
     else:
-        text += "❌ *Вы ещё не прошли ни одного теста*\n\n"
+        text += "❌ *Вы ещё не прошли ни одного теста*\\n\\n"
 
     if available:
-        text += "🟢 *Доступные тесты:*\n"
+        text += "🟢 *Доступные тесты:*\\n"
         for t in available:
-            text += f"• {t['name']}\n"
+            text += f"• {t['name']}\\n"
     else:
         text += "🎉 *Все тесты пройдены!*"
 
     await message.answer(md(text))
-
-
 
 @dp.message(Command("starttest"))
 async def cmd_starttest(message: Message):
@@ -341,9 +304,7 @@ async def cmd_starttest(message: Message):
     available = [t for t in tests if not t["passed"]]
 
     if not available:
-        await message.answer(
-            md("🎉 *У вас нет доступных тестов для прохождения*")
-        )
+        await message.answer(md("🎉 *У вас нет доступных тестов*"))
         return
 
     keyboard = InlineKeyboardMarkup(
@@ -363,26 +324,15 @@ async def cmd_starttest(message: Message):
         reply_markup=keyboard
     )
 
-@dp.callback_query(F.data.startswith("starttest_"))
+@dp.callback_query(F.data.startswith("starttest:"))
 async def cb_starttest(callback: CallbackQuery):
     if not await require_auth(callback.message):
         await callback.answer()
         return
 
-    parts = callback.data.split(":")
-    if len(parts) != 2 or not parts[1].isdigit():
-        await callback.answer(text=md("Ошибка данных"), show_alert=True)
-
-        return
-
-    test_id = int(parts[1])
-
+    test_id = int(callback.data.split(":")[1])
     await callback.answer()
-    await callback.message.answer(
-        md(f"▶️ *Тест {test_id} запущен*")
-    )
-
-
+    await callback.message.answer(md(f"▶️ *Тест {test_id} запущен*"))
 
 # =========================
 # MAIN
@@ -391,7 +341,6 @@ async def cb_starttest(callback: CallbackQuery):
 async def main():
     logger.info("🤖 Telegram bot started")
     await dp.start_polling(bot)
-
 
 if __name__ == "__main__":
     asyncio.run(main())
