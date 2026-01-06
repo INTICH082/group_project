@@ -83,7 +83,7 @@ class ThrottlingMiddleware:
 dp.message.middleware(ThrottlingMiddleware())
 
 # i18n setup (для multi-lang ru/en)
-i18n = I18n(domain='messages', path='locales', default_locale='ru', locales=['ru', 'en'])
+i18n = I18n(domain='messages', path='locales', default_locale='ru')
 dp.message.middleware(I18nMiddleware(i18n))
 
 # System start time (MSK TZ)
