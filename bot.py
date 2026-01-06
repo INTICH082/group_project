@@ -165,7 +165,7 @@ async def main():
 /start - Начало работы
 /status - Статус системы
 /services - Информация о сервисах
-/help - Справка
+/help - Эта справка
 /login - Начать авторизацию
 /completelogin - Завершить авторизацию
 /tests - Список тестов
@@ -303,7 +303,7 @@ async def main():
         monitor.stats['total_commands'] += 1
         args = message.text.split()
         if len(args) < 2:
-            await message.reply("Использование: /starttest <test_id>")
+            await message.reply("**Использование:** /starttest <test_id> 🚀")
             return
         test_id = args[1]
         user_id = message.from_user.id
