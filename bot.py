@@ -172,7 +172,7 @@ class SimpleRedis:
                 return await self.client.get(key)
         except:
             pass
-        return json.dumps(self.data.get(key)) if key in self.data else None
+        return self.data.get(key)
 
     async def setex(self, key: str, ttl: int, value: str):
         try:
@@ -181,7 +181,7 @@ class SimpleRedis:
                 return
         except:
             pass
-        self.data[key] = json.loads(value)
+        self.data[key] = value
 
     async def delete(self, key: str):
         try:
@@ -832,7 +832,6 @@ class APIClient:
             answer["answer"] = answer_index
             attempt["answers"][question_id] = answer_index
             return {"success": True, "message": "Ответ обновлён"}
-
         return {"error": "Ответ не найден"}
 
     async def complete_attempt(self, token: str, attempt_id: int) -> Dict:
@@ -1076,7 +1075,10 @@ def require_role(role: str):
 async def get_user(chat_id: int) -> Optional[Dict]:
     data = await redis_client.get(f"user:{chat_id}")
     if data:
-        return json.loads(data)
+        try:
+            return json.loads(data)
+        except:
+            return None
     return None
 
 
@@ -1100,7 +1102,10 @@ async def set_user_anonymous(chat_id: int, login_token: str, provider: str = "co
 async def set_user_authorized(chat_id: int, user_id: int, email: str, role: str = "student"):
     """Устанавливаем пользователя как авторизованного с токеном для API"""
     token = api_client.generate_token(user_id, role)
-    permissions = json.loads(jwt.decode(token, JWT_SECRET, algorithms=["HS256"])).get("permissions", [])
+
+    # Исправление ошибки: jwt.decode возвращает dict, а не строку
+    decoded_payload = jwt.decode(token, JWT_SECRET, algorithms=["HS256"])
+    permissions = decoded_payload.get("permissions", [])
 
     await save_user(chat_id, {
         "status": UserStatus.AUTHORIZED,
@@ -1128,14 +1133,17 @@ async def get_all_authorized_users() -> List[Dict]:
         for key in keys:
             data = await redis_client.get(key)
             if data:
-                user = json.loads(data)
-                if user.get("status") == UserStatus.AUTHORIZED:
-                    try:
-                        chat_id = int(key.split(":")[1])
-                        user["chat_id"] = chat_id
-                        users.append(user)
-                    except:
-                        pass
+                try:
+                    user = json.loads(data)
+                    if user.get("status") == UserStatus.AUTHORIZED:
+                        try:
+                            chat_id = int(key.split(":")[1])
+                            user["chat_id"] = chat_id
+                            users.append(user)
+                        except:
+                            pass
+                except:
+                    pass
     except Exception as e:
         logger.error(f"Error getting authorized users: {e}")
     return users
@@ -1212,7 +1220,7 @@ async def start_http_server():
 
 
 # =========================
-# ОБНОВЛЕННАЯ КОМАНДА START С ВЫБОРОМ РОЛИ
+# ОБНОВЛЕННАЯ КОМАНДА START
 # =========================
 @dp.message(Command("start"))
 @rate_limit()
@@ -1232,9 +1240,9 @@ async def cmd_start(message: Message):
 Используйте команду /login для входа в систему.
 """
         kb = InlineKeyboardMarkup(inline_keyboard=[
-            [InlineKeyboardButton(text="🔐 Авторизоваться", callback_data="login")],
-            [InlineKeyboardButton(text="👨‍🎓 Войти как студент", callback_data="quick_student")],
-            [InlineKeyboardButton(text="👨‍🏫 Войти как преподаватель", callback_data="quick_teacher")]
+            [InlineKeyboardButton(text="🔐 Войти в систему", callback_data="login")],
+            [InlineKeyboardButton(text="ℹ️ Помощь", callback_data="help_main")],
+            [InlineKeyboardButton(text="📊 Статус", callback_data="status_main")]
         ])
     elif user.get("status") == UserStatus.ANONYMOUS:
         login_token = user.get("login_token", "")
@@ -1259,7 +1267,8 @@ async def cmd_start(message: Message):
 """
         kb = InlineKeyboardMarkup(inline_keyboard=[
             [InlineKeyboardButton(text="🔄 Проверить статус", callback_data=f"check_auth_{login_token}")],
-            [InlineKeyboardButton(text="🔄 Начать заново", callback_data="login")]
+            [InlineKeyboardButton(text="🔄 Начать заново", callback_data="login")],
+            [InlineKeyboardButton(text="❌ Отмена", callback_data="cancel_auth")]
         ])
     else:
         user_email = user.get("email", "пользователь")
@@ -1280,6 +1289,85 @@ async def cmd_start(message: Message):
         kb = None
 
     await message.answer(text, reply_markup=kb)
+
+
+# =========================
+# ОБНОВЛЕННАЯ КОМАНДА LOGIN С ВЫБОРОМ РОЛИ
+# =========================
+@dp.message(Command("login"))
+@rate_limit()
+@safe_send_message
+async def cmd_login(message: Message):
+    """Показ выбора роли для авторизации - ТОЛЬКО 3 КНОПКИ"""
+    chat_id = message.chat.id
+    user = await get_user(chat_id)
+
+    if user and user.get("status") == UserStatus.AUTHORIZED:
+        await message.answer(f"✅ <b>Вы уже авторизованы как {user.get('email')}</b>\n\nИспользуйте /logout для выхода.")
+        return
+
+    text = """
+🔐 <b>Выберите вашу роль:</b>
+
+Выберите кем вы являетесь в системе:
+"""
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="👨‍🎓 Я студент", callback_data="login_student")],
+        [InlineKeyboardButton(text="👨‍🏫 Я преподаватель", callback_data="login_teacher")],
+        [InlineKeyboardButton(text="❌ Отмена", callback_data="cancel_auth")]
+    ])
+
+    await message.answer(text, reply_markup=kb)
+
+
+@dp.callback_query(F.data == "login_student")
+async def callback_login_student(callback: CallbackQuery):
+    """Выбор роли студента - показываем 3 варианта авторизации"""
+    chat_id = callback.from_user.id
+    user = await get_user(chat_id)
+
+    if user and user.get("status") == UserStatus.AUTHORIZED:
+        await callback.answer("✅ Вы уже авторизованы")
+        return
+
+    text = """
+👨‍🎓 <b>Авторизация как студент</b>
+
+Выберите способ авторизации:
+"""
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="🔢 Авторизация через код", callback_data="login_code_student")],
+        [InlineKeyboardButton(text="🚀 Быстрая авторизация", callback_data="quick_student")],
+        [InlineKeyboardButton(text="❌ Отмена", callback_data="cancel_auth")]
+    ])
+
+    await callback.message.edit_text(text, reply_markup=kb)
+    await callback.answer()
+
+
+@dp.callback_query(F.data == "login_teacher")
+async def callback_login_teacher(callback: CallbackQuery):
+    """Выбор роли преподавателя - показываем 3 варианта авторизации"""
+    chat_id = callback.from_user.id
+    user = await get_user(chat_id)
+
+    if user and user.get("status") == UserStatus.AUTHORIZED:
+        await callback.answer("✅ Вы уже авторизованы")
+        return
+
+    text = """
+👨‍🏫 <b>Авторизация как преподаватель</b>
+
+Выберите способ авторизации:
+"""
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="🔢 Авторизация через код", callback_data="login_code_teacher")],
+        [InlineKeyboardButton(text="🚀 Быстрая авторизация", callback_data="quick_teacher")],
+        [InlineKeyboardButton(text="❌ Отмена", callback_data="cancel_auth")]
+    ])
+
+    await callback.message.edit_text(text, reply_markup=kb)
+    await callback.answer()
 
 
 # =========================
@@ -1329,1047 +1417,6 @@ async def callback_quick_teacher(callback: CallbackQuery):
         f"✅ <b>Авторизация преподавателя успешна!</b>\n\nДобро пожаловать, {email}\n\nВы можете управлять системой.",
         reply_markup=None
     )
-
-
-# =========================
-# ОБНОВЛЕННАЯ КОМАНДА LOGIN С ВЫБОРОМ РОЛИ
-# =========================
-@dp.message(Command("login"))
-@rate_limit()
-@safe_send_message
-async def cmd_login(message: Message):
-    """Показ выбора роли для авторизации"""
-    chat_id = message.chat.id
-    user = await get_user(chat_id)
-
-    if user and user.get("status") == UserStatus.AUTHORIZED:
-        await message.answer(f"✅ <b>Вы уже авторизованы как {user.get('email')}</b>\n\nИспользуйте /logout для выхода.")
-        return
-
-    text = """
-🔐 <b>Выберите роль для входа:</b>
-
-1. <b>👨‍🎓 Студент</b> — доступ к прохождению тестов
-2. <b>👨‍🏫 Преподаватель</b> — доступ к управлению системой
-
-Или выберите способ авторизации:
-"""
-    kb = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="👨‍🎓 Студент", callback_data="role_student")],
-        [InlineKeyboardButton(text="👨‍🏫 Преподаватель", callback_data="role_teacher")],
-        [InlineKeyboardButton(text="🔢 Авторизация через код", callback_data="login_code")],
-        [InlineKeyboardButton(text="❌ Отмена", callback_data="cancel_auth")]
-    ])
-
-    await message.answer(text, reply_markup=kb)
-
-
-@dp.callback_query(F.data == "role_student")
-async def callback_role_student(callback: CallbackQuery):
-    """Выбор роли студента"""
-    chat_id = callback.from_user.id
-    user = await get_user(chat_id)
-
-    if user and user.get("status") == UserStatus.AUTHORIZED:
-        await callback.answer("✅ Вы уже авторизованы")
-        return
-
-    text = """
-👨‍🎓 <b>Авторизация как студент</b>
-
-Выберите способ авторизации:
-"""
-    kb = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="🔢 Авторизация через код", callback_data="login_code_student")],
-        [InlineKeyboardButton(text="🚀 Быстрая авторизация", callback_data="quick_student")],
-        [InlineKeyboardButton(text="❌ Отмена", callback_data="cancel_auth")]
-    ])
-
-    await callback.message.edit_text(text, reply_markup=kb)
-    await callback.answer()
-
-
-@dp.callback_query(F.data == "role_teacher")
-async def callback_role_teacher(callback: CallbackQuery):
-    """Выбор роли преподавателя"""
-    chat_id = callback.from_user.id
-    user = await get_user(chat_id)
-
-    if user and user.get("status") == UserStatus.AUTHORIZED:
-        await callback.answer("✅ Вы уже авторизованы")
-        return
-
-    text = """
-👨‍🏫 <b>Авторизация как преподаватель</b>
-
-Выберите способ авторизации:
-"""
-    kb = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="🔢 Авторизация через код", callback_data="login_code_teacher")],
-        [InlineKeyboardButton(text="🚀 Быстрая авторизация", callback_data="quick_teacher")],
-        [InlineKeyboardButton(text="❌ Отмена", callback_data="cancel_auth")]
-    ])
-
-    await callback.message.edit_text(text, reply_markup=kb)
-    await callback.answer()
-
-
-# =========================
-# КОМАНДЫ ДЛЯ СТУДЕНТА
-# =========================
-@dp.message(Command("my_courses"))
-@rate_limit()
-@require_auth()
-@safe_send_message
-async def cmd_my_courses(message: Message, user: Dict):
-    """Просмотр курсов, на которые записан студент"""
-    chat_id = message.chat.id
-    api_token = user.get("api_token", "")
-    user_id = user.get("user_id")
-
-    try:
-        user_data = await api_client.get_user_courses_grades(api_token, user_id)
-        courses = user_data.get("courses", [])
-
-        if not courses:
-            await message.answer("📚 <b>Вы не записаны ни на один курс</b>")
-            return
-
-        text = "📚 <b>Мои курсы</b>\n\n"
-        for course in courses:
-            text += f"🔸 <b>{course['name']}</b> (ID: {course['id']})\n"
-            text += f"   Описание: {course['description']}\n\n"
-
-        await message.answer(text)
-    except Exception as e:
-        logger.error(f"Ошибка при получении курсов: {e}")
-        await message.answer("❌ <b>Ошибка при загрузке курсов</b>")
-
-
-@dp.message(Command("my_grades"))
-@rate_limit()
-@require_auth()
-@safe_send_message
-async def cmd_my_grades(message: Message, user: Dict):
-    """Просмотр своих оценок"""
-    chat_id = message.chat.id
-    api_token = user.get("api_token", "")
-    user_id = user.get("user_id")
-
-    try:
-        user_data = await api_client.get_user_courses_grades(api_token, user_id)
-        attempts = user_data.get("attempts", [])
-
-        if not attempts:
-            await message.answer("📊 <b>У вас пока нет оценок</b>")
-            return
-
-        text = "📊 <b>Мои оценки</b>\n\n"
-        for attempt in attempts:
-            if attempt["status"] == "completed" and attempt["score"] is not None:
-                test = data_storage.tests.get(attempt["test_id"])
-                test_name = test["name"] if test else f"Тест {attempt['test_id']}"
-                text += f"📝 <b>{test_name}</b>\n"
-                text += f"   Оценка: {attempt['score']}%\n"
-                text += f"   Статус: Завершён\n\n"
-            elif attempt["status"] == "in_progress":
-                test = data_storage.tests.get(attempt["test_id"])
-                test_name = test["name"] if test else f"Тест {attempt['test_id']}"
-                text += f"📝 <b>{test_name}</b>\n"
-                text += f"   Статус: В процессе\n\n"
-
-        await message.answer(text)
-    except Exception as e:
-        logger.error(f"Ошибка при получении оценок: {e}")
-        await message.answer("❌ <b>Ошибка при загрузке оценок</b>")
-
-
-@dp.message(Command("my_attempts"))
-@rate_limit()
-@require_auth()
-@safe_send_message
-async def cmd_my_attempts(message: Message, user: Dict):
-    """Просмотр своих попыток"""
-    chat_id = message.chat.id
-    api_token = user.get("api_token", "")
-    user_id = user.get("user_id")
-
-    try:
-        user_data = await api_client.get_user_courses_grades(api_token, user_id)
-        attempts = user_data.get("attempts", [])
-
-        if not attempts:
-            await message.answer("📝 <b>У вас пока нет попыток</b>")
-            return
-
-        text = "📝 <b>Мои попытки</b>\n\n"
-        for attempt in attempts:
-            test = data_storage.tests.get(attempt["test_id"])
-            test_name = test["name"] if test else f"Тест {attempt['test_id']}"
-
-            text += f"🧪 <b>{test_name}</b>\n"
-            text += f"   ID попытки: {attempt['id']}\n"
-            text += f"   Статус: {attempt['status']}\n"
-            if attempt["score"] is not None:
-                text += f"   Оценка: {attempt['score']}%\n"
-            text += "\n"
-
-        await message.answer(text)
-    except Exception as e:
-        logger.error(f"Ошибка при получении попыток: {e}")
-        await message.answer("❌ <b>Ошибка при загрузке попыток</b>")
-
-
-# =========================
-# КОМАНДЫ ДЛЯ ПРЕПОДАВАТЕЛЯ - ПОЛЬЗОВАТЕЛИ
-# =========================
-@dp.message(Command("users"))
-@rate_limit()
-@require_auth()
-@require_permission(Permission.USER_LIST_READ)
-@safe_send_message
-async def cmd_users(message: Message, user: Dict):
-    """Просмотр списка пользователей"""
-    api_token = user.get("api_token", "")
-
-    try:
-        users = await api_client.get_users(api_token)
-
-        if not users:
-            await message.answer("👥 <b>Пользователи не найдены</b>")
-            return
-
-        text = "👥 <b>Список пользователей</b>\n\n"
-        for user_data in users:
-            role_emoji = "👨‍🏫" if user_data["role"] == "teacher" else "👨‍🎓"
-            blocked = "🔴" if user_data.get("is_blocked") else "🟢"
-
-            text += f"{role_emoji} {blocked} <b>{user_data['full_name']}</b>\n"
-            text += f"   ID: {user_data['id']}\n"
-            text += f"   Email: {user_data['email']}\n"
-            text += f"   Роль: {user_data['role']}\n\n"
-
-        await message.answer(text)
-    except Exception as e:
-        logger.error(f"Ошибка при получении пользователей: {e}")
-        await message.answer("❌ <b>Ошибка при загрузке пользователей</b>")
-
-
-@dp.message(Command("user_info"))
-@rate_limit()
-@require_auth()
-@safe_send_message
-async def cmd_user_info(message: Message, user: Dict):
-    """Просмотр информации о пользователе"""
-    api_token = user.get("api_token", "")
-
-    # Извлекаем ID пользователя из команды
-    parts = message.text.split()
-    if len(parts) < 2:
-        # Если ID не указан, показываем информацию о себе
-        user_id = user.get("user_id")
-    else:
-        try:
-            user_id = int(parts[1])
-        except ValueError:
-            await message.answer("❌ <b>ID пользователя должен быть числом</b>")
-            return
-
-    try:
-        user_info = await api_client.get_user_info(api_token, user_id)
-
-        if not user_info:
-            await message.answer("❌ <b>Пользователь не найден</b>")
-            return
-
-        role_emoji = "👨‍🏫" if user_info["role"] == "teacher" else "👨‍🎓"
-        blocked = "🔴 Заблокирован" if user_info.get("is_blocked") else "🟢 Активен"
-
-        text = f"{role_emoji} <b>Информация о пользователе</b>\n\n"
-        text += f"👤 <b>ФИО:</b> {user_info['full_name']}\n"
-        text += f"🔑 <b>ID:</b> {user_info['id']}\n"
-        text += f"📧 <b>Email:</b> {user_info['email']}\n"
-        text += f"🎭 <b>Роль:</b> {user_info['role']}\n"
-        text += f"🔒 <b>Статус:</b> {blocked}\n"
-
-        await message.answer(text)
-    except Exception as e:
-        logger.error(f"Ошибка при получении информации о пользователе: {e}")
-        await message.answer("❌ <b>Ошибка при загрузке информации</b>")
-
-
-@dp.message(Command("update_fullname"))
-@rate_limit()
-@require_auth()
-@require_permission(Permission.USER_FULLNAME_WRITE)
-@safe_send_message
-async def cmd_update_fullname(message: Message, user: Dict):
-    """Изменение ФИО пользователя"""
-    api_token = user.get("api_token", "")
-
-    # Извлекаем ID пользователя и новое ФИО из команды
-    parts = message.text.split(maxsplit=2)
-    if len(parts) < 3:
-        await message.answer("❌ <b>Использование:</b> /update_fullname ID_пользователя Новое_ФИО")
-        return
-
-    try:
-        user_id = int(parts[1])
-        new_fullname = parts[2]
-
-        result = await api_client.update_user_fullname(api_token, user_id, new_fullname)
-
-        if result.get("success"):
-            await message.answer(f"✅ <b>ФИО пользователя обновлено</b>")
-        else:
-            await message.answer(f"❌ <b>Ошибка:</b> {result.get('error', 'Неизвестная ошибка')}")
-    except ValueError:
-        await message.answer("❌ <b>ID пользователя должен быть числом</b>")
-    except Exception as e:
-        logger.error(f"Ошибка при обновлении ФИО: {e}")
-        await message.answer("❌ <b>Ошибка при обновлении ФИО</b>")
-
-
-@dp.message(Command("user_roles"))
-@rate_limit()
-@require_auth()
-@require_permission(Permission.USER_ROLES_READ)
-@safe_send_message
-async def cmd_user_roles(message: Message, user: Dict):
-    """Просмотр ролей пользователя"""
-    api_token = user.get("api_token", "")
-
-    parts = message.text.split()
-    if len(parts) < 2:
-        await message.answer("❌ <b>Использование:</b> /user_roles ID_пользователя")
-        return
-
-    try:
-        user_id = int(parts[1])
-        roles = await api_client.get_user_roles(api_token, user_id)
-
-        if roles:
-            text = f"🎭 <b>Роли пользователя ID {user_id}</b>\n\n"
-            text += "\n".join([f"• {role}" for role in roles])
-            await message.answer(text)
-        else:
-            await message.answer("❌ <b>Пользователь не найден</b>")
-    except ValueError:
-        await message.answer("❌ <b>ID пользователя должен быть числом</b>")
-    except Exception as e:
-        logger.error(f"Ошибка при получении ролей: {e}")
-        await message.answer("❌ <b>Ошибка при загрузке ролей</b>")
-
-
-@dp.message(Command("block_user"))
-@rate_limit()
-@require_auth()
-@require_permission(Permission.USER_BLOCK_WRITE)
-@require_role("teacher")
-@safe_send_message
-async def cmd_block_user(message: Message, user: Dict):
-    """Блокировка/разблокировка пользователя"""
-    api_token = user.get("api_token", "")
-
-    parts = message.text.split()
-    if len(parts) < 3:
-        await message.answer("❌ <b>Использование:</b> /block_user ID_пользователя true/false")
-        return
-
-    try:
-        user_id = int(parts[1])
-        block_status = parts[2].lower() == "true"
-
-        result = await api_client.update_user_block_status(api_token, user_id, block_status)
-
-        if result.get("success"):
-            action = "заблокирован" if block_status else "разблокирован"
-            await message.answer(f"✅ <b>Пользователь {action}</b>")
-        else:
-            await message.answer(f"❌ <b>Ошибка:</b> {result.get('error', 'Неизвестная ошибка')}")
-    except ValueError:
-        await message.answer("❌ <b>ID пользователя должен быть числом</b>")
-    except Exception as e:
-        logger.error(f"Ошибка при блокировке пользователя: {e}")
-        await message.answer("❌ <b>Ошибка при блокировке пользователя</b>")
-
-
-# =========================
-# КОМАНДЫ ДЛЯ ПРЕПОДАВАТЕЛЯ - КУРСЫ
-# =========================
-@dp.message(Command("all_courses"))
-@rate_limit()
-@require_auth()
-@require_role("teacher")
-@safe_send_message
-async def cmd_all_courses(message: Message, user: Dict):
-    """Просмотр всех курсов"""
-    api_token = user.get("api_token", "")
-
-    try:
-        courses = await api_client.get_courses(api_token)
-
-        if not courses:
-            await message.answer("📚 <b>Курсы не найдены</b>")
-            return
-
-        text = "📚 <b>Все курсы</b>\n\n"
-        for course in courses:
-            teacher = data_storage.users.get(course["teacher_id"], {})
-            teacher_name = teacher.get("full_name", f"Преподаватель {course['teacher_id']}")
-            status = "🟢" if course.get("is_active", True) else "🔴"
-
-            text += f"{status} <b>{course['name']}</b> (ID: {course['id']})\n"
-            text += f"   Описание: {course['description']}\n"
-            text += f"   Преподаватель: {teacher_name}\n\n"
-
-        await message.answer(text)
-    except Exception as e:
-        logger.error(f"Ошибка при получении курсов: {e}")
-        await message.answer("❌ <b>Ошибка при загрузке курсов</b>")
-
-
-@dp.message(Command("create_course"))
-@rate_limit()
-@require_auth()
-@require_permission(Permission.COURSE_ADD)
-@require_role("teacher")
-@safe_send_message
-async def cmd_create_course(message: Message, user: Dict):
-    """Создание нового курса"""
-    api_token = user.get("api_token", "")
-    user_id = user.get("user_id")
-
-    # Формат: /create_course Название; Описание
-    parts = message.text.split(';', 1)
-    if len(parts) < 2:
-        await message.answer("❌ <b>Использование:</b> /create_course Название; Описание")
-        return
-
-    name = parts[0].strip().replace('/create_course ', '')
-    description = parts[1].strip()
-
-    try:
-        result = await api_client.create_course(api_token, name, description, user_id)
-
-        if result.get("success"):
-            await message.answer(f"✅ <b>Курс создан</b>\n\nID курса: {result['course_id']}\nНазвание: {name}")
-        else:
-            await message.answer(f"❌ <b>Ошибка:</b> {result.get('error', 'Неизвестная ошибка')}")
-    except Exception as e:
-        logger.error(f"Ошибка при создании курса: {e}")
-        await message.answer("❌ <b>Ошибка при создании курса</b>")
-
-
-@dp.message(Command("course_info"))
-@rate_limit()
-@require_auth()
-@safe_send_message
-async def cmd_course_info(message: Message, user: Dict):
-    """Просмотр информации о курсе"""
-    api_token = user.get("api_token", "")
-
-    parts = message.text.split()
-    if len(parts) < 2:
-        await message.answer("❌ <b>Использование:</b> /course_info ID_курса")
-        return
-
-    try:
-        course_id = int(parts[1])
-        course_info = await api_client.get_course_info(api_token, course_id)
-
-        if course_info and not course_info.get("error"):
-            teacher = course_info.get("teacher", {})
-            teacher_name = teacher.get("full_name", f"Преподаватель {course_info['teacher_id']}")
-            status = "🟢 Активен" if course_info.get("is_active", True) else "🔴 Не активен"
-
-            text = f"📚 <b>Информация о курсе</b>\n\n"
-            text += f"🏫 <b>Название:</b> {course_info['name']}\n"
-            text += f"🔑 <b>ID:</b> {course_info['id']}\n"
-            text += f"📝 <b>Описание:</b> {course_info['description']}\n"
-            text += f"👨‍🏫 <b>Преподаватель:</b> {teacher_name}\n"
-            text += f"🔒 <b>Статус:</b> {status}\n"
-
-            # Показываем тесты курса
-            tests = await api_client.get_course_tests(api_token, course_id)
-            if tests:
-                text += f"\n📋 <b>Тесты курса ({len(tests)}):</b>\n"
-                for test in tests:
-                    status = "🟢" if test["is_active"] else "🔴"
-                    text += f"  {status} {test['name']} (ID: {test['id']})\n"
-
-            await message.answer(text)
-        else:
-            await message.answer("❌ <b>Курс не найден</b>")
-    except ValueError:
-        await message.answer("❌ <b>ID курса должен быть числом</b>")
-    except Exception as e:
-        logger.error(f"Ошибка при получении информации о курсе: {e}")
-        await message.answer("❌ <b>Ошибка при загрузке информации о курсе</b>")
-
-
-@dp.message(Command("course_students"))
-@rate_limit()
-@require_auth()
-@require_permission(Permission.COURSE_USERLIST)
-@require_role("teacher")
-@safe_send_message
-async def cmd_course_students(message: Message, user: Dict):
-    """Просмотр студентов курса"""
-    api_token = user.get("api_token", "")
-
-    parts = message.text.split()
-    if len(parts) < 2:
-        await message.answer("❌ <b>Использование:</b> /course_students ID_курса")
-        return
-
-    try:
-        course_id = int(parts[1])
-        students = await api_client.get_course_students(api_token, course_id)
-
-        if not students:
-            await message.answer(f"👥 <b>На курсе ID {course_id} нет студентов</b>")
-            return
-
-        text = f"👥 <b>Студенты курса ID {course_id}</b>\n\n"
-        for student in students:
-            blocked = "🔴" if student.get("is_blocked") else "🟢"
-            text += f"{blocked} <b>{student['full_name']}</b>\n"
-            text += f"   ID: {student['id']}\n"
-            text += f"   Email: {student['email']}\n\n"
-
-        await message.answer(text)
-    except ValueError:
-        await message.answer("❌ <b>ID курса должен быть числом</b>")
-    except Exception as e:
-        logger.error(f"Ошибка при получении студентов курса: {e}")
-        await message.answer("❌ <b>Ошибка при загрузке студентов курса</b>")
-
-
-@dp.message(Command("enroll_student"))
-@rate_limit()
-@require_auth()
-@require_permission(Permission.COURSE_USER_ADD)
-@safe_send_message
-async def cmd_enroll_student(message: Message, user: Dict):
-    """Запись студента на курс"""
-    api_token = user.get("api_token", "")
-
-    parts = message.text.split()
-    if len(parts) < 3:
-        await message.answer("❌ <b>Использование:</b> /enroll_student ID_курса ID_студента")
-        return
-
-    try:
-        course_id = int(parts[1])
-        student_id = int(parts[2])
-
-        result = await api_client.enroll_student_to_course(api_token, course_id, student_id)
-
-        if result.get("success"):
-            await message.answer(f"✅ <b>Студент записан на курс</b>")
-        else:
-            await message.answer(f"❌ <b>Ошибка:</b> {result.get('error', 'Неизвестная ошибка')}")
-    except ValueError:
-        await message.answer("❌ <b>ID курса и ID студента должны быть числами</b>")
-    except Exception as e:
-        logger.error(f"Ошибка при записи студента на курс: {e}")
-        await message.answer("❌ <b>Ошибка при записи студента на курс</b>")
-
-
-# =========================
-# КОМАНДЫ ДЛЯ ПРЕПОДАВАТЕЛЯ - ТЕСТЫ
-# =========================
-@dp.message(Command("course_tests"))
-@rate_limit()
-@require_auth()
-@require_permission(Permission.COURSE_TESTLIST)
-@safe_send_message
-async def cmd_course_tests(message: Message, user: Dict):
-    """Просмотр тестов курса"""
-    api_token = user.get("api_token", "")
-
-    parts = message.text.split()
-    if len(parts) < 2:
-        await message.answer("❌ <b>Использование:</b> /course_tests ID_курса")
-        return
-
-    try:
-        course_id = int(parts[1])
-        tests = await api_client.get_course_tests(api_token, course_id)
-
-        if not tests:
-            await message.answer(f"📋 <b>В курсе ID {course_id} нет тестов</b>")
-            return
-
-        course_info = await api_client.get_course_info(api_token, course_id)
-        course_name = course_info.get("name", f"Курс {course_id}") if course_info else f"Курс {course_id}"
-
-        text = f"📋 <b>Тесты курса: {course_name}</b>\n\n"
-        for test in tests:
-            status = "🟢 Активен" if test["is_active"] else "🔴 Не активен"
-            text += f"🧪 <b>{test['name']}</b> (ID: {test['id']})\n"
-            text += f"   Статус: {status}\n"
-            text += f"   Вопросов: {len(test.get('questions', []))}\n\n"
-
-        await message.answer(text)
-    except ValueError:
-        await message.answer("❌ <b>ID курса должен быть числом</b>")
-    except Exception as e:
-        logger.error(f"Ошибка при получении тестов курса: {e}")
-        await message.answer("❌ <b>Ошибка при загрузке тестов курса</b>")
-
-
-@dp.message(Command("add_test"))
-@rate_limit()
-@require_auth()
-@require_permission(Permission.COURSE_TEST_ADD)
-@require_role("teacher")
-@safe_send_message
-async def cmd_add_test(message: Message, user: Dict):
-    """Добавление теста в курс"""
-    api_token = user.get("api_token", "")
-
-    # Формат: /add_test ID_курса; Название_теста
-    parts = message.text.split(';', 1)
-    if len(parts) < 2:
-        await message.answer("❌ <b>Использование:</b> /add_test ID_курса; Название_теста")
-        return
-
-    try:
-        course_id = int(parts[0].strip().replace('/add_test ', ''))
-        test_name = parts[1].strip()
-
-        result = await api_client.add_test_to_course(api_token, course_id, test_name)
-
-        if result.get("success"):
-            await message.answer(
-                f"✅ <b>Тест добавлен в курс</b>\n\nID теста: {result['test_id']}\nНазвание: {test_name}")
-        else:
-            await message.answer(f"❌ <b>Ошибка:</b> {result.get('error', 'Неизвестная ошибка')}")
-    except ValueError:
-        await message.answer("❌ <b>ID курса должен быть числом</b>")
-    except Exception as e:
-        logger.error(f"Ошибка при добавлении теста: {e}")
-        await message.answer("❌ <b>Ошибка при добавлении теста</b>")
-
-
-@dp.message(Command("activate_test"))
-@rate_limit()
-@require_auth()
-@require_permission(Permission.COURSE_TEST_WRITE)
-@require_role("teacher")
-@safe_send_message
-async def cmd_activate_test(message: Message, user: Dict):
-    """Активация/деактивация теста"""
-    api_token = user.get("api_token", "")
-
-    parts = message.text.split()
-    if len(parts) < 3:
-        await message.answer("❌ <b>Использование:</b> /activate_test ID_курса ID_теста true/false")
-        return
-
-    try:
-        course_id = int(parts[1])
-        test_id = int(parts[2])
-        activate = parts[3].lower() == "true"
-
-        result = await api_client.update_test_status(api_token, course_id, test_id, activate)
-
-        if result.get("success"):
-            action = "активирован" if activate else "деактивирован"
-            await message.answer(f"✅ <b>Тест {action}</b>")
-        else:
-            await message.answer(f"❌ <b>Ошибка:</b> {result.get('error', 'Неизвестная ошибка')}")
-    except ValueError:
-        await message.answer("❌ <b>ID курса и ID теста должны быть числами</b>")
-    except Exception as e:
-        logger.error(f"Ошибка при изменении статуса теста: {e}")
-        await message.answer("❌ <b>Ошибка при изменении статуса теста</b>")
-
-
-@dp.message(Command("test_results"))
-@rate_limit()
-@require_auth()
-@require_permission(Permission.TEST_ANSWER_READ)
-@require_role("teacher")
-@safe_send_message
-async def cmd_test_results(message: Message, user: Dict):
-    """Просмотр результатов теста"""
-    api_token = user.get("api_token", "")
-
-    parts = message.text.split()
-    if len(parts) < 2:
-        await message.answer("❌ <b>Использование:</b> /test_results ID_теста")
-        return
-
-    try:
-        test_id = int(parts[1])
-
-        # Получаем попытки теста
-        attempts = await api_client.get_test_attempts(api_token, test_id)
-
-        if not attempts:
-            await message.answer(f"📊 <b>У теста ID {test_id} нет результатов</b>")
-            return
-
-        test = data_storage.tests.get(test_id)
-        test_name = test["name"] if test else f"Тест {test_id}"
-
-        text = f"📊 <b>Результаты теста: {test_name}</b>\n\n"
-        for attempt in attempts:
-            text += f"👤 <b>{attempt['full_name']}</b> (ID: {attempt['user_id']})\n"
-            text += f"   Оценка: {attempt['score']}%\n"
-            text += f"   ID попытки: {attempt['attempt_id']}\n\n"
-
-        await message.answer(text)
-    except ValueError:
-        await message.answer("❌ <b>ID теста должен быть числом</b>")
-    except Exception as e:
-        logger.error(f"Ошибка при получении результатов теста: {e}")
-        await message.answer("❌ <b>Ошибка при загрузке результатов теста</b>")
-
-
-# =========================
-# КОМАНДЫ ДЛЯ ПРЕПОДАВАТЕЛЯ - ВОПРОСЫ
-# =========================
-@dp.message(Command("questions_list"))
-@rate_limit()
-@require_auth()
-@require_permission(Permission.QUESTION_READ)
-@require_role("teacher")
-@safe_send_message
-async def cmd_questions_list(message: Message, user: Dict):
-    """Просмотр списка вопросов"""
-    api_token = user.get("api_token", "")
-
-    try:
-        questions = await api_client.get_questions(api_token)
-
-        if not questions:
-            await message.answer("❓ <b>Вопросы не найдены</b>")
-            return
-
-        text = "❓ <b>Список вопросов</b>\n\n"
-        for question in questions:
-            author = data_storage.users.get(question["author_id"], {})
-            author_name = author.get("full_name", f"Автор {question['author_id']}")
-
-            text += f"🔹 <b>{question['title']}</b> (ID: {question['id']})\n"
-            text += f"   Автор: {author_name}\n"
-            text += f"   Версия: {question['version']}\n"
-            text += f"   Вариантов ответа: {len(question['options'])}\n\n"
-
-        await message.answer(text)
-    except Exception as e:
-        logger.error(f"Ошибка при получении вопросов: {e}")
-        await message.answer("❌ <b>Ошибка при загрузке вопросов</b>")
-
-
-@dp.message(Command("create_question"))
-@rate_limit()
-@require_auth()
-@require_permission(Permission.QUESTION_ADD)
-@require_role("teacher")
-@safe_send_message
-async def cmd_create_question(message: Message, user: Dict):
-    """Создание нового вопроса"""
-    api_token = user.get("api_token", "")
-    user_id = user.get("user_id")
-
-    # Формат: /create_question Название; Текст; Варианты (через |); Правильный_ответ (0-...)
-    parts = message.text.split(';', 3)
-    if len(parts) < 4:
-        await message.answer(
-            "❌ <b>Использование:</b> /create_question Название; Текст; Варианты (через |); Правильный_ответ")
-        return
-
-    title = parts[0].strip().replace('/create_question ', '')
-    text = parts[1].strip()
-    options = [opt.strip() for opt in parts[2].split('|')]
-
-    try:
-        correct = int(parts[3].strip())
-        if correct < 0 or correct >= len(options):
-            await message.answer("❌ <b>Правильный ответ должен быть в пределах количества вариантов</b>")
-            return
-    except ValueError:
-        await message.answer("❌ <b>Правильный ответ должен быть числом</b>")
-        return
-
-    try:
-        result = await api_client.create_question(api_token, title, text, options, correct, user_id)
-
-        if result.get("success"):
-            await message.answer(f"✅ <b>Вопрос создан</b>\n\nID вопроса: {result['question_id']}\nНазвание: {title}")
-        else:
-            await message.answer(f"❌ <b>Ошибка:</b> {result.get('error', 'Неизвестная ошибка')}")
-    except Exception as e:
-        logger.error(f"Ошибка при создании вопроса: {e}")
-        await message.answer("❌ <b>Ошибка при создании вопроса</b>")
-
-
-# =========================
-# ОБНОВЛЕННАЯ КОМАНДА HELP
-# =========================
-@dp.message(Command("help"))
-@rate_limit()
-@safe_send_message
-async def cmd_help(message: Message):
-    chat_id = message.chat.id
-    user = await get_user(chat_id)
-
-    if user and user.get("status") == UserStatus.AUTHORIZED:
-        role = user.get("role", "student")
-
-        if role == "teacher":
-            help_text = """
-🆘 <b>Справка по командам (Преподаватель)</b>
-
-<b>Основные команды:</b>
-/start — начало работы
-/help — эта справка
-/status — статус системы
-/profile — ваш профиль
-/logout — выход из системы
-
-<b>Управление пользователями:</b>
-/users — список пользователей
-/user_info [ID] — информация о пользователе
-/update_fullname ID ФИО — изменить ФИО
-/user_roles ID — просмотр ролей пользователя
-/block_user ID true/false — блокировка/разблокировка
-
-<b>Управление курсами:</b>
-/all_courses — все курсы
-/create_course Название; Описание — создать курс
-/course_info ID — информация о курсе
-/course_students ID — студенты курса
-/enroll_student ID_курса ID_студента — записать студента
-
-<b>Управление тестами:</b>
-/course_tests ID_курса — тесты курса
-/add_test ID_курса; Название — добавить тест
-/activate_test ID_курса ID_теста true/false — активация теста
-/test_results ID_теста — результаты теста
-
-<b>Управление вопросами:</b>
-/questions_list — все вопросы
-/create_question Название; Текст; Варианты|через|вертикальную; 0 — создать вопрос
-
-<b>Для студентов (также доступны):</b>
-/tests — список тестов
-/start_test ID_теста [ID_вопроса] — начать тест
-/my_courses — мои курсы
-/my_grades — мои оценки
-/my_attempts — мои попытки
-"""
-        else:
-            help_text = """
-🆘 <b>Справка по командам (Студент)</b>
-
-<b>Основные команды:</b>
-/start — начало работы
-/help — эта справка
-/status — статус системы
-/profile — ваш профиль
-/logout — выход из системы
-
-<b>Тесты:</b>
-/tests — список тестов
-/start_test ID_теста [ID_вопроса] — начать тест
-
-<b>Мои данные:</b>
-/my_courses — мои курсы
-/my_grades — мои оценки
-/my_attempts — мои попытки
-
-<b>Авторизация:</b>
-/login — вход в систему
-/logout — выход
-/logout_all — выход со всех устройств
-"""
-    else:
-        help_text = """
-🆘 <b>Справка по командам</b>
-
-<b>Основные команды:</b>
-/start — начало работы
-/help — эта справка
-/status — статус системы
-
-<b>Авторизация:</b>
-/login — вход в систему
-
-<b>Технические команды:</b>
-/services — информация о сервисах
-/debug — отладочная информация
-/ping — проверка работы бота
-/echo — эхо-команда
-"""
-
-    await message.answer(help_text)
-
-
-# =========================
-# СУЩЕСТВУЮЩИЕ КОМАНДЫ (ОСТАВЛЯЕМ БЕЗ ИЗМЕНЕНИЙ)
-# =========================
-@dp.message(Command("tests"))
-@rate_limit()
-@require_auth()
-@safe_send_message
-async def cmd_tests(message: Message, user: Dict):
-    """Список доступных тестов с API и кнопками запуска"""
-    chat_id = message.chat.id
-    api_token = user.get("api_token", "")
-
-    if not api_token:
-        await message.answer("❌ <b>Ошибка авторизации</b>\n\nТокен API не найден.")
-        return
-
-    loading_msg = await message.answer("🔄 <b>Загрузка тестов...</b>")
-
-    try:
-        tests = await api_client.get_tests(api_token, DEFAULT_COURSE_ID)
-        await loading_msg.delete()
-
-        if not tests:
-            text = "📚 <b>Нет доступных тестов</b>\n\nНа данный момент нет активных тестов для прохождения."
-            await message.answer(text)
-            return
-
-        text = "📚 <b>Доступные тесты</b>\n\n"
-        buttons = []
-
-        for test in tests:
-            test_id = test.get("id", "?")
-            test_name = test.get("name") or test.get("title", f"Тест {test_id}")
-            is_active = test.get("is_active", False)
-            question_ids = test.get("questions", test.get("question_ids", []))
-
-            status = "🟢" if is_active else "🔴"
-            status_text = "Активен" if is_active else "Неактивен"
-
-            text += f"{status} <b>{test_name}</b> (ID: {test_id})\n"
-            text += f"   📊 Статус: {status_text}\n"
-            text += f"   ❓ Вопросов: {len(question_ids)}\n"
-
-            if question_ids:
-                text += f"   📋 ID вопросов: {', '.join(map(str, question_ids[:5]))}"
-                if len(question_ids) > 5:
-                    text += f" ... (ещё {len(question_ids) - 5})"
-                text += "\n"
-
-            text += "\n"
-
-            if is_active and len(question_ids) > 0:
-                buttons.append([
-                    InlineKeyboardButton(
-                        text=f"▶️ Начать тест: {test_name}",
-                        callback_data=f"start_test_{test_id}"
-                    )
-                ])
-
-        text += "\n<b>Используйте команду:</b>\n<code>/start_test ID_теста [ID_вопроса]</code>\n\n"
-        text += "<b>Примеры:</b>\n"
-        text += "<code>/start_test 56</code> - начать тест 56 с первого вопроса\n"
-        text += "<code>/start_test 56 2</code> - начать тест 56 с вопроса 2"
-
-        kb = InlineKeyboardMarkup(inline_keyboard=buttons) if buttons else None
-        await message.answer(text, reply_markup=kb, parse_mode=ParseMode.HTML)
-
-    except Exception as e:
-        try:
-            await loading_msg.delete()
-        except:
-            pass
-
-        logger.error(f"Ошибка при получении тестов: {e}")
-        await message.answer(
-            f"❌ <b>Ошибка при загрузке тестов:</b>\n\n{str(e)}\n\nПопробуйте использовать /login для авторизации.")
-
-
-# =========================
-# ОБРАБОТЧИКИ АВТОРИЗАЦИИ ЧЕРЕЗ КОД С ВЫБОРОМ РОЛИ
-# =========================
-@dp.callback_query(F.data == "login_code_student")
-async def callback_login_code_student(callback: CallbackQuery):
-    """Авторизация через код для студента"""
-    chat_id = callback.from_user.id
-    user = await get_user(chat_id)
-
-    if user and user.get("status") == UserStatus.AUTHORIZED:
-        await callback.answer("✅ Вы уже авторизованы")
-        return
-
-    login_token = secrets.token_urlsafe(32)
-    await set_user_anonymous(chat_id, login_token, "code")
-
-    # Генерируем код через заглушку
-    code = await auth_service.generate_login_url(login_token, "code")
-
-    text = f"""
-👨‍🎓 <b>Авторизация студента через код</b>
-
-Для завершения авторизации введите код в веб-клиенте:
-
-<b>Код: <code>{code}</code></b>
-
-⏳ <b>Код действителен 1 минуту</b>
-
-После ввода кода нажмите "Проверить статус".
-
-Для тестирования можете использовать команду:
-<code>/simulate_auth</code>
-"""
-
-    kb = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="🔄 Проверить статус", callback_data=f"check_auth_{login_token}")],
-        [InlineKeyboardButton(text="❌ Отмена", callback_data="cancel_auth")]
-    ])
-
-    await callback.message.edit_text(text, reply_markup=kb, parse_mode=ParseMode.HTML)
-    await callback.answer()
-
-
-@dp.callback_query(F.data == "login_code_teacher")
-async def callback_login_code_teacher(callback: CallbackQuery):
-    """Авторизация через код для преподавателя"""
-    chat_id = callback.from_user.id
-    user = await get_user(chat_id)
-
-    if user and user.get("status") == UserStatus.AUTHORIZED:
-        await callback.answer("✅ Вы уже авторизованы")
-        return
-
-    login_token = secrets.token_urlsafe(32)
-    await set_user_anonymous(chat_id, login_token, "code")
-
-    # Генерируем код через заглушку
-    code = await auth_service.generate_login_url(login_token, "code")
-
-    text = f"""
-👨‍🏫 <b>Авторизация преподавателя через код</b>
-
-Для завершения авторизации введите код в веб-клиенте:
-
-<b>Код: <code>{code}</code></b>
-
-⏳ <b>Код действителен 1 минуту</b>
-
-После ввода кода нажмите "Проверить статус".
-
-Для тестирования можете использовать команду:
-<code>/simulate_auth</code>
-"""
-
-    kb = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="🔄 Проверить статус", callback_data=f"check_auth_{login_token}")],
-        [InlineKeyboardButton(text="❌ Отмена", callback_data="cancel_auth")]
-    ])
-
-    await callback.message.edit_text(text, reply_markup=kb, parse_mode=ParseMode.HTML)
-    await callback.answer()
 
 
 # =========================
@@ -2548,6 +1595,91 @@ auth_service = AuthServiceStub()
 
 
 # =========================
+# АВТОРИЗАЦИЯ ЧЕРЕЗ КОД ДЛЯ СТУДЕНТА И ПРЕПОДАВАТЕЛЯ
+# =========================
+@dp.callback_query(F.data == "login_code_student")
+async def callback_login_code_student(callback: CallbackQuery):
+    """Авторизация через код для студента"""
+    chat_id = callback.from_user.id
+    user = await get_user(chat_id)
+
+    if user and user.get("status") == UserStatus.AUTHORIZED:
+        await callback.answer("✅ Вы уже авторизованы")
+        return
+
+    login_token = secrets.token_urlsafe(32)
+    await set_user_anonymous(chat_id, login_token, "code")
+
+    # Генерируем код через заглушку
+    code = await auth_service.generate_login_url(login_token, "code")
+    auth_service.set_token_role(login_token, "student")
+
+    text = f"""
+👨‍🎓 <b>Авторизация студента через код</b>
+
+Для завершения авторизации введите код в веб-клиенте:
+
+<b>Код: <code>{code}</code></b>
+
+⏳ <b>Код действителен 1 минуту</b>
+
+После ввода кода нажмите "Проверить статус".
+
+Для тестирования можете использовать команду:
+<code>/simulate_auth</code>
+"""
+
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="🔄 Проверить статус", callback_data=f"check_auth_{login_token}")],
+        [InlineKeyboardButton(text="❌ Отмена", callback_data="cancel_auth")]
+    ])
+
+    await callback.message.edit_text(text, reply_markup=kb, parse_mode=ParseMode.HTML)
+    await callback.answer()
+
+
+@dp.callback_query(F.data == "login_code_teacher")
+async def callback_login_code_teacher(callback: CallbackQuery):
+    """Авторизация через код для преподавателя"""
+    chat_id = callback.from_user.id
+    user = await get_user(chat_id)
+
+    if user and user.get("status") == UserStatus.AUTHORIZED:
+        await callback.answer("✅ Вы уже авторизованы")
+        return
+
+    login_token = secrets.token_urlsafe(32)
+    await set_user_anonymous(chat_id, login_token, "code")
+
+    # Генерируем код через заглушку
+    code = await auth_service.generate_login_url(login_token, "code")
+    auth_service.set_token_role(login_token, "teacher")
+
+    text = f"""
+👨‍🏫 <b>Авторизация преподавателя через код</b>
+
+Для завершения авторизации введите код в веб-клиенте:
+
+<b>Код: <code>{code}</code></b>
+
+⏳ <b>Код действителен 1 минуту</b>
+
+После ввода кода нажмите "Проверить статус".
+
+Для тестирования можете использовать команду:
+<code>/simulate_auth</code>
+"""
+
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="🔄 Проверить статус", callback_data=f"check_auth_{login_token}")],
+        [InlineKeyboardButton(text="❌ Отмена", callback_data="cancel_auth")]
+    ])
+
+    await callback.message.edit_text(text, reply_markup=kb, parse_mode=ParseMode.HTML)
+    await callback.answer()
+
+
+# =========================
 # ОБРАБОТЧИК ПРОВЕРКИ СТАТУСА АВТОРИЗАЦИИ
 # =========================
 @dp.callback_query(F.data.startswith("check_auth_"))
@@ -2615,6 +1747,123 @@ async def cmd_simulate_auth(message: Message):
             "✅ <b>Имитация веб-авторизации успешна!</b>\n\nТеперь нажмите 'Проверить статус' или подождите несколько секунд.")
     else:
         await message.answer("❌ <b>Ошибка имитации авторизации</b>\n\nВозможно, код устарел или токен не найден.")
+
+
+# =========================
+# ОБНОВЛЕННАЯ КОМАНДА HELP (ОБЩАЯ)
+# =========================
+@dp.message(Command("help"))
+@rate_limit()
+@safe_send_message
+async def cmd_help(message: Message):
+    chat_id = message.chat.id
+    user = await get_user(chat_id)
+
+    help_text = """
+🆘 <b>Общая справка по командам</b>
+
+<b>Основные команды для всех:</b>
+/start — начало работы
+/help — эта справка
+/status — статус системы
+/ping — проверить работу бота
+/echo [текст] — эхо-команда
+
+<b>Авторизация:</b>
+/login — вход в систему
+/logout — выход из системы
+/logout_all — выход со всех устройств
+
+<b>Профиль:</b>
+/profile — информация о вашем профиле
+
+<b>Дополнительные справки:</b>
+/help_student — команды для студентов
+/help_teacher — команды для преподавателей
+/services — информация о сервисах
+/debug — отладочная информация
+"""
+
+    await message.answer(help_text)
+
+
+# =========================
+# КОМАНДА HELP_STUDENT
+# =========================
+@dp.message(Command("help_student"))
+@rate_limit()
+@safe_send_message
+async def cmd_help_student(message: Message):
+    help_text = """
+👨‍🎓 <b>Справка по командам для студентов</b>
+
+<b>Основные команды:</b>
+/tests — список доступных тестов
+/start_test ID_теста — начать тест
+/profile — ваш профиль
+
+<b>Мои данные:</b>
+/my_courses — мои курсы
+/my_grades — мои оценки
+/my_attempts — мои попытки
+
+<b>Тестирование:</b>
+• Используйте /tests для просмотра доступных тестов
+• Нажмите кнопку "Начать тест" или используйте /start_test ID
+• Отвечайте на вопросы, выбирая варианты ответов
+• Результат появится автоматически после завершения
+
+<b>Прохождение теста:</b>
+1. Выберите тест из списка /tests
+2. Нажмите "Начать тест" или используйте /start_test ID
+3. Отвечайте на вопросы последовательно
+4. По завершении увидите свой результат
+"""
+
+    await message.answer(help_text)
+
+
+# =========================
+# КОМАНДА HELP_TEACHER
+# =========================
+@dp.message(Command("help_teacher"))
+@rate_limit()
+@safe_send_message
+async def cmd_help_teacher(message: Message):
+    help_text = """
+👨‍🏫 <b>Справка по командам для преподавателей</b>
+
+<b>Управление пользователями:</b>
+/users — список пользователей
+/user_info [ID] — информация о пользователе
+/update_fullname ID ФИО — изменить ФИО
+/block_user ID true/false — блокировка/разблокировка
+
+<b>Управление курсами:</b>
+/all_courses — все курсы
+/create_course Название; Описание — создать курс
+/course_info ID — информация о курсе
+/course_students ID — студенты курса
+/enroll_student ID_курса ID_студента — записать студента
+
+<b>Управление тестами:</b>
+/course_tests ID_курса — тесты курса
+/add_test ID_курса; Название — добавить тест
+/activate_test ID_курса ID_теста true/false — активация теста
+/test_results ID_теста — результаты теста
+
+<b>Управление вопросами:</b>
+/questions_list — все вопросы
+/create_question Название; Текст; Варианты|через|вертикальную; 0 — создать вопрос
+
+<b>Примеры использования:</b>
+• Создать курс: /create_course Математика; Основы математики
+• Добавить тест: /add_test 1; Итоговый тест по математике
+• Просмотреть студентов: /course_students 1
+• Проверить результаты: /test_results 1
+"""
+
+    await message.answer(help_text)
 
 
 # =========================
@@ -2695,10 +1944,6 @@ async def cmd_profile(message: Message, user: Dict):
 📊 <b>Пройдено тестов:</b> {len(completed_attempts)}
 🎯 <b>Средний балл:</b> {average_score:.1f}%
 
-<b>Разрешения:</b>
-{', '.join(permissions[:5]) if permissions else 'Базовые разрешения'}
-{f'... и ещё {len(permissions) - 5}' if len(permissions) > 5 else ''}
-
 <b>Сессия в Telegram:</b>
 🤖 <b>Авторизован:</b> {auth_date}
 🔐 <b>Статус:</b> {'🔴 Заблокирован' if user_info.get('is_blocked') else '🟢 Активен'}
@@ -2761,6 +2006,515 @@ async def cmd_status(message: Message):
 • API Backend — 🟢 {API_BASE_URL}
 """
     await message.answer(text)
+
+
+# =========================
+# ОБНОВЛЕННАЯ КОМАНДА TESTS
+# =========================
+@dp.message(Command("tests"))
+@rate_limit()
+@require_auth()
+@safe_send_message
+async def cmd_tests(message: Message, user: Dict):
+    """Список доступных тестов с API и кнопками запуска"""
+    chat_id = message.chat.id
+    api_token = user.get("api_token", "")
+
+    if not api_token:
+        await message.answer("❌ <b>Ошибка авторизации</b>\n\nТокен API не найден.")
+        return
+
+    loading_msg = await message.answer("🔄 <b>Загрузка тестов...</b>")
+
+    try:
+        # Используем локальное хранилище для тестов
+        tests = [test for test in data_storage.tests.values() if test["is_active"]]
+
+        if not tests:
+            await loading_msg.delete()
+            text = "📚 <b>Нет доступных тестов</b>\n\nНа данный момент нет активных тестов для прохождения."
+            await message.answer(text)
+            return
+
+        text = "📚 <b>Доступные тесты</b>\n\n"
+        buttons = []
+
+        for test in tests:
+            test_id = test.get("id", "?")
+            test_name = test.get("name", f"Тест {test_id}")
+            question_ids = test.get("questions", [])
+
+            text += f"🧪 <b>{test_name}</b> (ID: {test_id})\n"
+            text += f"   📊 Статус: 🟢 Активен\n"
+            text += f"   ❓ Вопросов: {len(question_ids)}\n"
+
+            if question_ids:
+                text += f"   📋 ID вопросов: {', '.join(map(str, question_ids[:3]))}"
+                if len(question_ids) > 3:
+                    text += f" ... (ещё {len(question_ids) - 3})"
+                text += "\n"
+            text += "\n"
+
+            if len(question_ids) > 0:
+                buttons.append([
+                    InlineKeyboardButton(
+                        text=f"▶️ Начать тест: {test_name}",
+                        callback_data=f"start_test_{test_id}"
+                    )
+                ])
+
+        text += "\n<b>Используйте команду:</b>\n<code>/start_test ID_теста</code>\n\n"
+        text += "<b>Пример:</b>\n"
+        text += "<code>/start_test 1</code> - начать тест 1"
+
+        kb = InlineKeyboardMarkup(inline_keyboard=buttons) if buttons else None
+        await loading_msg.delete()
+        await message.answer(text, reply_markup=kb, parse_mode=ParseMode.HTML)
+
+    except Exception as e:
+        try:
+            await loading_msg.delete()
+        except:
+            pass
+
+        logger.error(f"Ошибка при получении тестов: {e}")
+        await message.answer(
+            f"❌ <b>Ошибка при загрузке тестов:</b>\n\n{str(e)[:200]}...")
+
+
+# =========================
+# КОМАНДА ЗАПУСКА ТЕСТА ЧЕРЕЗ КОМАНДУ
+# =========================
+@dp.message(Command("start_test"))
+@rate_limit()
+@require_auth()
+@safe_send_message
+async def cmd_start_test(message: Message, user: Dict):
+    """Запуск теста по ID теста"""
+    chat_id = message.chat.id
+    api_token = user.get("api_token", "")
+
+    command_text = message.text or ""
+    parts = command_text.split()
+
+    if len(parts) < 2:
+        await message.answer(
+            "❌ <b>Использование:</b> <code>/start_test ID_теста</code>\n\nПример:\n<code>/start_test 1</code> - начать тест 1")
+        return
+
+    try:
+        test_id = int(parts[1])
+    except ValueError:
+        await message.answer("❌ <b>Ошибка:</b> ID теста должен быть числом")
+        return
+
+    if not api_token:
+        await message.answer("❌ <b>Ошибка авторизации</b>\n\nТокен API не найден.")
+        return
+
+    loading_msg = await message.answer(f"🔄 <b>Запуск теста #{test_id}...</b>")
+
+    try:
+        # Создаем попытку через API клиент
+        result = await api_client.create_attempt(api_token, test_id, user["user_id"])
+
+        if "error" in result:
+            await loading_msg.delete()
+            await message.answer(f"❌ <b>Ошибка:</b> {result['error']}")
+            return
+
+        attempt_id = result.get("attempt_id")
+        if not attempt_id:
+            await loading_msg.delete()
+            await message.answer("❌ <b>Ошибка:</b> Не удалось начать тест. Попробуйте позже.")
+            return
+
+        # Получаем тест из хранилища
+        test = data_storage.tests.get(test_id)
+        if not test:
+            await loading_msg.delete()
+            await message.answer("❌ <b>Ошибка:</b> Тест не найден.")
+            return
+
+        question_ids = test.get("questions", [])
+
+        if not question_ids:
+            await loading_msg.delete()
+            await message.answer("❌ <b>Ошибка:</b> В тесте нет вопросов.")
+            return
+
+        # Сохраняем контекст теста
+        test_context = {
+            "test_id": test_id,
+            "attempt_id": attempt_id,
+            "question_ids": question_ids,
+            "current_question_index": 0,
+            "answers": {},
+            "started_at": datetime.now().isoformat(),
+            "api_token": api_token,
+            "user_id": user.get("user_id")
+        }
+
+        await redis_client.setex(
+            f"test_context:{chat_id}",
+            3600,
+            json.dumps(test_context)
+        )
+
+        # Получаем первый вопрос
+        first_question_id = question_ids[0]
+        question_data = await api_client.get_question_details(api_token, first_question_id)
+
+        text = f"""
+🧪 <b>Начинаем тест #{test_id}</b>
+
+<b>Название:</b> {test.get('name', f'Тест {test_id}')}
+<b>ID попытки:</b> {attempt_id}
+<b>Всего вопросов:</b> {len(question_ids)}
+<b>Текущий вопрос:</b> 1 из {len(question_ids)}
+
+<b>Вопрос:</b>
+{question_data.get('text', 'Текст вопроса')}
+"""
+
+        # Создаем кнопки для вариантов ответов
+        buttons = []
+        options = question_data.get("options", ["Вариант 1", "Вариант 2", "Вариант 3"])
+
+        for i, option in enumerate(options):
+            buttons.append([
+                InlineKeyboardButton(
+                    text=f"{i + 1}. {option}",
+                    callback_data=f"answer_{attempt_id}_{first_question_id}_{i}"
+                )
+            ])
+
+        # Добавляем кнопку отмены
+        buttons.append([
+            InlineKeyboardButton(text="❌ Отменить тест", callback_data="cancel_test")
+        ])
+
+        kb = InlineKeyboardMarkup(inline_keyboard=buttons)
+        await loading_msg.delete()
+        await message.answer(text, reply_markup=kb)
+
+    except Exception as e:
+        try:
+            await loading_msg.delete()
+        except:
+            pass
+
+        logger.error(f"Error starting test: {e}")
+        await message.answer(f"❌ <b>Ошибка при начале теста:</b>\n\n{str(e)[:200]}...")
+
+
+# =========================
+# ОБРАБОТЧИК ЗАПУСКА ТЕСТА ЧЕРЕЗ КНОПКУ
+# =========================
+@dp.callback_query(F.data.startswith("start_test_"))
+async def callback_start_test(callback: CallbackQuery):
+    """Запуск теста через кнопку"""
+    try:
+        test_id = int(callback.data[11:])
+        chat_id = callback.from_user.id
+        user = await get_user(chat_id)
+
+        if not user:
+            await callback.answer("❌ Требуется авторизация")
+            return
+
+        api_token = user.get("api_token", "")
+
+        if not api_token:
+            await callback.answer("❌ Ошибка авторизации")
+            return
+
+        # Начинаем тест
+        loading_msg = await callback.message.answer(f"🔄 <b>Запуск теста #{test_id}...</b>")
+
+        try:
+            # Создаем попытку через API клиент
+            result = await api_client.create_attempt(api_token, test_id, user["user_id"])
+
+            if "error" in result:
+                await loading_msg.delete()
+                await callback.answer(f"❌ {result['error']}")
+                return
+
+            attempt_id = result.get("attempt_id")
+            if not attempt_id:
+                await loading_msg.delete()
+                await callback.answer("❌ Не удалось начать тест")
+                return
+
+            # Получаем тест из хранилища
+            test = data_storage.tests.get(test_id)
+            if not test:
+                await loading_msg.delete()
+                await callback.answer("❌ Тест не найден")
+                return
+
+            question_ids = test.get("questions", [])
+
+            if not question_ids:
+                await loading_msg.delete()
+                await callback.answer("❌ В тесте нет вопросов")
+                return
+
+            # Сохраняем контекст теста
+            test_context = {
+                "test_id": test_id,
+                "attempt_id": attempt_id,
+                "question_ids": question_ids,
+                "current_question_index": 0,
+                "answers": {},
+                "started_at": datetime.now().isoformat(),
+                "api_token": api_token,
+                "user_id": user.get("user_id")
+            }
+
+            await redis_client.setex(
+                f"test_context:{chat_id}",
+                3600,
+                json.dumps(test_context)
+            )
+
+            # Получаем первый вопрос
+            first_question_id = question_ids[0]
+            question_data = await api_client.get_question_details(api_token, first_question_id)
+
+            text = f"""
+🧪 <b>Начинаем тест #{test_id}</b>
+
+<b>Название:</b> {test.get('name', f'Тест {test_id}')}
+<b>ID попытки:</b> {attempt_id}
+<b>Всего вопросов:</b> {len(question_ids)}
+<b>Текущий вопрос:</b> 1 из {len(question_ids)}
+
+<b>Вопрос:</b>
+{question_data.get('text', 'Текст вопроса')}
+"""
+
+            # Создаем кнопки для вариантов ответов
+            buttons = []
+            options = question_data.get("options", ["Вариант 1", "Вариант 2", "Вариант 3"])
+
+            for i, option in enumerate(options):
+                buttons.append([
+                    InlineKeyboardButton(
+                        text=f"{i + 1}. {option}",
+                        callback_data=f"answer_{attempt_id}_{first_question_id}_{i}"
+                    )
+                ])
+
+            # Добавляем кнопку отмены
+            buttons.append([
+                InlineKeyboardButton(text="❌ Отменить тест", callback_data="cancel_test")
+            ])
+
+            kb = InlineKeyboardMarkup(inline_keyboard=buttons)
+            await loading_msg.delete()
+            await callback.message.answer(text, reply_markup=kb)
+            await callback.answer()
+
+        except Exception as e:
+            await loading_msg.delete()
+            logger.error(f"Error starting test: {e}")
+            await callback.answer(f"❌ Ошибка: {str(e)[:50]}")
+
+    except Exception as e:
+        logger.error(f"Error in callback_start_test: {e}")
+        await callback.answer("❌ Ошибка запуска теста")
+
+
+# =========================
+# ОБРАБОТКА ОТВЕТОВ ЧЕРЕЗ КНОПКИ
+# =========================
+@dp.callback_query(F.data.startswith("answer_"))
+async def handle_answer_callback(callback: CallbackQuery):
+    """Обработка ответов через кнопки"""
+    try:
+        # Разбираем callback_data: answer_attemptId_questionId_optionIndex
+        parts = callback.data.split("_")
+        if len(parts) < 4:
+            await callback.answer("❌ Ошибка формата")
+            return
+
+        attempt_id = int(parts[1])
+        question_id = int(parts[2])
+        option_index = int(parts[3])
+
+        chat_id = callback.from_user.id
+        user = await get_user(chat_id)
+
+        if not user:
+            await callback.answer("❌ Требуется авторизация")
+            return
+
+        api_token = user.get("api_token", "")
+
+        # Получаем контекст теста
+        context_data = await redis_client.get(f"test_context:{chat_id}")
+        if not context_data:
+            await callback.answer("❌ Нет активного теста")
+            return
+
+        context = json.loads(context_data)
+
+        # Проверяем, что attempt_id совпадает
+        if context.get("attempt_id") != attempt_id:
+            await callback.answer("❌ Неверная попытка теста")
+            return
+
+        # Отправляем ответ через API
+        try:
+            result = await api_client.update_attempt_answer(api_token, attempt_id, question_id, option_index)
+            if "error" in result:
+                await callback.answer(f"❌ {result['error']}")
+                return
+            await callback.answer(f"✅ Ответ {option_index + 1} сохранен")
+        except Exception as e:
+            logger.error(f"Ошибка отправки ответа: {e}")
+            await callback.answer("❌ Ошибка отправки ответа")
+            return
+
+        # Обновляем контекст
+        current_index = context.get("current_question_index", 0)
+        context["answers"][question_id] = option_index
+        context["current_question_index"] = current_index + 1
+
+        # Проверяем, закончен ли тест
+        question_ids = context.get("question_ids", [])
+        if current_index + 1 >= len(question_ids):
+            # Тест завершен
+            await redis_client.delete(f"test_context:{chat_id}")
+
+            # Завершаем попытку через API
+            try:
+                result = await api_client.complete_attempt(api_token, attempt_id)
+
+                if "error" in result:
+                    logger.error(f"Ошибка завершения попытки: {result['error']}")
+                    await callback.message.answer(
+                        f"🎉 <b>Тест завершен!</b>\n\nОшибка при завершении: {result['error']}")
+                    return
+
+                score = result.get("score", 0)
+
+                # Подсчитываем правильные ответы
+                correct_count = 0
+                for qid, answer in context["answers"].items():
+                    question_data = await api_client.get_question_details(api_token, qid)
+                    if question_data.get("correct") == answer:
+                        correct_count += 1
+
+                percentage = int((correct_count / len(question_ids)) * 100) if question_ids else 0
+
+                text = f"""
+🎉 <b>Тест завершен!</b>
+
+<b>Ваш результат:</b> {score}%
+<b>Правильных ответов:</b> {correct_count} из {len(question_ids)} ({percentage}%)
+
+🏆 <b>Отличная работа!</b>
+
+Ваши ответы сохранены в системе.
+"""
+                await callback.message.answer(text)
+            except Exception as e:
+                logger.error(f"Ошибка завершения теста: {e}")
+                await callback.message.answer(
+                    f"🎉 <b>Тест завершен!</b>\n\nОшибка при получении результата: {str(e)[:100]}")
+        else:
+            # Показываем следующий вопрос
+            await redis_client.setex(
+                f"test_context:{chat_id}",
+                3600,
+                json.dumps(context)
+            )
+
+            # Получаем следующий вопрос
+            next_question_id = question_ids[current_index + 1]
+            question_data = await api_client.get_question_details(api_token, next_question_id)
+
+            text = f"""
+<b>Вопрос {current_index + 2} из {len(question_ids)}:</b>
+
+{question_data.get('text', 'Текст вопроса')}
+"""
+            # Создаем кнопки для вариантов ответов
+            buttons = []
+            options = question_data.get("options", ["Вариант 1", "Вариант 2", "Вариант 3"])
+
+            for i, option in enumerate(options):
+                buttons.append([
+                    InlineKeyboardButton(
+                        text=f"{i + 1}. {option}",
+                        callback_data=f"answer_{attempt_id}_{next_question_id}_{i}"
+                    )
+                ])
+
+            # Добавляем кнопку отмены
+            buttons.append([
+                InlineKeyboardButton(text="❌ Отменить тест", callback_data="cancel_test")
+            ])
+
+            kb = InlineKeyboardMarkup(inline_keyboard=buttons)
+            await callback.message.answer(text, reply_markup=kb)
+
+    except Exception as e:
+        logger.error(f"Error processing answer callback: {e}")
+        await callback.answer("❌ Ошибка обработки ответа")
+
+
+# =========================
+# ОБРАБОТЧИК ОТМЕНЫ ТЕСТА
+# =========================
+@dp.callback_query(F.data == "cancel_test")
+async def callback_cancel_test(callback: CallbackQuery):
+    """Отмена теста"""
+    chat_id = callback.from_user.id
+    await redis_client.delete(f"test_context:{chat_id}")
+    await callback.answer("❌ Тест отменен")
+    await callback.message.answer("🚫 <b>Тест отменен</b>\n\nВы можете начать новый тест с помощью /start_test.")
+
+
+# =========================
+# ОБРАБОТЧИК КНОПКИ ОТМЕНЫ АВТОРИЗАЦИИ
+# =========================
+@dp.callback_query(F.data == "cancel_auth")
+async def callback_cancel_auth(callback: CallbackQuery):
+    chat_id = callback.from_user.id
+    await delete_user(chat_id)
+    await callback.answer("❌ Авторизация отменена")
+    await callback.message.edit_text("🚪 <b>Авторизация отменена</b>", reply_markup=None)
+
+
+# =========================
+# ОБРАБОТЧИК КНОПКИ АВТОРИЗАЦИИ
+# =========================
+@dp.callback_query(F.data == "login")
+async def callback_login(callback: CallbackQuery):
+    await callback.answer()
+    await cmd_login(callback.message)
+
+
+# =========================
+# ОБРАБОТЧИК КНОПКИ HELP В СТАРТЕ
+# =========================
+@dp.callback_query(F.data == "help_main")
+async def callback_help_main(callback: CallbackQuery):
+    await callback.answer()
+    await cmd_help(callback.message)
+
+
+# =========================
+# ОБРАБОТЧИК КНОПКИ STATUS В СТАРТЕ
+# =========================
+@dp.callback_query(F.data == "status_main")
+async def callback_status_main(callback: CallbackQuery):
+    await callback.answer()
+    await cmd_status(callback.message)
 
 
 # =========================
@@ -2924,444 +2678,6 @@ async def cmd_echo(message: Message):
 
 
 # =========================
-# ОБРАБОТЧИК КНОПКИ ОТМЕНЫ АВТОРИЗАЦИИ
-# =========================
-@dp.callback_query(F.data == "cancel_auth")
-async def callback_cancel_auth(callback: CallbackQuery):
-    chat_id = callback.from_user.id
-    await delete_user(chat_id)
-    await callback.answer("❌ Авторизация отменена")
-    await callback.message.edit_text("🚪 <b>Авторизация отменена</b>", reply_markup=None)
-
-
-# =========================
-# ОБРАБОТЧИК КНОПКИ АВТОРИЗАЦИИ
-# =========================
-@dp.callback_query(F.data == "login")
-async def callback_login(callback: CallbackQuery):
-    await callback.answer()
-    await cmd_login(callback.message)
-
-
-# =========================
-# ОБРАБОТЧИК ЗАПУСКА ТЕСТА ЧЕРЕЗ КНОПКУ
-# =========================
-@dp.callback_query(F.data.startswith("start_test_"))
-async def callback_start_test(callback: CallbackQuery):
-    """Запуск теста через кнопку"""
-    try:
-        test_id = int(callback.data[11:])
-        chat_id = callback.from_user.id
-        user = await get_user(chat_id)
-
-        if not user:
-            await callback.answer("❌ Требуется авторизация")
-            return
-
-        api_token = user.get("api_token", "")
-
-        if not api_token:
-            await callback.answer("❌ Ошибка авторизации")
-            return
-
-        # Начинаем тест
-        loading_msg = await callback.message.answer(f"🔄 <b>Запуск теста #{test_id}...</b>")
-
-        try:
-            # Создаем попытку
-            result = await api_client.create_attempt(api_token, test_id, user["user_id"])
-
-            if "error" in result:
-                await loading_msg.delete()
-                await callback.answer(f"❌ {result['error']}")
-                return
-
-            attempt_id = result.get("attempt_id")
-            if not attempt_id:
-                await loading_msg.delete()
-                await callback.answer("❌ Не удалось начать тест")
-                return
-
-            # Получаем вопросы теста
-            test = data_storage.tests.get(test_id)
-            if not test:
-                await loading_msg.delete()
-                await callback.answer("❌ Тест не найден")
-                return
-
-            question_ids = test.get("questions", [])
-
-            if not question_ids:
-                await loading_msg.delete()
-                await callback.answer("❌ В тесте нет вопросов")
-                return
-
-            # Сохраняем контекст теста
-            test_context = {
-                "test_id": test_id,
-                "attempt_id": attempt_id,
-                "question_ids": question_ids,
-                "current_question_index": 0,
-                "answers": {},
-                "started_at": datetime.now().isoformat(),
-                "api_token": api_token,
-                "user_id": user.get("user_id")
-            }
-
-            await redis_client.setex(
-                f"test_context:{chat_id}",
-                3600,
-                json.dumps(test_context)
-            )
-
-            # Получаем первый вопрос
-            first_question_id = question_ids[0]
-            question_data = await api_client.get_question_details(api_token, first_question_id)
-
-            text = f"""
-🧪 <b>Начинаем тест #{test_id}</b>
-
-<b>Название:</b> {test.get('name', f'Тест {test_id}')}
-<b>ID попытки:</b> {attempt_id}
-<b>Всего вопросов:</b> {len(question_ids)}
-<b>Текущий вопрос:</b> 1 из {len(question_ids)}
-
-<b>Вопрос:</b>
-{question_data.get('text', 'Текст вопроса')}
-"""
-
-            # Создаем кнопки для вариантов ответов
-            buttons = []
-            options = question_data.get("options", ["Вариант 1", "Вариант 2", "Вариант 3"])
-
-            for i, option in enumerate(options):
-                buttons.append([
-                    InlineKeyboardButton(
-                        text=f"{i + 1}. {option}",
-                        callback_data=f"answer_{attempt_id}_{first_question_id}_{i}"
-                    )
-                ])
-
-            # Добавляем кнопку отмены
-            buttons.append([
-                InlineKeyboardButton(text="❌ Отменить тест", callback_data="cancel_test")
-            ])
-
-            kb = InlineKeyboardMarkup(inline_keyboard=buttons)
-            await loading_msg.delete()
-            await callback.message.answer(text, reply_markup=kb)
-            await callback.answer()
-
-        except Exception as e:
-            await loading_msg.delete()
-            logger.error(f"Error starting test: {e}")
-            await callback.answer(f"❌ Ошибка: {str(e)}")
-
-    except Exception as e:
-        logger.error(f"Error in callback_start_test: {e}")
-        await callback.answer("❌ Ошибка запуска теста")
-
-
-# =========================
-# ОБРАБОТКА ОТВЕТОВ ЧЕРЕЗ КНОПКИ
-# =========================
-@dp.callback_query(F.data.startswith("answer_"))
-async def handle_answer_callback(callback: CallbackQuery):
-    """Обработка ответов через кнопки"""
-    try:
-        # Разбираем callback_data: answer_attemptId_questionId_optionIndex
-        parts = callback.data.split("_")
-        if len(parts) < 4:
-            await callback.answer("❌ Ошибка формата")
-            return
-
-        attempt_id = int(parts[1])
-        question_id = int(parts[2])
-        option_index = int(parts[3])
-
-        chat_id = callback.from_user.id
-        user = await get_user(chat_id)
-
-        if not user:
-            await callback.answer("❌ Требуется авторизация")
-            return
-
-        api_token = user.get("api_token", "")
-
-        # Получаем контекст теста
-        context_data = await redis_client.get(f"test_context:{chat_id}")
-        if not context_data:
-            await callback.answer("❌ Нет активного теста")
-            return
-
-        context = json.loads(context_data)
-
-        # Проверяем, что attempt_id совпадает
-        if context.get("attempt_id") != attempt_id:
-            await callback.answer("❌ Неверная попытка теста")
-            return
-
-        # Отправляем ответ через API
-        try:
-            result = await api_client.update_attempt_answer(api_token, attempt_id, question_id, option_index)
-            if "error" in result:
-                await callback.answer(f"❌ {result['error']}")
-                return
-            await callback.answer(f"✅ Ответ {option_index + 1} сохранен")
-        except Exception as e:
-            logger.error(f"Ошибка отправки ответа: {e}")
-            await callback.answer("❌ Ошибка отправки ответа")
-            return
-
-        # Обновляем контекст
-        current_index = context.get("current_question_index", 0)
-        context["answers"][question_id] = option_index
-        context["current_question_index"] = current_index + 1
-
-        # Проверяем, закончен ли тест
-        question_ids = context.get("question_ids", [])
-        if current_index + 1 >= len(question_ids):
-            # Тест завершен
-            await redis_client.delete(f"test_context:{chat_id}")
-
-            # Завершаем попытку через API
-            try:
-                result = await api_client.complete_attempt(api_token, attempt_id)
-
-                if "error" in result:
-                    logger.error(f"Ошибка завершения попытки: {result['error']}")
-                    await callback.message.answer(
-                        f"🎉 <b>Тест завершен!</b>\n\nОшибка при завершении: {result['error']}")
-                    return
-
-                score = result.get("score", 0)
-
-                # Подсчитываем правильные ответы
-                correct_count = 0
-                for qid, answer in context["answers"].items():
-                    question_data = await api_client.get_question_details(api_token, qid)
-                    if question_data.get("correct") == answer:
-                        correct_count += 1
-
-                percentage = int((correct_count / len(question_ids)) * 100) if question_ids else 0
-
-                text = f"""
-🎉 <b>Тест завершен!</b>
-
-<b>Ваш результат:</b> {score}%
-<b>Правильных ответов:</b> {correct_count} из {len(question_ids)} ({percentage}%)
-
-🏆 <b>Отличная работа!</b>
-
-Ваши ответы сохранены в системе.
-"""
-                await callback.message.answer(text)
-            except Exception as e:
-                logger.error(f"Ошибка завершения теста: {e}")
-                await callback.message.answer(f"🎉 <b>Тест завершен!</b>\n\nОшибка при получении результата: {str(e)}")
-        else:
-            # Показываем следующий вопрос
-            await redis_client.setex(
-                f"test_context:{chat_id}",
-                3600,
-                json.dumps(context)
-            )
-
-            # Получаем следующий вопрос
-            next_question_id = question_ids[current_index + 1]
-            question_data = await api_client.get_question_details(api_token, next_question_id)
-
-            text = f"""
-<b>Вопрос {current_index + 2} из {len(question_ids)}:</b>
-<b>ID вопроса:</b> {next_question_id}
-
-{question_data.get('text', 'Текст вопроса')}
-"""
-            # Создаем кнопки для вариантов ответов
-            buttons = []
-            options = question_data.get("options", ["Вариант 1", "Вариант 2", "Вариант 3"])
-
-            for i, option in enumerate(options):
-                buttons.append([
-                    InlineKeyboardButton(
-                        text=f"{i + 1}. {option}",
-                        callback_data=f"answer_{attempt_id}_{next_question_id}_{i}"
-                    )
-                ])
-
-            # Добавляем кнопку отмены
-            buttons.append([
-                InlineKeyboardButton(text="❌ Отменить тест", callback_data="cancel_test")
-            ])
-
-            kb = InlineKeyboardMarkup(inline_keyboard=buttons)
-            await callback.message.answer(text, reply_markup=kb)
-
-    except Exception as e:
-        logger.error(f"Error processing answer callback: {e}")
-        await callback.answer("❌ Ошибка обработки ответа")
-
-
-# =========================
-# ОБРАБОТЧИК ОТМЕНЫ ТЕСТА
-# =========================
-@dp.callback_query(F.data == "cancel_test")
-async def callback_cancel_test(callback: CallbackQuery):
-    """Отмена теста"""
-    chat_id = callback.from_user.id
-    await redis_client.delete(f"test_context:{chat_id}")
-    await callback.answer("❌ Тест отменен")
-    await callback.message.answer("🚫 <b>Тест отменен</b>\n\nВы можете начать новый тест с помощью /start_test.")
-
-
-# =========================
-# КОМАНДА ЗАПУСКА ТЕСТА ЧЕРЕЗ КОМАНДУ
-# =========================
-@dp.message(Command("start_test"))
-@rate_limit()
-@require_auth()
-@safe_send_message
-async def cmd_start_test(message: Message, user: Dict):
-    """Запуск теста по ID теста и ID вопроса"""
-    chat_id = message.chat.id
-    api_token = user.get("api_token", "")
-
-    command_text = message.text or ""
-    parts = command_text.split()
-
-    if len(parts) < 2:
-        await message.answer(
-            "❌ <b>Использование:</b> <code>/start_test ID_теста [ID_вопроса]</code>\n\nПримеры:\n<code>/start_test 56</code> - начать тест 56\n<code>/start_test 56 2</code> - начать тест 56 с вопроса 2")
-        return
-
-    try:
-        test_id = int(parts[1])
-        question_id = int(parts[2]) if len(parts) > 2 else None
-    except ValueError:
-        await message.answer("❌ <b>Ошибка:</b> ID теста и ID вопроса должны быть числами")
-        return
-
-    if not api_token:
-        await message.answer("❌ <b>Ошибка авторизации</b>\n\nТокен API не найден.")
-        return
-
-    loading_msg = await message.answer(f"🔄 <b>Запуск теста #{test_id}...</b>")
-
-    try:
-        # Создаем попытку
-        result = await api_client.create_attempt(api_token, test_id, user["user_id"])
-
-        if "error" in result:
-            await loading_msg.delete()
-            await message.answer(f"❌ <b>Ошибка:</b> {result['error']}")
-            return
-
-        attempt_id = result.get("attempt_id")
-        if not attempt_id:
-            await loading_msg.delete()
-            await message.answer("❌ <b>Ошибка:</b> Не удалось начать тест. Попробуйте позже.")
-            return
-
-        # Получаем вопросы теста
-        test = data_storage.tests.get(test_id)
-        if not test:
-            await loading_msg.delete()
-            await message.answer("❌ <b>Ошибка:</b> Тест не найден.")
-            return
-
-        question_ids = test.get("questions", [])
-
-        if not question_ids:
-            await loading_msg.delete()
-            await message.answer("❌ <b>Ошибка:</b> В тесте нет вопросов.")
-            return
-
-        # Определяем, с какого вопроса начинать
-        start_question_index = 0
-        if question_id:
-            try:
-                start_question_index = question_ids.index(question_id)
-            except ValueError:
-                # Если вопрос не найден в списке, начинаем с ближайшего доступного
-                found = False
-                for i, qid in enumerate(question_ids):
-                    if qid >= question_id:
-                        start_question_index = i
-                        found = True
-                        break
-
-                if not found:
-                    await loading_msg.delete()
-                    await message.answer(f"❌ <b>Ошибка:</b> Вопрос с ID {question_id} не найден в тесте.")
-                    return
-
-        # Сохраняем контекст теста
-        test_context = {
-            "test_id": test_id,
-            "attempt_id": attempt_id,
-            "question_ids": question_ids,
-            "current_question_index": start_question_index,
-            "answers": {},
-            "started_at": datetime.now().isoformat(),
-            "api_token": api_token,
-            "user_id": user.get("user_id")
-        }
-
-        await redis_client.setex(
-            f"test_context:{chat_id}",
-            3600,
-            json.dumps(test_context)
-        )
-
-        # Получаем текущий вопрос
-        current_question_id = question_ids[start_question_index]
-        question_data = await api_client.get_question_details(api_token, current_question_id)
-
-        text = f"""
-🧪 <b>Начинаем тест #{test_id}</b>
-
-<b>Название:</b> {test.get('name', f'Тест {test_id}')}
-<b>ID попытки:</b> {attempt_id}
-<b>Всего вопросов:</b> {len(question_ids)}
-<b>Текущий вопрос:</b> {start_question_index + 1} из {len(question_ids)}
-<b>ID вопроса:</b> {current_question_id}
-
-<b>Вопрос:</b>
-{question_data.get('text', 'Текст вопроса')}
-"""
-
-        # Создаем кнопки для вариантов ответов
-        buttons = []
-        options = question_data.get("options", ["Вариант 1", "Вариант 2", "Вариант 3"])
-
-        for i, option in enumerate(options):
-            buttons.append([
-                InlineKeyboardButton(
-                    text=f"{i + 1}. {option}",
-                    callback_data=f"answer_{attempt_id}_{current_question_id}_{i}"
-                )
-            ])
-
-        # Добавляем кнопку отмены
-        buttons.append([
-            InlineKeyboardButton(text="❌ Отменить тест", callback_data="cancel_test")
-        ])
-
-        kb = InlineKeyboardMarkup(inline_keyboard=buttons)
-        await loading_msg.delete()
-        await message.answer(text, reply_markup=kb)
-
-    except Exception as e:
-        try:
-            await loading_msg.delete()
-        except:
-            pass
-
-        logger.error(f"Error starting test: {e}")
-        await message.answer(f"❌ <b>Ошибка при начале теста:</b>\n\n{str(e)}")
-
-
-# =========================
 # BACKGROUND TASK ДЛЯ ОЧИСТКИ УСТАРЕВШИХ АВТОРИЗАЦИЙ
 # =========================
 async def check_anonymous_users_task():
@@ -3372,21 +2688,165 @@ async def check_anonymous_users_task():
             for key in keys:
                 data = await redis_client.get(key)
                 if data:
-                    user = json.loads(data)
-                    if user.get("status") == UserStatus.ANONYMOUS:
-                        created_at_str = user.get("created_at")
-                        if created_at_str:
-                            try:
-                                created_at = datetime.fromisoformat(created_at_str)
-                                if (datetime.utcnow() - created_at).seconds > 300:  # 5 минут
-                                    chat_id = int(key.split(":")[1])
-                                    await delete_user(chat_id)
-                            except:
-                                pass
+                    try:
+                        user = json.loads(data)
+                        if user.get("status") == UserStatus.ANONYMOUS:
+                            created_at_str = user.get("created_at")
+                            if created_at_str:
+                                try:
+                                    created_at = datetime.fromisoformat(created_at_str)
+                                    if (datetime.utcnow() - created_at).seconds > 300:  # 5 минут
+                                        chat_id = int(key.split(":")[1])
+                                        await delete_user(chat_id)
+                                except:
+                                    pass
+                    except:
+                        pass
         except Exception as e:
             logger.error(f"Error in check_anonymous_users_task: {e}")
 
         await asyncio.sleep(30)
+
+
+# =========================
+# КОМАНДЫ ДЛЯ СТУДЕНТА
+# =========================
+@dp.message(Command("my_courses"))
+@rate_limit()
+@require_auth()
+@safe_send_message
+async def cmd_my_courses(message: Message, user: Dict):
+    """Просмотр курсов, на которые записан студент"""
+    chat_id = message.chat.id
+    api_token = user.get("api_token", "")
+    user_id = user.get("user_id")
+
+    try:
+        user_data = await api_client.get_user_courses_grades(api_token, user_id)
+        courses = user_data.get("courses", [])
+
+        if not courses:
+            await message.answer("📚 <b>Вы не записаны ни на один курс</b>")
+            return
+
+        text = "📚 <b>Мои курсы</b>\n\n"
+        for course in courses:
+            text += f"🔸 <b>{course['name']}</b> (ID: {course['id']})\n"
+            text += f"   Описание: {course['description']}\n\n"
+
+        await message.answer(text)
+    except Exception as e:
+        logger.error(f"Ошибка при получении курсов: {e}")
+        await message.answer("❌ <b>Ошибка при загрузке курсов</b>")
+
+
+@dp.message(Command("my_grades"))
+@rate_limit()
+@require_auth()
+@safe_send_message
+async def cmd_my_grades(message: Message, user: Dict):
+    """Просмотр своих оценок"""
+    chat_id = message.chat.id
+    api_token = user.get("api_token", "")
+    user_id = user.get("user_id")
+
+    try:
+        user_data = await api_client.get_user_courses_grades(api_token, user_id)
+        attempts = user_data.get("attempts", [])
+
+        if not attempts:
+            await message.answer("📊 <b>У вас пока нет оценок</b>")
+            return
+
+        text = "📊 <b>Мои оценки</b>\n\n"
+        for attempt in attempts:
+            if attempt["status"] == "completed" and attempt["score"] is not None:
+                test = data_storage.tests.get(attempt["test_id"])
+                test_name = test["name"] if test else f"Тест {attempt['test_id']}"
+                text += f"📝 <b>{test_name}</b>\n"
+                text += f"   Оценка: {attempt['score']}%\n"
+                text += f"   Статус: Завершён\n\n"
+            elif attempt["status"] == "in_progress":
+                test = data_storage.tests.get(attempt["test_id"])
+                test_name = test["name"] if test else f"Тест {attempt['test_id']}"
+                text += f"📝 <b>{test_name}</b>\n"
+                text += f"   Статус: В процессе\n\n"
+
+        await message.answer(text)
+    except Exception as e:
+        logger.error(f"Ошибка при получении оценок: {e}")
+        await message.answer("❌ <b>Ошибка при загрузке оценок</b>")
+
+
+@dp.message(Command("my_attempts"))
+@rate_limit()
+@require_auth()
+@safe_send_message
+async def cmd_my_attempts(message: Message, user: Dict):
+    """Просмотр своих попыток"""
+    chat_id = message.chat.id
+    api_token = user.get("api_token", "")
+    user_id = user.get("user_id")
+
+    try:
+        user_data = await api_client.get_user_courses_grades(api_token, user_id)
+        attempts = user_data.get("attempts", [])
+
+        if not attempts:
+            await message.answer("📝 <b>У вас пока нет попыток</b>")
+            return
+
+        text = "📝 <b>Мои попытки</b>\n\n"
+        for attempt in attempts:
+            test = data_storage.tests.get(attempt["test_id"])
+            test_name = test["name"] if test else f"Тест {attempt['test_id']}"
+
+            text += f"🧪 <b>{test_name}</b>\n"
+            text += f"   ID попытки: {attempt['id']}\n"
+            text += f"   Статус: {attempt['status']}\n"
+            if attempt["score"] is not None:
+                text += f"   Оценка: {attempt['score']}%\n"
+            text += "\n"
+
+        await message.answer(text)
+    except Exception as e:
+        logger.error(f"Ошибка при получении попыток: {e}")
+        await message.answer("❌ <b>Ошибка при загрузке попыток</b>")
+
+
+# =========================
+# КОМАНДЫ ДЛЯ ПРЕПОДАВАТЕЛЯ
+# =========================
+@dp.message(Command("users"))
+@rate_limit()
+@require_auth()
+@require_permission(Permission.USER_LIST_READ)
+@safe_send_message
+async def cmd_users(message: Message, user: Dict):
+    """Просмотр списка пользователей"""
+    api_token = user.get("api_token", "")
+
+    try:
+        users = await api_client.get_users(api_token)
+
+        if not users:
+            await message.answer("👥 <b>Пользователи не найдены</b>")
+            return
+
+        text = "👥 <b>Список пользователей</b>\n\n"
+        for user_data in users:
+            role_emoji = "👨‍🏫" if user_data["role"] == "teacher" else "👨‍🎓"
+            blocked = "🔴" if user_data.get("is_blocked") else "🟢"
+
+            text += f"{role_emoji} {blocked} <b>{user_data['full_name']}</b>\n"
+            text += f"   ID: {user_data['id']}\n"
+            text += f"   Email: {user_data['email']}\n"
+            text += f"   Роль: {user_data['role']}\n\n"
+
+        await message.answer(text)
+    except Exception as e:
+        logger.error(f"Ошибка при получении пользователей: {e}")
+        await message.answer("❌ <b>Ошибка при загрузке пользователей</b>")
 
 
 # =========================
