@@ -60,8 +60,8 @@ func CreateQuestion(title string, text string, options []string, correct int, au
 	optionsJSON, _ := json.Marshal(options)
 	var id int
 
-	// Убираем ручной расчет ID вообще.
-	// База сама подставит его, если колонка SERIAL или имеет DEFAULT.
+	// Используем INSERT без указания ID, чтобы сработал SERIAL.
+	// Если ID 0 приходит из теста, база должна сама назначить новый.
 	query := `
 		INSERT INTO questions (version, title, text, options, correct_option, author_id, is_deleted) 
 		VALUES (1, $1, $2, $3, $4, $5, false) 
@@ -196,28 +196,37 @@ func GetFullTest(testID int) (*FullTest, error) {
 
 func StartAttempt(userID int, testID int) (int, error) {
 	var qIds pq.Int64Array
+	// 1. Берем список вопросов из теста
 	err := db.QueryRow("SELECT question_ids FROM tests WHERE id = $1 AND is_active = true", testID).Scan(&qIds)
 	if err != nil {
-		return 0, fmt.Errorf("тест %d не найден или не активен", testID)
+		return 0, fmt.Errorf("тест не найден или не активен")
 	}
+
+	// 2. Собираем актуальные версии этих вопросов (ТЗ: фиксируем версии при старте)
+	versionsMap := make(map[string]int)
+	for _, qid := range qIds {
+		var v int
+		db.QueryRow("SELECT MAX(version) FROM questions WHERE id = $1", qid).Scan(&v)
+		versionsMap[fmt.Sprintf("%d", qid)] = v
+	}
+	versionsJSON, _ := json.Marshal(versionsMap)
 
 	tx, _ := db.Begin()
 	var attemptID int
 
-	// Создаем попытку
-	err = tx.QueryRow(`INSERT INTO attempts (user_id, test_id, is_finished) VALUES ($1, $2, false) RETURNING id`, userID, testID).Scan(&attemptID)
+	// 3. Вставляем JSON с версиями в колонку question_versions
+	query := `INSERT INTO attempts (user_id, test_id, question_versions, is_finished) 
+	          VALUES ($1, $2, $3, false) RETURNING id`
+
+	err = tx.QueryRow(query, userID, testID, versionsJSON).Scan(&attemptID)
 	if err != nil {
 		tx.Rollback()
 		return 0, err
 	}
 
-	// СРАЗУ создаем пустые записи для ответов по каждому вопросу из теста
+	// 4. Создаем пустые ответы
 	for _, qid := range qIds {
-		_, err = tx.Exec("INSERT INTO student_answers (attempt_id, question_id, selected_option) VALUES ($1, $2, -1)", attemptID, qid)
-		if err != nil {
-			tx.Rollback()
-			return 0, err
-		}
+		tx.Exec("INSERT INTO student_answers (attempt_id, question_id, selected_option) VALUES ($1, $2, -1)", attemptID, qid)
 	}
 
 	return attemptID, tx.Commit()
@@ -237,20 +246,20 @@ func SubmitAnswer(attemptID int, questionID int, option int) error {
 
 func FinishAttempt(attemptID int) (float64, error) {
 	var score float64
+	// SQL запрос соотносит ответы студента с правильными ответами ТЕХ ВЕРСИЙ, которые были при старте
 	query := `
-        UPDATE attempts a
-        SET is_finished = true, finished_at = NOW(),
-            score = (
-                SELECT COALESCE(
-                    (COUNT(CASE WHEN sa.selected_option = q.correct_option THEN 1 END)::float / 
-                    NULLIF((SELECT count(*) FROM jsonb_object_keys(a.question_versions)), 0)) * 100, 
-                0)
-                FROM student_answers sa
-                JOIN questions q ON sa.question_id = q.id
-                WHERE sa.attempt_id = a.id
-                AND q.version = (a.question_versions->>(q.id::text))::int
-            )
-        WHERE id = $1 RETURNING score`
+		UPDATE attempts a
+		SET is_finished = true, 
+		    finished_at = NOW(),
+		    score = (
+		        SELECT (COUNT(CASE WHEN sa.selected_option = q.correct_option THEN 1 END)::float / 
+		                NULLIF(COUNT(sa.id), 0)) * 100
+		        FROM student_answers sa
+		        JOIN questions q ON sa.question_id = q.id
+		        WHERE sa.attempt_id = a.id
+		          AND q.version = (a.question_versions->>(q.id::text))::int
+		    )
+		WHERE id = $1 RETURNING COALESCE(score, 0)`
 
 	err := db.QueryRow(query, attemptID).Scan(&score)
 	return score, err
