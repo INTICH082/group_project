@@ -95,7 +95,6 @@ try:
 except:
     logger.warning("⚠️ Redis недоступен, создаем заглушку")
 
-
     # Создаем заглушку Redis для работы без реального Redis
     class RedisStub:
         def __init__(self):
@@ -120,7 +119,6 @@ except:
         async def ping(self):
             return True
 
-
     redis_client = RedisStub()
 
 
@@ -132,6 +130,31 @@ class UserStatus(str, Enum):
     UNKNOWN = "unknown"
     ANONYMOUS = "anonymous"
     AUTHORIZED = "authorized"
+
+
+# =========================
+# RATE LIMIT FUNCTION (ИСПРАВЛЕНО: вынесена отдельно)
+# =========================
+
+async def check_rate_limit(chat_id: int, seconds: int = 2) -> bool:
+    """Проверка лимита запросов для пользователя"""
+    key = f"rate_limit:{chat_id}"
+    try:
+        last_time_str = await redis_client.get(key)
+
+        if last_time_str:
+            try:
+                last_time = datetime.fromisoformat(last_time_str)
+                if datetime.utcnow() - last_time < timedelta(seconds=seconds):
+                    return False
+            except:
+                pass
+
+        await redis_client.setex(key, seconds, datetime.utcnow().isoformat())
+        return True
+    except Exception as e:
+        logger.error(f"Rate limit error: {e}")
+        return True  # В случае ошибки пропускаем rate limit
 
 
 # =========================
@@ -531,41 +554,18 @@ core_service = CoreServiceStub()
 
 def rate_limit(seconds: int = 2):
     """Декоратор для ограничения частоты запросов"""
-
-    async def check_rate_limit(chat_id: int) -> bool:
-        key = f"rate_limit:{chat_id}"
-        try:
-            last_time_str = await redis_client.get(key)
-
-            if last_time_str:
+    def decorator(handler):
+        @wraps(handler)
+        async def wrapper(message: Message, *args, **kwargs):
+            if not await check_rate_limit(message.chat.id, seconds):
                 try:
-                    last_time = datetime.fromisoformat(last_time_str)
-                    if datetime.utcnow() - last_time < timedelta(seconds=seconds):
-                        return False
+                    await message.answer("⏳ <b>Слишком много запросов. Подождите немного.</b>")
                 except:
                     pass
-
-            await redis_client.setex(key, seconds, datetime.utcnow().isoformat())
-            return True
-        except Exception as e:
-            logger.error(f"Rate limit error: {e}")
-            return True  # В случае ошибки пропускаем rate limit
-
+                return
+            return await handler(message, *args, **kwargs)
+        return wrapper
     return decorator
-
-
-def decorator(handler):
-    @wraps(handler)
-    async def wrapper(message: Message, *args, **kwargs):
-        if not await check_rate_limit(message.chat.id):
-            try:
-                await message.answer("⏳ <b>Слишком много запросов. Подождите немного.</b>")
-            except:
-                pass
-            return
-        return await handler(message, *args, **kwargs)
-
-    return wrapper
 
 
 def require_auth():
