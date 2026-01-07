@@ -418,6 +418,24 @@ func UniversalAddQuestionHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
+// Добавь этот хендлер в блок хендлеров в main.go
+func GetFullTestHandler(w http.ResponseWriter, r *http.Request) {
+	testID, _ := strconv.Atoi(r.URL.Query().Get("id"))
+	if testID == 0 {
+		http.Error(w, "Нужен id теста", http.StatusBadRequest)
+		return
+	}
+
+	// ВАЖНО: Тебе нужно будет добавить эту функцию GetFullTest в database.go
+	test, err := GetFullTest(testID)
+	if err != nil {
+		http.Error(w, "Тест не найден: "+err.Error(), http.StatusNotFound)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(test)
+}
 func main() {
 	InitDB()
 	mux := http.NewServeMux()
@@ -434,7 +452,7 @@ func main() {
 	mux.HandleFunc("/teacher/question/create", withLog(AuthMiddleware("quest:create", CreateQuestionHandler)))
 	mux.HandleFunc("/teacher/question/update", withLog(AuthMiddleware("quest:update", UpdateQuestionHandler)))
 	mux.HandleFunc("/teacher/question/delete", withLog(AuthMiddleware("quest:del", DeleteQuestionHandler)))
-
+	mux.HandleFunc("/test/get", withLog(AuthMiddleware("course:read", GetFullTestHandler)))
 	// --- РЕСУРС: ТЕСТЫ ---
 	mux.HandleFunc("/teacher/test/create", withLog(AuthMiddleware("course:test:add", CreateTestHandler)))
 	mux.HandleFunc("/teacher/test/status", withLog(AuthMiddleware("course:test:write", UpdateTestStatusHandler)))

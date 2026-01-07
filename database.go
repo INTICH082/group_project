@@ -474,3 +474,48 @@ func GetTestsByCourse(courseID int) ([]map[string]interface{}, error) {
 	}
 	return results, nil
 }
+
+type FullTest struct {
+	ID        int        `json:"id"`
+	Name      string     `json:"name"`
+	Questions []Question `json:"questions"`
+}
+
+type Question struct {
+	ID      int      `json:"id"`
+	Title   string   `json:"title"`
+	Text    string   `json:"text"`
+	Options []string `json:"options"`
+	Correct int      `json:"correct"`
+}
+
+func GetFullTest(testID int) (*FullTest, error) {
+	var t FullTest
+	var qIds pq.Int64Array
+
+	// 1. Берем инфу о тесте
+	err := db.QueryRow("SELECT id, name, question_ids FROM tests WHERE id = $1", testID).Scan(&t.ID, &t.Name, &qIds)
+	if err != nil {
+		return nil, err
+	}
+
+	// 2. Если вопросы есть, вытягиваем их детали
+	if len(qIds) > 0 {
+		rows, err := db.Query("SELECT id, title, text, options, correct FROM questions WHERE id = ANY($1)", qIds)
+		if err != nil {
+			return nil, err
+		}
+		defer rows.Close()
+
+		for rows.Next() {
+			var q Question
+			var opts []byte
+			if err := rows.Scan(&q.ID, &q.Title, &q.Text, &opts, &q.Correct); err == nil {
+				json.Unmarshal(opts, &q.Options)
+				t.Questions = append(t.Questions, q)
+			}
+		}
+	}
+
+	return &t, nil
+}
