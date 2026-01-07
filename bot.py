@@ -927,7 +927,7 @@ async def handle_message(message: Message):
 
 # =========================
 # MAIN
-# =========================
+# ========================
 async def main():
     logger.info("🤖 Telegram bot starting...")
 
