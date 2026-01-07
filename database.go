@@ -60,14 +60,19 @@ func CreateQuestion(title string, text string, options []string, correct int, au
 	optionsJSON, _ := json.Marshal(options)
 	var id int
 
-	// Используем INSERT без указания ID, чтобы сработал SERIAL.
-	// Если ID 0 приходит из теста, база должна сама назначить новый.
+	// Сначала получаем следующий ID из последовательности
+	err := db.QueryRow("SELECT nextval('questions_id_seq')").Scan(&id)
+	if err != nil {
+		return 0, fmt.Errorf("ошибка генерации ID: %v", err)
+	}
+
+	// Теперь вставляем вопрос с этим ID и версией 1
 	query := `
-		INSERT INTO questions (version, title, text, options, correct_option, author_id, is_deleted) 
-		VALUES (1, $1, $2, $3, $4, $5, false) 
+		INSERT INTO questions (id, version, title, text, options, correct_option, author_id, is_deleted) 
+		VALUES ($1, 1, $2, $3, $4, $5, $6, false) 
 		RETURNING id`
 
-	err := db.QueryRow(query, title, text, optionsJSON, correct, authorID).Scan(&id)
+	err = db.QueryRow(query, id, title, text, optionsJSON, correct, authorID).Scan(&id)
 	if err != nil {
 		return 0, fmt.Errorf("ошибка вставки вопроса: %v", err)
 	}
