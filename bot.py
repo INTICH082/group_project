@@ -50,20 +50,34 @@ logger = logging.getLogger("telegram-bot")
 
 
 # =========================
-# MARKDOWN V2 SAFE
+# MARKDOWN V2 SAFE - ИСПРАВЛЕННАЯ ВЕРСИЯ
 # =========================
 
 def md(text: str) -> str:
-    return re.sub(r'([_*\[\]()~`>#+\-=|{}.!])', r'\\\1', text)
+    """Экранирование специальных символов для MarkdownV2"""
+    # Список символов, которые нужно экранировать в MarkdownV2
+    special_chars = r'_*[]()~`>#+-=|{}.!'
+
+    # Экранируем каждый специальный символ
+    for char in special_chars:
+        text = text.replace(char, f'\\{char}')
+
+    return text
+
+
+# Альтернативная, более простая функция для отладки
+def safe_text(text: str) -> str:
+    """Безопасный текст без Markdown"""
+    return text
 
 
 # =========================
-# BOT
+# BOT - ИСПРАВЛЕНО: без Markdown для упрощения
 # =========================
 
 bot = Bot(
     token=BOT_TOKEN,
-    parse_mode=ParseMode.MARKDOWN_V2,
+    parse_mode=ParseMode.HTML,  # Используем HTML для простоты
 )
 
 dp = Dispatcher()
@@ -449,7 +463,7 @@ def rate_limit():
         @wraps(handler)
         async def wrapper(message: Message, *args, **kwargs):
             if not await check_rate_limit(message.chat.id):
-                await message.answer(md("⏳ *Слишком много запросов\\. Подождите 1 секунду\\.*"))
+                await message.answer("⏳ <b>Слишком много запросов. Подождите 1 секунду.</b>")
                 return
             return await handler(message, *args, **kwargs)
 
@@ -473,7 +487,7 @@ def require_auth():
                     [InlineKeyboardButton(text="🔐 Авторизоваться", callback_data="cmd_login")]
                 ])
                 await message.answer(
-                    md("❌ *Вы не авторизованы*\n\nИспользуйте /login для входа в систему\\."),
+                    "❌ <b>Вы не авторизованы</b>\n\nПожалуйста, авторизуйтесь для доступа к этой команде.",
                     reply_markup=kb
                 )
                 return
@@ -481,7 +495,7 @@ def require_auth():
             if user.get("status") == UserStatus.ANONYMOUS:
                 # ANONYMOUS пользователь
                 await message.answer(
-                    md("⏳ *Ожидание завершения авторизации*\n\nПроверьте статус или завершите вход в веб\\-клиенте\\."))
+                    "⏳ <b>Ожидание завершения авторизации</b>\n\nПроверьте статус или завершите вход в веб-клиенте.")
                 return
 
             # AUTHORIZED пользователь
@@ -493,7 +507,7 @@ def require_auth():
 
 
 # =========================
-# COMMAND HANDLERS (по ТЗ)
+# COMMAND HANDLERS (по ТЗ) - ИСПРАВЛЕННЫЕ
 # =========================
 
 @dp.message(Command("start"))
@@ -506,13 +520,13 @@ async def cmd_start(message: Message):
     if not user:
         # Пользователь UNKNOWN
         text = f"""
-👋 *Добро пожаловать, {message.from_user.first_name or 'пользователь'}*\\!
+👋 <b>Добро пожаловать, {message.from_user.first_name or 'пользователь'}!</b>
 
-🤖 *Telegram\\-клиент системы тестирования*
+🤖 <b>Telegram-клиент системы тестирования</b>
 
-Для начала работы необходимо авторизоваться\\.
+Для начала работы необходимо авторизоваться.
 
-Используйте команду /login для входа в систему\\.
+Используйте команду /login для входа в систему.
 """
         kb = InlineKeyboardMarkup(inline_keyboard=[
             [InlineKeyboardButton(text="🔐 Авторизоваться", callback_data="cmd_login")]
@@ -521,16 +535,16 @@ async def cmd_start(message: Message):
         # Пользователь ANONYMOUS
         login_token = user.get("login_token", "")
         text = f"""
-🔐 *Ожидание авторизации*
+🔐 <b>Ожидание авторизации</b>
 
-Вы начали процесс входа\\.
+Вы начали процесс входа.
 Для завершения авторизации:
 
-1\\. Перейдите в веб\\-клиент
-2\\. Введите код: `{login_token}`
-3\\. Подтвердите вход
+1. Перейдите в веб-клиент
+2. Введите код: <code>{login_token}</code>
+3. Подтвердите вход
 
-Или нажмите "Проверить статус"\\.
+Или нажмите "Проверить статус".
 """
         kb = InlineKeyboardMarkup(inline_keyboard=[
             [InlineKeyboardButton(text="🔄 Проверить статус", callback_data=f"check_auth_{login_token}")],
@@ -541,19 +555,19 @@ async def cmd_start(message: Message):
         # Пользователь AUTHORIZED
         user_email = user.get("email", "пользователь")
         text = f"""
-✅ *Вы авторизованы как {user_email}*
+✅ <b>Вы авторизованы как {user_email}</b>
 
-Доступные команды:
+<b>Доступные команды:</b>
 /tests — список тестов
 /courses — список дисциплин
 /profile — ваш профиль
 /logout — выход из системы
 
-Используйте /help для полного списка команд\\.
+Используйте /help для полного списка команд.
 """
         kb = None
 
-    await message.answer(md(text), reply_markup=kb)
+    await message.answer(text, reply_markup=kb)
 
 
 @dp.message(Command("help"))
@@ -561,42 +575,42 @@ async def cmd_start(message: Message):
 async def cmd_help(message: Message):
     """Обработчик /help"""
     help_text = """
-🆘 *Справка по командам*
+🆘 <b>Справка по командам</b>
 
 ━━━━━━━━━━━━━━━━━━
-🚀 *Основные команды*
+🚀 <b>Основные команды</b>
 ━━━━━━━━━━━━━━━━━━
 /start — начало работы  
 /help — эта справка  
 /status — статус системы  
 
 ━━━━━━━━━━━━━━━━━━
-🔐 *Авторизация*
+🔐 <b>Авторизация</b>
 ━━━━━━━━━━━━━━━━━━
 /login — вход в систему  
 /logout — выход  
 /logout all=true — выход со всех устройств  
 
 ━━━━━━━━━━━━━━━━━━
-📚 *Дисциплины и тесты*
+📚 <b>Дисциплины и тесты</b>
 ━━━━━━━━━━━━━━━━━━
 /courses — список дисциплин  
 /tests — список тестов  
 /starttest <id> — начать тест  
 
 ━━━━━━━━━━━━━━━━━━
-👤 *Профиль*
+👤 <b>Профиль</b>
 ━━━━━━━━━━━━━━━━━━
 /profile — информация о пользователе  
 /myresults — мои результаты  
 
 ━━━━━━━━━━━━━━━━━━
-⚙️ *Технические команды*
+⚙️ <b>Технические команды</b>
 ━━━━━━━━━━━━━━━━━━
 /services — информация о сервисах  
 /debug — отладочная информация  
 """
-    await message.answer(md(help_text))
+    await message.answer(help_text)
 
 
 @dp.message(Command("login"))
@@ -608,7 +622,7 @@ async def cmd_login(message: Message):
 
     # Если уже авторизован
     if user and user.get("status") == UserStatus.AUTHORIZED:
-        await message.answer(md("✅ *Вы уже авторизованы*\n\nИспользуйте /logout для выхода\\."))
+        await message.answer(f"✅ <b>Вы уже авторизованы как {user.get('email')}</b>\n\nИспользуйте /logout для выхода.")
         return
 
     # Генерируем новый login_token
@@ -628,21 +642,21 @@ async def cmd_login(message: Message):
     ])
 
     text = f"""
-🔐 *Авторизация*
+🔐 <b>Авторизация</b>
 
 Для входа в систему:
 
-1\\. *Вариант 1:* Перейдите по ссылке выше
-2\\. *Вариант 2:* В веб\\-клиенте введите код:
+1. <b>Вариант 1:</b> Перейдите по ссылке выше
+2. <b>Вариант 2:</b> В веб-клиенте введите код:
 
-`{login_token}`
+<code>{login_token}</code>
 
-⏳ *Код действителен 5 минут*
+⏳ <b>Код действителен 5 минут</b>
 
-После подтверждения входа нажмите "Проверить статус"\\.
+После подтверждения входа нажмите "Проверить статус".
 """
 
-    await message.answer(md(text), reply_markup=kb)
+    await message.answer(text, reply_markup=kb)
 
 
 @dp.message(Command("logout"))
@@ -653,14 +667,14 @@ async def cmd_logout(message: Message):
     user = await get_user(chat_id)
 
     if not user:
-        await message.answer(md("❌ *Вы не авторизованы*"))
+        await message.answer("❌ <b>Вы не авторизованы</b>")
         return
 
     status = user.get("status")
 
     if status == UserStatus.ANONYMOUS:
         await delete_user(chat_id)
-        await message.answer(md("🚪 *Процесс авторизации прерван*"))
+        await message.answer("🚪 <b>Процесс авторизации прерван</b>")
         return
 
     # AUTHORIZED пользователь
@@ -671,11 +685,11 @@ async def cmd_logout(message: Message):
         # Выход со всех устройств
         success = await auth_service.logout_all(user["refresh_token"])
         if success:
-            await message.answer(md("✅ *Выход выполнен со всех устройств*"))
+            await message.answer("✅ <b>Выход выполнен со всех устройств</b>")
         else:
-            await message.answer(md("⚠️ *Не удалось выйти со всех устройств*"))
+            await message.answer("⚠️ <b>Не удалось выйти со всех устройств</b>")
     else:
-        await message.answer(md("🚪 *Вы вышли из системы*"))
+        await message.answer("🚪 <b>Вы вышли из системы</b>")
 
     # Удаляем пользователя из Redis
     await delete_user(chat_id)
@@ -690,27 +704,29 @@ async def cmd_status(message: Message):
 
     # Статус пользователя
     if not user:
-        user_status = "❌ *Не авторизован*"
+        user_status = "❌ <b>Не авторизован</b>"
         user_details = ""
     elif user.get("status") == UserStatus.ANONYMOUS:
-        user_status = "🟡 *Ожидание авторизации*"
-        token = user.get("login_token", "")[:10] + "..."
-        user_details = f"\n🔢 Токен: `{token}`"
+        user_status = "🟡 <b>Ожидание авторизации</b>"
+        token = user.get("login_token", "")
+        if len(token) > 10:
+            token = token[:10] + "..."
+        user_details = f"\n🔢 Токен: <code>{token}</code>"
     else:
-        user_status = "✅ *Авторизован*"
+        user_status = "✅ <b>Авторизован</b>"
         email = user.get("email", "Неизвестно")
         user_details = f"\n📧 Email: {email}"
 
     # Статус сервисов
     services_status = """
 ━━━━━━━━━━━━━━━━━━
-🟢 *Сервисы*
+🟢 <b>Сервисы</b>
 ━━━━━━━━━━━━━━━━━━
 • Redis — онлайн  
 • Telegram Bot — онлайн  
 
 ━━━━━━━━━━━━━━━━━━
-🔧 *Модули* \\(в разработке\\)
+🔧 <b>Модули (в разработке)</b>
 ━━━━━━━━━━━━━━━━━━
 • Auth Service — ❌ не доступен  
 • Core Service — ❌ не доступен  
@@ -718,16 +734,16 @@ async def cmd_status(message: Message):
 """
 
     text = f"""
-📊 *Статус системы*
+📊 <b>Статус системы</b>
 
 ━━━━━━━━━━━━━━━━━━
-👤 *Ваш статус*
+👤 <b>Ваш статус</b>
 ━━━━━━━━━━━━━━━━━━
 {user_status}{user_details}
 {services_status}
 """
 
-    await message.answer(md(text))
+    await message.answer(text)
 
 
 @dp.message(Command("services"))
@@ -735,37 +751,37 @@ async def cmd_status(message: Message):
 async def cmd_services(message: Message):
     """Обработчик /services"""
     text = """
-🧩 *Архитектура системы*
+🧩 <b>Архитектура системы</b>
 
 ━━━━━━━━━━━━━━━━━━
-🤖 *Telegram Bot* \\(этот модуль\\)
+🤖 <b>Telegram Bot (этот модуль)</b>
 ━━━━━━━━━━━━━━━━━━
 • Обработка команд пользователей  
 • Управление состоянием через Redis  
 • Отображение результатов тестов  
 
 ━━━━━━━━━━━━━━━━━━
-🔐 *Auth Service* \\(в разработке\\)
+🔐 <b>Auth Service (в разработке)</b>
 ━━━━━━━━━━━━━━━━━━
 • Авторизация через GitHub/Yandex  
 • Выдача JWT токенов  
 • Управление правами пользователей  
 
 ━━━━━━━━━━━━━━━━━━
-⚙️ *Core Service* \\(в разработке\\)
+⚙️ <b>Core Service (в разработке)</b>
 ━━━━━━━━━━━━━━━━━━
 • Логика тестирования  
 • Управление дисциплинами и тестами  
 • Проверка разрешений  
 
 ━━━━━━━━━━━━━━━━━━
-🌐 *Web Client* \\(в разработке\\)
+🌐 <b>Web Client (в разработке)</b>
 ━━━━━━━━━━━━━━━━━━
 • Веб-интерфейс системы  
 • Управление для преподавателей  
 • Прохождение тестов  
 """
-    await message.answer(md(text))
+    await message.answer(text)
 
 
 @dp.message(Command("tests"))
@@ -786,14 +802,14 @@ async def cmd_tests(message: Message, user: Dict):
             await handle_token_refresh(message, user)
             return
         elif result.get("status") == 403:
-            await message.answer(md("❌ *Недостаточно прав*\n\nУ вас нет доступа к списку тестов\\."))
+            await message.answer("❌ <b>Недостаточно прав</b>\n\nУ вас нет доступа к списку тестов.")
             return
         else:
-            await message.answer(md("⚠️ *Ошибка при получении тестов*"))
+            await message.answer("⚠️ <b>Ошибка при получении тестов</b>")
             return
 
     if not result or "tests" not in result:
-        await message.answer(md("📭 *Тесты не найдены*"))
+        await message.answer("📭 <b>Тесты не найдены</b>")
         return
 
     tests = result["tests"]
@@ -812,12 +828,12 @@ async def cmd_tests(message: Message, user: Dict):
     kb = InlineKeyboardMarkup(inline_keyboard=keyboard)
 
     text = """
-🧪 *Доступные тесты*
+🧪 <b>Доступные тесты</b>
 
 Выберите тест для начала:
 """
 
-    await message.answer(md(text), reply_markup=kb)
+    await message.answer(text, reply_markup=kb)
 
 
 @dp.message(Command("courses"))
@@ -836,28 +852,28 @@ async def cmd_courses(message: Message, user: Dict):
             await handle_token_refresh(message, user)
             return
         elif result.get("status") == 403:
-            await message.answer(md("❌ *Недостаточно прав*\n\nУ вас нет доступа к списку дисциплин\\."))
+            await message.answer("❌ <b>Недостаточно прав</b>\n\nУ вас нет доступа к списку дисциплин.")
             return
         else:
-            await message.answer(md("⚠️ *Ошибка при получении дисциплин*"))
+            await message.answer("⚠️ <b>Ошибка при получении дисциплин</b>")
             return
 
     if not result or "courses" not in result:
-        await message.answer(md("📭 *Дисциплины не найдены*"))
+        await message.answer("📭 <b>Дисциплины не найдены</b>")
         return
 
     courses = result["courses"]
 
     text = """
-📚 *Доступные дисциплины*
+📚 <b>Доступные дисциплины</b>
 
 """
 
     for course in courses:
-        text += f"• *{course['name']}* \\(ID: {course['id']}\\)\n"
+        text += f"• <b>{course['name']}</b> (ID: {course['id']})\n"
         text += f"  {course['description']}\n\n"
 
-    await message.answer(md(text))
+    await message.answer(text)
 
 
 @dp.message(Command("starttest"))
@@ -869,13 +885,13 @@ async def cmd_starttest(message: Message, user: Dict):
     parts = command_text.split()
 
     if len(parts) < 2:
-        await message.answer(md("❌ *Укажите ID теста*\n\nИспользование: `/starttest <ID_теста>`"))
+        await message.answer("❌ <b>Укажите ID теста</b>\n\nИспользование: <code>/starttest &lt;ID_теста&gt;</code>")
         return
 
     try:
         test_id = int(parts[1])
     except ValueError:
-        await message.answer(md("❌ *Неверный формат ID*\n\nID должен быть числом\\."))
+        await message.answer("❌ <b>Неверный формат ID</b>\n\nID должен быть числом.")
         return
 
     # Запускаем тест через Core Service
@@ -890,17 +906,17 @@ async def cmd_starttest(message: Message, user: Dict):
             await handle_token_refresh(message, user)
             return
         elif result.get("status") == 403:
-            await message.answer(md("❌ *Недостаточно прав*\n\nУ вас нет доступа к этому тесту\\."))
+            await message.answer("❌ <b>Недостаточно прав</b>\n\nУ вас нет доступа к этому тесту.")
             return
         elif result.get("status") == 418:
-            await message.answer(md("🚫 *Пользователь заблокирован*\n\nДоступ к системе ограничен\\."))
+            await message.answer("🚫 <b>Пользователь заблокирован</b>\n\nДоступ к системе ограничен.")
             return
         else:
-            await message.answer(md("⚠️ *Ошибка при запуске теста*"))
+            await message.answer("⚠️ <b>Ошибка при запуске теста</b>")
             return
 
     if not result:
-        await message.answer(md("⚠️ *Не удалось начать тест*"))
+        await message.answer("⚠️ <b>Не удалось начать тест</b>")
         return
 
     # Сохраняем контекст теста
@@ -921,18 +937,18 @@ async def cmd_starttest(message: Message, user: Dict):
     if questions:
         question = questions[0]
         text = f"""
-🎯 *Тест начат\\!*
+🎯 <b>Тест начат!</b>
 
-*Вопрос 1 из {len(questions)}:*
+<b>Вопрос 1 из {len(questions)}:</b>
 {question['text']}
 
-1\\. {question['options'][0]}
-2\\. {question['options'][1]}
-3\\. {question['options'][2]}
+1. {question['options'][0]}
+2. {question['options'][1]}
+3. {question['options'][2]}
 
-Отправьте номер правильного ответа \\(1\\-3\\)\\.
+<b>Отправьте номер правильного ответа (1-3).</b>
 """
-        await message.answer(md(text))
+        await message.answer(text)
 
 
 @dp.message(Command("profile"))
@@ -944,23 +960,23 @@ async def cmd_profile(message: Message, user: Dict):
     email = user.get("email", "Неизвестно")
 
     text = f"""
-👤 *Профиль пользователя*
+👤 <b>Профиль пользователя</b>
 
-*ID:* `{user_id}`
-*Email:* {email}
-*Авторизован:* {user.get('authorized_at', 'Неизвестно')}
+<b>ID:</b> <code>{user_id}</code>
+<b>Email:</b> {email}
+<b>Авторизован:</b> {user.get('authorized_at', 'Неизвестно')}
 
 ━━━━━━━━━━━━━━━━━━
-📊 *Статистика*
+📊 <b>Статистика</b>
 ━━━━━━━━━━━━━━━━━━
 • Пройдено тестов: 0
 • Средний балл: 0%
 • Активных попыток: 0
 
-*Данные загружаются из Core Service\\...*
+<b>Данные загружаются из Core Service...</b>
 """
 
-    await message.answer(md(text))
+    await message.answer(text)
 
 
 @dp.message(Command("debug"))
@@ -971,16 +987,16 @@ async def cmd_debug(message: Message):
     user = await get_user(chat_id)
 
     text = f"""
-🐛 *Отладочная информация*
+🐛 <b>Отладочная информация</b>
 
-*Chat ID:* `{chat_id}`
-*Пользователь в Redis:* {"Да" if user else "Нет"}
+<b>Chat ID:</b> <code>{chat_id}</code>
+<b>Пользователь в Redis:</b> {"Да" if user else "Нет"}
 
-*Статус:* {user.get('status') if user else 'UNKNOWN'}
-*User ID:* {user.get('user_id') if user else 'Нет'}
+<b>Статус:</b> {user.get('status') if user else 'UNKNOWN'}
+<b>User ID:</b> {user.get('user_id') if user else 'Нет'}
 """
 
-    await message.answer(md(text))
+    await message.answer(text)
 
 
 # =========================
@@ -1033,7 +1049,7 @@ async def callback_check_auth(callback: CallbackQuery):
 
         # Обновляем сообщение
         await callback.message.edit_text(
-            md(f"✅ *Авторизация завершена\\!*\n\nДобро пожаловать, {user_data.get('email')}"),
+            f"✅ <b>Авторизация завершена!</b>\n\nДобро пожаловать, {user_data.get('email')}",
             reply_markup=None
         )
 
@@ -1096,18 +1112,18 @@ async def callback_start_test(callback: CallbackQuery):
         if questions:
             question = questions[0]
             text = f"""
-🎯 *Тест начат\\!*
+🎯 <b>Тест начат!</b>
 
-*Вопрос 1 из {len(questions)}:*
+<b>Вопрос 1 из {len(questions)}:</b>
 {question['text']}
 
-1\\. {question['options'][0]}
-2\\. {question['options'][1]}
-3\\. {question['options'][2]}
+1. {question['options'][0]}
+2. {question['options'][1]}
+3. {question['options'][2]}
 
-Отправьте номер правильного ответа \\(1\\-3\\)\\.
+<b>Отправьте номер правильного ответа (1-3).</b>
 """
-            await callback.message.edit_text(md(text))
+            await callback.message.edit_text(text)
 
         await callback.answer()
 
@@ -1147,7 +1163,7 @@ async def check_anonymous_users_task():
                     try:
                         await bot.send_message(
                             user["chat_id"],
-                            md("❌ *Авторизация отклонена*\n\nВы отказались от входа в систему\\.")
+                            "❌ <b>Авторизация отклонена</b>\n\nВы отказались от входа в систему."
                         )
                     except:
                         pass
@@ -1171,7 +1187,7 @@ async def check_anonymous_users_task():
                     try:
                         await bot.send_message(
                             user["chat_id"],
-                            md(f"✅ *Авторизация успешно завершена\\!*\n\nДобро пожаловать, {user_data.get('email')}")
+                            f"✅ <b>Авторизация успешно завершена!</b>\n\nДобро пожаловать, {user_data.get('email')}"
                         )
                     except:
                         pass
@@ -1208,7 +1224,7 @@ async def check_notifications_task():
                         try:
                             await bot.send_message(
                                 user["chat_id"],
-                                md(f"📢 *{notification.get('title', 'Уведомление')}*\n\n{notification.get('message', '')}")
+                                f"📢 <b>{notification.get('title', 'Уведомление')}</b>\n\n{notification.get('message', '')}"
                             )
                         except:
                             pass
@@ -1216,7 +1232,7 @@ async def check_notifications_task():
         except Exception as e:
             logger.error(f"Error in check_notifications_task: {e}")
 
-        await asyncio.sleep(60)  # Каждые 60 секунд
+        await asyncio.sleep(60)  # Каждые 60 секунд по ТЗ
 
 
 # =========================
@@ -1238,7 +1254,7 @@ async def handle_message(message: Message):
 
     # Если сообщение не команда, показываем справку
     if not text.startswith('/'):
-        await message.answer(md("🤖 *Неизвестная команда*\n\nИспользуйте /help для просмотра доступных команд\\."))
+        await message.answer("🤖 <b>Неизвестная команда</b>\n\nИспользуйте /help для просмотра доступных команд.")
 
 
 async def handle_test_answer(message: Message, context: Dict):
@@ -1250,7 +1266,7 @@ async def handle_test_answer(message: Message, context: Dict):
     if current_q >= len(questions):
         # Тест завершен
         await redis_client.delete(f"test_context:{chat_id}")
-        await message.answer(md("🎉 *Тест завершен\\!*\n\nРезультаты будут доступны в профиле\\."))
+        await message.answer("🎉 <b>Тест завершен!</b>\n\nРезультаты будут доступны в профиле.")
         return
 
     # Проверяем ответ
@@ -1259,7 +1275,7 @@ async def handle_test_answer(message: Message, context: Dict):
         if answer < 1 or answer > 3:
             raise ValueError
     except:
-        await message.answer(md("❌ *Отправьте число от 1 до 3*"))
+        await message.answer("❌ <b>Отправьте число от 1 до 3</b>")
         return
 
     # Сохраняем ответ
@@ -1281,16 +1297,16 @@ async def handle_test_answer(message: Message, context: Dict):
         # Показываем следующий вопрос
         question = questions[current_q + 1]
         text = f"""
-*Вопрос {current_q + 2} из {len(questions)}:*
+<b>Вопрос {current_q + 2} из {len(questions)}:</b>
 {question['text']}
 
-1\\. {question['options'][0]}
-2\\. {question['options'][1]}
-3\\. {question['options'][2]}
+1. {question['options'][0]}
+2. {question['options'][1]}
+3. {question['options'][2]}
 
-Отправьте номер правильного ответа \\(1\\-3\\)\\.
+<b>Отправьте номер правильного ответа (1-3).</b>
 """
-        await message.answer(md(text))
+        await message.answer(text)
     else:
         # Тест завершен
         await redis_client.delete(f"test_context:{chat_id}")
@@ -1304,14 +1320,14 @@ async def handle_test_answer(message: Message, context: Dict):
         score = int((correct / len(questions)) * 100) if questions else 0
 
         text = f"""
-🎉 *Тест завершен\\!*
+🎉 <b>Тест завершен!</b>
 
-*Результат:* {score}%
-*Правильных ответов:* {correct} из {len(questions)}
+<b>Результат:</b> {score}%
+<b>Правильных ответов:</b> {correct} из {len(questions)}
 
-🏆 *Отличная работа\\!*
+🏆 <b>Отличная работа!</b>
 """
-        await message.answer(md(text))
+        await message.answer(text)
 
 
 async def handle_token_refresh(message: Message, user: Dict):
@@ -1319,7 +1335,7 @@ async def handle_token_refresh(message: Message, user: Dict):
     refresh_token = user.get("refresh_token")
 
     if not refresh_token:
-        await message.answer(md("❌ *Токен устарел*\n\nПожалуйста, выполните вход заново\\."))
+        await message.answer("❌ <b>Токен устарел</b>\n\nПожалуйста, выполните вход заново.")
         await delete_user(message.chat.id)
         return
 
@@ -1327,7 +1343,7 @@ async def handle_token_refresh(message: Message, user: Dict):
     result = await auth_service.refresh_tokens(refresh_token)
 
     if not result:
-        await message.answer(md("❌ *Сессия истекла*\n\nПожалуйста, выполните вход заново\\."))
+        await message.answer("❌ <b>Сессия истекла</b>\n\nПожалуйста, выполните вход заново.")
         await delete_user(message.chat.id)
         return
 
@@ -1336,7 +1352,7 @@ async def handle_token_refresh(message: Message, user: Dict):
     user["refresh_token"] = result["refresh_token"]
     await save_user(message.chat.id, user)
 
-    await message.answer(md("🔄 *Токен обновлен*\n\nПовторите запрос\\."))
+    await message.answer("🔄 <b>Токен обновлен</b>\n\nПовторите запрос.")
 
 
 # =========================
@@ -1351,18 +1367,18 @@ async def cmd_simulate_login(message: Message):
     user = await get_user(chat_id)
 
     if not user or user.get("status") != UserStatus.ANONYMOUS:
-        await message.answer(md("❌ *Сначала выполните /login*"))
+        await message.answer("❌ <b>Сначала выполните /login</b>")
         return
 
     login_token = user.get("login_token")
     if not login_token:
-        await message.answer(md("❌ *Login token не найден*"))
+        await message.answer("❌ <b>Login token не найден</b>")
         return
 
     # Имитируем успешную авторизацию
     await auth_service.simulate_login_granted(login_token)
 
-    await message.answer(md("✅ *Авторизация имитирована*\n\nНажмите 'Проверить статус' или подождите 30 секунд\\."))
+    await message.answer("✅ <b>Авторизация имитирована</b>\n\nНажмите 'Проверить статус' или подождите 30 секунд.")
 
 
 # =========================
