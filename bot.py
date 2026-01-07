@@ -207,70 +207,119 @@ redis_client = SimpleRedis()
 
 
 # =========================
-# DATA STORAGE (ЗАГЛУШКИ ДЛЯ ТЕСТОВЫХ ДАННЫХ)
+# DATA STORAGE (ЗАГЛУШКИ ДЛЯ ТЕСТОВЫХ ДАННЫХ) - РАСШИРЕННАЯ ВЕРСИЯ
 # =========================
 class DataStorage:
     def __init__(self):
-        # Заглушки данных
+        # Заглушки данных пользователей
         self.users = {
-            1: {"id": 1, "full_name": "Иванов Иван Иванович", "email": "teacher@example.com", "role": "teacher",
-                "is_blocked": False},
-            2: {"id": 2, "full_name": "Петров Петр Петрович", "email": "student1@example.com", "role": "student",
-                "is_blocked": False},
-            3: {"id": 3, "full_name": "Сидорова Анна Владимировна", "email": "student2@example.com", "role": "student",
-                "is_blocked": False},
+            1: {"id": 1, "full_name": "Иванов Иван Иванович", "email": "teacher@example.com",
+                "role": "teacher", "is_blocked": False, "created_at": "2024-01-01T10:00:00Z"},
+            2: {"id": 2, "full_name": "Петров Петр Петрович", "email": "student1@example.com",
+                "role": "student", "is_blocked": False, "created_at": "2024-01-02T11:00:00Z"},
+            3: {"id": 3, "full_name": "Сидорова Анна Владимировна", "email": "student2@example.com",
+                "role": "student", "is_blocked": False, "created_at": "2024-01-03T12:00:00Z"},
+            4: {"id": 4, "full_name": "Козлов Алексей Сергеевич", "email": "student3@example.com",
+                "role": "student", "is_blocked": True, "created_at": "2024-01-04T13:00:00Z"},
+            5: {"id": 5, "full_name": "Николаева Мария Дмитриевна", "email": "teacher2@example.com",
+                "role": "teacher", "is_blocked": False, "created_at": "2024-01-05T14:00:00Z"},
         }
 
+        # Заглушки курсов
         self.courses = {
-            1: {"id": 1, "name": "Программирование на Python", "description": "Основы программирования на Python",
-                "teacher_id": 1, "is_active": True},
-            2: {"id": 2, "name": "Базы данных", "description": "Основы работы с базами данных", "teacher_id": 1,
-                "is_active": True},
-            3: {"id": 3, "name": "Веб-разработка", "description": "Создание веб-приложений", "teacher_id": 1,
-                "is_active": True},
+            1: {"id": 1, "name": "Программирование на Python",
+                "description": "Основы программирования на Python",
+                "teacher_id": 1, "is_active": True, "created_at": "2024-01-10T10:00:00Z"},
+            2: {"id": 2, "name": "Базы данных",
+                "description": "Основы работы с базами данных",
+                "teacher_id": 1, "is_active": True, "created_at": "2024-01-11T11:00:00Z"},
+            3: {"id": 3, "name": "Веб-разработка",
+                "description": "Создание веб-приложений",
+                "teacher_id": 5, "is_active": True, "created_at": "2024-01-12T12:00:00Z"},
+            4: {"id": 4, "name": "Алгоритмы и структуры данных",
+                "description": "Изучение алгоритмов и структур данных",
+                "teacher_id": 5, "is_active": False, "created_at": "2024-01-13T13:00:00Z"},
+            5: {"id": 5, "name": "Машинное обучение",
+                "description": "Основы машинного обучения",
+                "teacher_id": 1, "is_active": True, "created_at": "2024-01-14T14:00:00Z"},
         }
 
+        # Связь курсов и студентов
         self.course_students = {
             1: [2, 3],  # Python: student1, student2
-            2: [2],  # Базы данных: student1
+            2: [2, 4],  # Базы данных: student1, student3
+            3: [3],  # Веб-разработка: student2
+            5: [2, 3, 4],  # Машинное обучение: все студенты
         }
 
+        # Заглушки тестов
         self.tests = {
-            1: {"id": 1, "name": "Тест по основам Python", "course_id": 1, "is_active": True, "questions": [1, 2, 3]},
-            2: {"id": 2, "name": "Тест по функциям Python", "course_id": 1, "is_active": False, "questions": [4, 5]},
-            3: {"id": 3, "name": "Тест по SQL", "course_id": 2, "is_active": True, "questions": [6, 7]},
+            1: {"id": 1, "name": "Тест по основам Python", "course_id": 1,
+                "is_active": True, "questions": [1, 2, 3], "created_at": "2024-02-01T10:00:00Z"},
+            2: {"id": 2, "name": "Тест по функциям Python", "course_id": 1,
+                "is_active": False, "questions": [4, 5], "created_at": "2024-02-02T11:00:00Z"},
+            3: {"id": 3, "name": "Тест по SQL", "course_id": 2,
+                "is_active": True, "questions": [6, 7], "created_at": "2024-02-03T12:00:00Z"},
+            4: {"id": 4, "name": "Тест по HTML/CSS", "course_id": 3,
+                "is_active": True, "questions": [8, 9], "created_at": "2024-02-04T13:00:00Z"},
+            5: {"id": 5, "name": "Итоговый тест по ML", "course_id": 5,
+                "is_active": True, "questions": [10], "created_at": "2024-02-05T14:00:00Z"},
         }
 
+        # Заглушки вопросов
         self.questions = {
             1: {"id": 1, "title": "Типы данных Python", "text": "Что такое Python?",
-                "options": ["Язык программирования", "Змея", "Оба варианта верны"], "correct": 2, "author_id": 1,
-                "version": 1},
+                "options": ["Язык программирования", "Змея", "Оба варианта верны"],
+                "correct": 2, "author_id": 1, "version": 1, "created_at": "2024-01-15T10:00:00Z"},
             2: {"id": 2, "title": "Списки Python", "text": "Как создать пустой список в Python?",
-                "options": ["list()", "[]", "Оба варианта верны"], "correct": 2, "author_id": 1, "version": 1},
+                "options": ["list()", "[]", "Оба варианта верны"],
+                "correct": 2, "author_id": 1, "version": 1, "created_at": "2024-01-15T11:00:00Z"},
             3: {"id": 3, "title": "Функции Python", "text": "Что такое функция в Python?",
-                "options": ["Блок кода", "Ключевое слово", "Именованный блок кода"], "correct": 2, "author_id": 1,
-                "version": 1},
+                "options": ["Блок кода", "Ключевое слово", "Именованный блок кода"],
+                "correct": 2, "author_id": 1, "version": 1, "created_at": "2024-01-15T12:00:00Z"},
             4: {"id": 4, "title": "Аргументы функций", "text": "Что такое args в Python?",
-                "options": ["Позиционные аргументы", "Именованные аргументы", "Ключевое слово"], "correct": 0,
-                "author_id": 1, "version": 1},
+                "options": ["Позиционные аргументы", "Именованные аргументы", "Ключевое слово"],
+                "correct": 0, "author_id": 1, "version": 1, "created_at": "2024-01-16T10:00:00Z"},
             5: {"id": 5, "title": "Декораторы", "text": "Что такое декоратор в Python?",
-                "options": ["Функция", "Класс", "Функция высшего порядка"], "correct": 2, "author_id": 1, "version": 1},
+                "options": ["Функция", "Класс", "Функция высшего порядка"],
+                "correct": 2, "author_id": 1, "version": 1, "created_at": "2024-01-16T11:00:00Z"},
             6: {"id": 6, "title": "SQL SELECT", "text": "Как выбрать все данные из таблицы?",
-                "options": ["SELECT * FROM table", "GET * FROM table", "FIND * FROM table"], "correct": 0,
-                "author_id": 1, "version": 1},
+                "options": ["SELECT * FROM table", "GET * FROM table", "FIND * FROM table"],
+                "correct": 0, "author_id": 1, "version": 1, "created_at": "2024-01-17T10:00:00Z"},
             7: {"id": 7, "title": "SQL JOIN", "text": "Что такое JOIN в SQL?",
-                "options": ["Объединение таблиц", "Удаление данных", "Создание таблиц"], "correct": 0, "author_id": 1,
-                "version": 1},
+                "options": ["Объединение таблиц", "Удаление данных", "Создание таблиц"],
+                "correct": 0, "author_id": 1, "version": 1, "created_at": "2024-01-17T11:00:00Z"},
+            8: {"id": 8, "title": "HTML теги", "text": "Какой тег используется для заголовка?",
+                "options": ["<h1>", "<header>", "<title>"],
+                "correct": 0, "author_id": 5, "version": 1, "created_at": "2024-01-18T10:00:00Z"},
+            9: {"id": 9, "title": "CSS свойства", "text": "Какое свойство изменяет цвет текста?",
+                "options": ["color", "background-color", "font-color"],
+                "correct": 0, "author_id": 5, "version": 1, "created_at": "2024-01-18T11:00:00Z"},
+            10: {"id": 10, "title": "ML алгоритмы", "text": "Что такое линейная регрессия?",
+                 "options": ["Метод классификации", "Метод кластеризации", "Метод регрессии"],
+                 "correct": 2, "author_id": 1, "version": 1, "created_at": "2024-01-19T10:00:00Z"},
         }
 
+        # Заглушки попыток
         self.attempts = {
-            1001: {"id": 1001, "user_id": 2, "test_id": 1, "status": "completed", "score": 85,
-                   "answers": {1: 2, 2: 2, 3: 2}},
-            1002: {"id": 1002, "user_id": 3, "test_id": 1, "status": "completed", "score": 70,
-                   "answers": {1: 2, 2: 0, 3: 1}},
-            1003: {"id": 1003, "user_id": 2, "test_id": 3, "status": "in_progress", "score": None, "answers": {6: 0}},
+            1001: {"id": 1001, "user_id": 2, "test_id": 1, "status": "completed",
+                   "score": 85, "started_at": "2024-02-10T10:00:00Z",
+                   "finished_at": "2024-02-10T10:30:00Z", "answers": {1: 2, 2: 2, 3: 2}},
+            1002: {"id": 1002, "user_id": 3, "test_id": 1, "status": "completed",
+                   "score": 70, "started_at": "2024-02-10T11:00:00Z",
+                   "finished_at": "2024-02-10T11:25:00Z", "answers": {1: 2, 2: 0, 3: 1}},
+            1003: {"id": 1003, "user_id": 2, "test_id": 3, "status": "in_progress",
+                   "score": None, "started_at": "2024-02-11T10:00:00Z",
+                   "finished_at": None, "answers": {6: 0}},
+            1004: {"id": 1004, "user_id": 3, "test_id": 4, "status": "completed",
+                   "score": 90, "started_at": "2024-02-12T14:00:00Z",
+                   "finished_at": "2024-02-12T14:20:00Z", "answers": {8: 0, 9: 0}},
+            1005: {"id": 1005, "user_id": 4, "test_id": 5, "status": "completed",
+                   "score": 50, "started_at": "2024-02-13T09:00:00Z",
+                   "finished_at": "2024-02-13T09:10:00Z", "answers": {10: 2}},
         }
 
+        # Заглушки ответов
         self.answers = {
             1: {"id": 1, "attempt_id": 1001, "question_id": 1, "version": 1, "answer": 2},
             2: {"id": 2, "attempt_id": 1001, "question_id": 2, "version": 1, "answer": 2},
@@ -279,6 +328,9 @@ class DataStorage:
             5: {"id": 5, "attempt_id": 1002, "question_id": 2, "version": 1, "answer": 0},
             6: {"id": 6, "attempt_id": 1002, "question_id": 3, "version": 1, "answer": 1},
             7: {"id": 7, "attempt_id": 1003, "question_id": 6, "version": 1, "answer": 0},
+            8: {"id": 8, "attempt_id": 1004, "question_id": 8, "version": 1, "answer": 0},
+            9: {"id": 9, "attempt_id": 1004, "question_id": 9, "version": 1, "answer": 0},
+            10: {"id": 10, "attempt_id": 1005, "question_id": 10, "version": 1, "answer": 2},
         }
 
 
@@ -342,12 +394,12 @@ class APIClient:
                 ]
             else:  # student
                 permissions = [
-                    Permission.USER_DATA_READ,  # о себе
-                    Permission.COURSE_TESTLIST,  # тесты курсов, на которые записан
-                    Permission.COURSE_TEST_READ,  # просмотр тестов
-                    Permission.ANSWER_READ,  # просмотр своих ответов
-                    Permission.ANSWER_UPDATE,  # изменение своих ответов
-                    Permission.ANSWER_DEL,  # удаление своих ответов
+                    Permission.USER_DATA_READ,
+                    Permission.COURSE_TESTLIST,
+                    Permission.COURSE_TEST_READ,
+                    Permission.ANSWER_READ,
+                    Permission.ANSWER_UPDATE,
+                    Permission.ANSWER_DEL,
                 ]
 
         payload = {
@@ -1305,16 +1357,7 @@ async def cmd_start(message: Message):
 @dp.callback_query(F.data == "login")
 async def callback_login(callback: CallbackQuery):
     """Обработка кнопки Войти в систему из стартового сообщения"""
-    # Создаем фейковое сообщение для обработки командой /login
-    fake_message = Message(
-        message_id=callback.message.message_id,
-        chat=callback.message.chat,
-        date=callback.message.date,
-        text="/login"
-    )
-    fake_message.from_user = callback.from_user
-
-    await cmd_login(fake_message)
+    await cmd_login(callback.message)
     await callback.answer()
 
 
@@ -1324,16 +1367,7 @@ async def callback_login(callback: CallbackQuery):
 @dp.callback_query(F.data == "help_main")
 async def callback_help_main(callback: CallbackQuery):
     """Обработка кнопки Общая справка из стартового сообщения"""
-    # Создаем фейковое сообщение для обработки командой /help
-    fake_message = Message(
-        message_id=callback.message.message_id,
-        chat=callback.message.chat,
-        date=callback.message.date,
-        text="/help"
-    )
-    fake_message.from_user = callback.from_user
-
-    await cmd_help(fake_message)
+    await cmd_help(callback.message)
     await callback.answer()
 
 
@@ -1343,16 +1377,7 @@ async def callback_help_main(callback: CallbackQuery):
 @dp.callback_query(F.data == "status_main")
 async def callback_status_main(callback: CallbackQuery):
     """Обработка кнопки Статус из стартового сообщения"""
-    # Создаем фейковое сообщение для обработки командой /status
-    fake_message = Message(
-        message_id=callback.message.message_id,
-        chat=callback.message.chat,
-        date=callback.message.date,
-        text="/status"
-    )
-    fake_message.from_user = callback.from_user
-
-    await cmd_status(fake_message)
+    await cmd_status(callback.message)
     await callback.answer()
 
 
@@ -2030,13 +2055,6 @@ async def cmd_logout_all(message: Message, user: Dict):
     chat_id = message.chat.id
     api_token = user.get("api_token", "")
 
-    # В реальной системе здесь был бы запрос к API авторизации
-    # для отзыва refresh token на всех устройствах
-    # try:
-    #     await api_client.request("POST", "/auth/logout", api_token, {"all": True})
-    # except Exception as e:
-    #     logger.error(f"Ошибка при выходе на всех устройствах: {e}")
-
     await delete_user(chat_id)
     stats.remove_active_user(chat_id)
 
@@ -2178,6 +2196,1099 @@ async def cmd_status(message: Message):
 
 
 # =========================
+# КОМАНДА ALL_COURSES (ВСЕ КУРСЫ)
+# =========================
+@dp.message(Command("all_courses"))
+@rate_limit()
+@require_auth()
+@safe_send_message
+async def cmd_all_courses(message: Message, user: Dict):
+    """Получить все курсы"""
+    api_token = user.get("api_token", "")
+
+    try:
+        courses = await api_client.get_courses(api_token)
+
+        if not courses:
+            await message.answer("📚 <b>Нет доступных курсов</b>")
+            return
+
+        text = "📚 <b>Список всех курсов:</b>\n\n"
+        for course in courses[:10]:  # Ограничиваем вывод 10 курсами
+            teacher = data_storage.users.get(course.get('teacher_id', 0))
+            teacher_name = teacher.get('full_name', 'Неизвестно') if teacher else 'Неизвестно'
+
+            text += f"🎓 <b>{course.get('name', 'Без названия')}</b> (ID: {course.get('id', '?')})\n"
+            text += f"   📝 Описание: {course.get('description', 'Нет описания')}\n"
+            text += f"   👨‍🏫 Преподаватель: {teacher_name}\n"
+            text += f"   📊 Статус: {'🟢 Активен' if course.get('is_active', True) else '🔴 Неактивен'}\n\n"
+
+        if len(courses) > 10:
+            text += f"\n... и еще {len(courses) - 10} курсов"
+
+        await message.answer(text)
+    except Exception as e:
+        logger.error(f"Ошибка при получении курсов: {e}")
+        await message.answer(f"❌ <b>Ошибка при получении курсов:</b>\n\n{str(e)[:200]}...")
+
+
+# =========================
+# КОМАНДА USERS (СПИСОК ПОЛЬЗОВАТЕЛЕЙ)
+# =========================
+@dp.message(Command("users"))
+@rate_limit()
+@require_auth()
+@require_role("teacher")
+@safe_send_message
+async def cmd_users(message: Message, user: Dict):
+    """Получить список пользователей"""
+    api_token = user.get("api_token", "")
+
+    try:
+        users_list = await api_client.get_users(api_token)
+
+        if not users_list:
+            await message.answer("👥 <b>Нет пользователей в системе</b>")
+            return
+
+        text = "👥 <b>Список пользователей:</b>\n\n"
+        for user_data in users_list[:15]:  # Ограничиваем вывод 15 пользователями
+            role = user_data.get('role', 'student')
+            role_emoji = "👨‍🏫" if role == "teacher" else "👨‍🎓"
+            blocked = "🔴" if user_data.get('is_blocked', False) else "🟢"
+
+            text += f"{role_emoji} <b>{user_data.get('full_name', 'Без имени')}</b> (ID: {user_data.get('id', '?')})\n"
+            text += f"   📧 Email: {user_data.get('email', 'Нет email')}\n"
+            text += f"   🎭 Роль: {role} | Статус: {blocked}\n\n"
+
+        if len(users_list) > 15:
+            text += f"\n... и еще {len(users_list) - 15} пользователей"
+
+        await message.answer(text)
+    except Exception as e:
+        logger.error(f"Ошибка при получении пользователей: {e}")
+        await message.answer(f"❌ <b>Ошибка при получении пользователей:</b>\n\n{str(e)[:200]}...")
+
+
+# =========================
+# КОМАНДА USER_INFO (ИНФОРМАЦИЯ О ПОЛЬЗОВАТЕЛЕ)
+# =========================
+@dp.message(Command("user_info"))
+@rate_limit()
+@require_auth()
+@require_role("teacher")
+@safe_send_message
+async def cmd_user_info(message: Message, user: Dict):
+    """Получить информацию о пользователе"""
+    args = message.text.split()
+    if len(args) < 2:
+        await message.answer("ℹ️ <b>Использование:</b> <code>/user_info ID_пользователя</code>")
+        return
+
+    try:
+        user_id = int(args[1])
+        api_token = user.get("api_token", "")
+
+        user_info = await api_client.get_user_info(api_token, user_id)
+
+        if not user_info or 'error' in user_info:
+            await message.answer(f"❌ <b>Пользователь с ID {user_id} не найден</b>")
+            return
+
+        role = user_info.get('role', 'student')
+        role_emoji = "👨‍🏫" if role == "teacher" else "👨‍🎓"
+        blocked = "🔴 Заблокирован" if user_info.get('is_blocked', False) else "🟢 Активен"
+
+        text = f"{role_emoji} <b>Информация о пользователе</b>\n\n"
+        text += f"<b>ID:</b> {user_info.get('id', '?')}\n"
+        text += f"<b>ФИО:</b> {user_info.get('full_name', 'Неизвестно')}\n"
+        text += f"<b>Email:</b> {user_info.get('email', 'Неизвестно')}\n"
+        text += f"<b>Роль:</b> {role}\n"
+        text += f"<b>Статус:</b> {blocked}\n"
+
+        # Получаем курсы пользователя
+        user_data = await api_client.get_user_courses_grades(api_token, user_id)
+        courses = user_data.get('courses', [])
+        attempts = user_data.get('attempts', [])
+
+        text += f"\n<b>Курсы ({len(courses)}):</b>\n"
+        if courses:
+            for course in courses[:5]:  # Показываем только первые 5 курсов
+                text += f"  • {course.get('name', 'Без названия')} (ID: {course.get('id', '?')})\n"
+            if len(courses) > 5:
+                text += f"  • ... и еще {len(courses) - 5} курсов\n"
+        else:
+            text += "  Нет курсов\n"
+
+        text += f"\n<b>Попытки тестирования ({len(attempts)}):</b>\n"
+        if attempts:
+            completed = [a for a in attempts if a.get('status') == 'completed']
+            in_progress = [a for a in attempts if a.get('status') == 'in_progress']
+
+            text += f"  Завершено: {len(completed)}\n"
+            text += f"  В процессе: {len(in_progress)}\n"
+
+            if completed:
+                avg_score = sum(a.get('score', 0) for a in completed) / len(completed)
+                text += f"  Средний балл: {avg_score:.1f}%\n"
+        else:
+            text += "  Нет попыток\n"
+
+        await message.answer(text)
+    except ValueError:
+        await message.answer("❌ <b>Неверный ID пользователя</b>\n\nID должен быть числом.")
+    except Exception as e:
+        logger.error(f"Ошибка при получении информации о пользователе: {e}")
+        await message.answer(f"❌ <b>Ошибка:</b>\n\n{str(e)[:200]}...")
+
+
+# =========================
+# КОМАНДА UPDATE_FULLNAME (ИЗМЕНЕНИЕ ФИО)
+# =========================
+@dp.message(Command("update_fullname"))
+@rate_limit()
+@require_auth()
+@safe_send_message
+async def cmd_update_fullname(message: Message, user: Dict):
+    """Изменить ФИО пользователя"""
+    args = message.text.split(maxsplit=2)
+    if len(args) < 3:
+        await message.answer(
+            "ℹ️ <b>Использование:</b> <code>/update_fullname ID_пользователя ФИО</code>\n\nПример: <code>/update_fullname 1 Иванов Иван Иванович</code>")
+        return
+
+    try:
+        target_id = int(args[1])
+        full_name = args[2]
+
+        # Проверяем права: пользователь может менять только свое ФИО, если он не преподаватель
+        current_user_id = user.get("user_id")
+        current_role = user.get("role")
+
+        if current_role != "teacher" and target_id != current_user_id:
+            await message.answer("❌ <b>Недостаточно прав</b>\n\nВы можете изменять только свое ФИО.")
+            return
+
+        api_token = user.get("api_token", "")
+        result = await api_client.update_user_fullname(api_token, target_id, full_name)
+
+        if 'error' in result:
+            await message.answer(f"❌ <b>Ошибка:</b> {result['error']}")
+        else:
+            await message.answer(f"✅ <b>ФИО обновлено</b>\n\nПользователь {target_id}: {full_name}")
+    except ValueError:
+        await message.answer("❌ <b>Неверный ID пользователя</b>\n\nID должен быть числом.")
+    except Exception as e:
+        logger.error(f"Ошибка при изменении ФИО: {e}")
+        await message.answer(f"❌ <b>Ошибка:</b>\n\n{str(e)[:200]}...")
+
+
+# =========================
+# КОМАНДА BLOCK_USER (БЛОКИРОВКА ПОЛЬЗОВАТЕЛЯ)
+# =========================
+@dp.message(Command("block_user"))
+@rate_limit()
+@require_auth()
+@require_role("teacher")
+@safe_send_message
+async def cmd_block_user(message: Message, user: Dict):
+    """Заблокировать/разблокировать пользователя"""
+    args = message.text.split()
+    if len(args) < 3:
+        await message.answer(
+            "ℹ️ <b>Использование:</b> <code>/block_user ID_пользователя true/false</code>\n\nПримеры:\n<code>/block_user 1 true</code> - заблокировать\n<code>/block_user 1 false</code> - разблокировать")
+        return
+
+    try:
+        target_id = int(args[1])
+        block_status = args[2].lower()
+
+        if block_status not in ['true', 'false']:
+            await message.answer(
+                "❌ <b>Неверный статус блокировки</b>\n\nИспользуйте 'true' для блокировки или 'false' для разблокировки.")
+            return
+
+        is_blocked = block_status == 'true'
+        api_token = user.get("api_token", "")
+        result = await api_client.update_user_block_status(api_token, target_id, is_blocked)
+
+        if 'error' in result:
+            await message.answer(f"❌ <b>Ошибка:</b> {result['error']}")
+        else:
+            action = "заблокирован" if is_blocked else "разблокирован"
+            await message.answer(f"✅ <b>Пользователь {action}</b>\n\nПользователь {target_id} {action}.")
+    except ValueError:
+        await message.answer("❌ <b>Неверный ID пользователя</b>\n\nID должен быть числом.")
+    except Exception as e:
+        logger.error(f"Ошибка при изменении статуса блокировки: {e}")
+        await message.answer(f"❌ <b>Ошибка:</b>\n\n{str(e)[:200]}...")
+
+
+# =========================
+# КОМАНДА CREATE_COURSE (СОЗДАНИЕ КУРСА)
+# =========================
+@dp.message(Command("create_course"))
+@rate_limit()
+@require_auth()
+@require_role("teacher")
+@safe_send_message
+async def cmd_create_course(message: Message, user: Dict):
+    """Создать новый курс"""
+    args = message.text.split(maxsplit=2)
+    if len(args) < 3:
+        await message.answer(
+            "ℹ️ <b>Использование:</b> <code>/create_course Название; Описание</code>\n\nПример: <code>/create_course Математика; Основы математики для начинающих</code>\n\nПримечание: название и описание разделяются точкой с запятой.")
+        return
+
+    try:
+        # Разделяем название и описание по точке с запятой
+        parts = args[2].split(';', 1)
+        if len(parts) < 2:
+            await message.answer(
+                "❌ <b>Неверный формат</b>\n\nИспользуйте формат: Название; Описание\nПример: Математика; Основы математики")
+            return
+
+        name = parts[0].strip()
+        description = parts[1].strip()
+        teacher_id = user.get("user_id")
+
+        api_token = user.get("api_token", "")
+        result = await api_client.create_course(api_token, name, description, teacher_id)
+
+        if 'error' in result:
+            await message.answer(f"❌ <b>Ошибка:</b> {result['error']}")
+        else:
+            course_id = result.get('course_id', '?')
+            await message.answer(
+                f"✅ <b>Курс создан</b>\n\nНазвание: {name}\nID курса: {course_id}\nОписание: {description}")
+    except Exception as e:
+        logger.error(f"Ошибка при создании курса: {e}")
+        await message.answer(f"❌ <b>Ошибка:</b>\n\n{str(e)[:200]}...")
+
+
+# =========================
+# КОМАНДА COURSE_INFO (ИНФОРМАЦИЯ О КУРСЕ)
+# =========================
+@dp.message(Command("course_info"))
+@rate_limit()
+@require_auth()
+@safe_send_message
+async def cmd_course_info(message: Message, user: Dict):
+    """Получить информацию о курсе"""
+    args = message.text.split()
+    if len(args) < 2:
+        await message.answer(
+            "ℹ️ <b>Использование:</b> <code>/course_info ID_курса</code>\n\nПример: <code>/course_info 1</code>")
+        return
+
+    try:
+        course_id = int(args[1])
+        api_token = user.get("api_token", "")
+
+        course_info = await api_client.get_course_info(api_token, course_id)
+
+        if not course_info or 'error' in course_info:
+            await message.answer(f"❌ <b>Курс с ID {course_id} не найден</b>")
+            return
+
+        teacher = course_info.get('teacher', {})
+        teacher_name = teacher.get('full_name', 'Неизвестно') if teacher else 'Неизвестно'
+
+        text = "🎓 <b>Информация о курсе</b>\n\n"
+        text += f"<b>ID:</b> {course_info.get('id', '?')}\n"
+        text += f"<b>Название:</b> {course_info.get('name', 'Без названия')}\n"
+        text += f"<b>Описание:</b> {course_info.get('description', 'Нет описания')}\n"
+        text += f"<b>Преподаватель:</b> {teacher_name} (ID: {course_info.get('teacher_id', '?')})\n"
+        text += f"<b>Статус:</b> {'🟢 Активен' if course_info.get('is_active', True) else '🔴 Неактивен'}\n"
+
+        # Получаем тесты курса
+        tests = await api_client.get_course_tests(api_token, course_id)
+        text += f"\n<b>Тесты ({len(tests)}):</b>\n"
+        if tests:
+            for test in tests[:5]:  # Показываем только первые 5 тестов
+                status = "🟢" if test.get('is_active', False) else "🔴"
+                text += f"  {status} {test.get('name', 'Без названия')} (ID: {test.get('id', '?')})\n"
+                text += f"    Вопросов: {len(test.get('questions', []))}\n"
+            if len(tests) > 5:
+                text += f"  ... и еще {len(tests) - 5} тестов\n"
+        else:
+            text += "  Нет тестов\n"
+
+        # Получаем студентов курса (только для преподавателей)
+        if user.get("role") == "teacher":
+            students = await api_client.get_course_students(api_token, course_id)
+            text += f"\n<b>Студенты ({len(students)}):</b>\n"
+            if students:
+                for student in students[:5]:  # Показываем только первых 5 студентов
+                    text += f"  👨‍🎓 {student.get('full_name', 'Без имени')} (ID: {student.get('id', '?')})\n"
+                if len(students) > 5:
+                    text += f"  ... и еще {len(students) - 5} студентов\n"
+            else:
+                text += "  Нет студентов\n"
+
+        await message.answer(text)
+    except ValueError:
+        await message.answer("❌ <b>Неверный ID курса</b>\n\nID должен быть числом.")
+    except Exception as e:
+        logger.error(f"Ошибка при получении информации о курсе: {e}")
+        await message.answer(f"❌ <b>Ошибка:</b>\n\n{str(e)[:200]}...")
+
+
+# =========================
+# КОМАНДА COURSE_STUDENTS (СТУДЕНТЫ КУРСА)
+# =========================
+@dp.message(Command("course_students"))
+@rate_limit()
+@require_auth()
+@require_role("teacher")
+@safe_send_message
+async def cmd_course_students(message: Message, user: Dict):
+    """Получить список студентов курса"""
+    args = message.text.split()
+    if len(args) < 2:
+        await message.answer(
+            "ℹ️ <b>Использование:</b> <code>/course_students ID_курса</code>\n\nПример: <code>/course_students 1</code>")
+        return
+
+    try:
+        course_id = int(args[1])
+        api_token = user.get("api_token", "")
+
+        students = await api_client.get_course_students(api_token, course_id)
+
+        if not students:
+            await message.answer(f"📚 <b>На курсе {course_id} нет студентов</b>")
+            return
+
+        text = f"👥 <b>Студенты курса {course_id}:</b>\n\n"
+        for student in students[:20]:  # Ограничиваем вывод 20 студентами
+            blocked = "🔴" if student.get('is_blocked', False) else "🟢"
+            text += f"{blocked} <b>{student.get('full_name', 'Без имени')}</b> (ID: {student.get('id', '?')})\n"
+            text += f"   📧 Email: {student.get('email', 'Нет email')}\n"
+            text += f"   🎭 Роль: {student.get('role', 'student')}\n\n"
+
+        if len(students) > 20:
+            text += f"\n... и еще {len(students) - 20} студентов"
+
+        await message.answer(text)
+    except ValueError:
+        await message.answer("❌ <b>Неверный ID курса</b>\n\nID должен быть числом.")
+    except Exception as e:
+        logger.error(f"Ошибка при получении студентов курса: {e}")
+        await message.answer(f"❌ <b>Ошибка:</b>\n\n{str(e)[:200]}...")
+
+
+# =========================
+# КОМАНДА ENROLL_STUDENT (ЗАПИСАТЬ СТУДЕНТА НА КУРС)
+# =========================
+@dp.message(Command("enroll_student"))
+@rate_limit()
+@require_auth()
+@require_role("teacher")
+@safe_send_message
+async def cmd_enroll_student(message: Message, user: Dict):
+    """Записать студента на курс"""
+    args = message.text.split()
+    if len(args) < 3:
+        await message.answer(
+            "ℹ️ <b>Использование:</b> <code>/enroll_student ID_курса ID_студента</code>\n\nПример: <code>/enroll_student 1 2</code>\n\nЗаписывает студента 2 на курс 1.")
+        return
+
+    try:
+        course_id = int(args[1])
+        student_id = int(args[2])
+        api_token = user.get("api_token", "")
+
+        result = await api_client.enroll_student_to_course(api_token, course_id, student_id)
+
+        if 'error' in result:
+            await message.answer(f"❌ <b>Ошибка:</b> {result['error']}")
+        else:
+            await message.answer(
+                f"✅ <b>Студент записан на курс</b>\n\nСтудент {student_id} записан на курс {course_id}.")
+    except ValueError:
+        await message.answer("❌ <b>Неверные ID</b>\n\nID курса и ID студента должны быть числами.")
+    except Exception as e:
+        logger.error(f"Ошибка при записи студента на курс: {e}")
+        await message.answer(f"❌ <b>Ошибка:</b>\n\n{str(e)[:200]}...")
+
+
+# =========================
+# КОМАНДА COURSE_TESTS (ТЕСТЫ КУРСА)
+# =========================
+@dp.message(Command("course_tests"))
+@rate_limit()
+@require_auth()
+@safe_send_message
+async def cmd_course_tests(message: Message, user: Dict):
+    """Получить тесты курса"""
+    args = message.text.split()
+    if len(args) < 2:
+        await message.answer(
+            "ℹ️ <b>Использование:</b> <code>/course_tests ID_курса</code>\n\nПример: <code>/course_tests 1</code>")
+        return
+
+    try:
+        course_id = int(args[1])
+        api_token = user.get("api_token", "")
+
+        tests = await api_client.get_course_tests(api_token, course_id)
+
+        if not tests:
+            await message.answer(f"📝 <b>На курсе {course_id} нет тестов</b>")
+            return
+
+        text = f"📝 <b>Тесты курса {course_id}:</b>\n\n"
+        for test in tests[:15]:  # Ограничиваем вывод 15 тестами
+            status = "🟢 Активен" if test.get('is_active', False) else "🔴 Неактивен"
+            questions = test.get('questions', [])
+
+            text += f"🧪 <b>{test.get('name', 'Без названия')}</b> (ID: {test.get('id', '?')})\n"
+            text += f"   📊 Статус: {status}\n"
+            text += f"   ❓ Вопросов: {len(questions)}\n"
+
+            if questions:
+                text += f"   📋 ID вопросов: {', '.join(map(str, questions[:3]))}"
+                if len(questions) > 3:
+                    text += f" ... (ещё {len(questions) - 3})"
+                text += "\n"
+            text += "\n"
+
+        if len(tests) > 15:
+            text += f"\n... и еще {len(tests) - 15} тестов"
+
+        await message.answer(text)
+    except ValueError:
+        await message.answer("❌ <b>Неверный ID курса</b>\n\nID должен быть числом.")
+    except Exception as e:
+        logger.error(f"Ошибка при получении тестов курса: {e}")
+        await message.answer(f"❌ <b>Ошибка:</b>\n\n{str(e)[:200]}...")
+
+
+# =========================
+# КОМАНДА ADD_TEST (ДОБАВИТЬ ТЕСТ В КУРС)
+# =========================
+@dp.message(Command("add_test"))
+@rate_limit()
+@require_auth()
+@require_role("teacher")
+@safe_send_message
+async def cmd_add_test(message: Message, user: Dict):
+    """Добавить тест в курс"""
+    args = message.text.split(maxsplit=2)
+    if len(args) < 3:
+        await message.answer(
+            "ℹ️ <b>Использование:</b> <code>/add_test ID_курса; Название_теста</code>\n\nПример: <code>/add_test 1; Итоговый тест по Python</code>\n\nПримечание: ID курса и название разделяются точкой с запятой.")
+        return
+
+    try:
+        # Разделяем ID курса и название теста по точке с запятой
+        parts = args[2].split(';', 1)
+        if len(parts) < 2:
+            await message.answer(
+                "❌ <b>Неверный формат</b>\n\nИспользуйте формат: ID_курса; Название_теста\nПример: 1; Итоговый тест по Python")
+            return
+
+        course_id = int(parts[0].strip())
+        test_name = parts[1].strip()
+
+        api_token = user.get("api_token", "")
+        result = await api_client.add_test_to_course(api_token, course_id, test_name)
+
+        if 'error' in result:
+            await message.answer(f"❌ <b>Ошибка:</b> {result['error']}")
+        else:
+            test_id = result.get('test_id', '?')
+            await message.answer(
+                f"✅ <b>Тест добавлен</b>\n\nНазвание: {test_name}\nID теста: {test_id}\nКурс: {course_id}\n\nПримечание: тест по умолчанию не активен.")
+    except ValueError:
+        await message.answer("❌ <b>Неверный ID курса</b>\n\nID должен быть числом.")
+    except Exception as e:
+        logger.error(f"Ошибка при добавлении теста: {e}")
+        await message.answer(f"❌ <b>Ошибка:</b>\n\n{str(e)[:200]}...")
+
+
+# =========================
+# КОМАНДА ACTIVATE_TEST (АКТИВАЦИЯ ТЕСТА)
+# =========================
+@dp.message(Command("activate_test"))
+@rate_limit()
+@require_auth()
+@require_role("teacher")
+@safe_send_message
+async def cmd_activate_test(message: Message, user: Dict):
+    """Активировать/деактивировать тест"""
+    args = message.text.split()
+    if len(args) < 4:
+        await message.answer(
+            "ℹ️ <b>Использование:</b> <code>/activate_test ID_курса ID_теста true/false</code>\n\nПримеры:\n<code>/activate_test 1 1 true</code> - активировать тест 1 курса 1\n<code>/activate_test 1 1 false</code> - деактивировать тест 1 курса 1")
+        return
+
+    try:
+        course_id = int(args[1])
+        test_id = int(args[2])
+        activate_status = args[3].lower()
+
+        if activate_status not in ['true', 'false']:
+            await message.answer(
+                "❌ <b>Неверный статус активации</b>\n\nИспользуйте 'true' для активации или 'false' для деактивации.")
+            return
+
+        is_active = activate_status == 'true'
+        api_token = user.get("api_token", "")
+        result = await api_client.update_test_status(api_token, course_id, test_id, is_active)
+
+        if 'error' in result:
+            await message.answer(f"❌ <b>Ошибка:</b> {result['error']}")
+        else:
+            action = "активирован" if is_active else "деактивирован"
+            await message.answer(f"✅ <b>Тест {action}</b>\n\nТест {test_id} курса {course_id} {action}.")
+    except ValueError:
+        await message.answer("❌ <b>Неверные ID</b>\n\nID курса и ID теста должны быть числами.")
+    except Exception as e:
+        logger.error(f"Ошибка при изменении статуса теста: {e}")
+        await message.answer(f"❌ <b>Ошибка:</b>\n\n{str(e)[:200]}...")
+
+
+# =========================
+# КОМАНДА TEST_RESULTS (РЕЗУЛЬТАТЫ ТЕСТА)
+# =========================
+@dp.message(Command("test_results"))
+@rate_limit()
+@require_auth()
+@require_role("teacher")
+@safe_send_message
+async def cmd_test_results(message: Message, user: Dict):
+    """Получить результаты теста"""
+    args = message.text.split()
+    if len(args) < 2:
+        await message.answer(
+            "ℹ️ <b>Использование:</b> <code>/test_results ID_теста</code>\n\nПример: <code>/test_results 1</code>")
+        return
+
+    try:
+        test_id = int(args[1])
+        api_token = user.get("api_token", "")
+
+        # Получаем попытки теста
+        attempts = await api_client.get_test_attempts(api_token, test_id)
+
+        if not attempts:
+            await message.answer(f"📊 <b>На тесте {test_id} нет завершенных попыток</b>")
+            return
+
+        text = f"📊 <b>Результаты теста {test_id}:</b>\n\n"
+
+        # Статистика
+        total_attempts = len(attempts)
+        avg_score = sum(a.get('score', 0) for a in attempts) / total_attempts if total_attempts > 0 else 0
+        best_score = max(a.get('score', 0) for a in attempts) if attempts else 0
+        worst_score = min(a.get('score', 0) for a in attempts) if attempts else 0
+
+        text += f"<b>Статистика:</b>\n"
+        text += f"  • Всего попыток: {total_attempts}\n"
+        text += f"  • Средний балл: {avg_score:.1f}%\n"
+        text += f"  • Лучший результат: {best_score}%\n"
+        text += f"  • Худший результат: {worst_score}%\n\n"
+
+        text += f"<b>Детали по студентам:</b>\n\n"
+        for attempt in attempts[:10]:  # Ограничиваем вывод 10 попытками
+            score = attempt.get('score', 0)
+            grade = "🟢" if score >= 80 else "🟡" if score >= 60 else "🔴"
+
+            text += f"{grade} <b>{attempt.get('full_name', 'Без имени')}</b> (ID: {attempt.get('user_id', '?')})\n"
+            text += f"   🎯 Балл: {score}%\n"
+            text += f"   📝 ID попытки: {attempt.get('attempt_id', '?')}\n\n"
+
+        if len(attempts) > 10:
+            text += f"\n... и еще {len(attempts) - 10} попыток"
+
+        await message.answer(text)
+    except ValueError:
+        await message.answer("❌ <b>Неверный ID теста</b>\n\nID должен быть числом.")
+    except Exception as e:
+        logger.error(f"Ошибка при получении результатов теста: {e}")
+        await message.answer(f"❌ <b>Ошибка:</b>\n\n{str(e)[:200]}...")
+
+
+# =========================
+# КОМАНДА QUESTIONS_LIST (СПИСОК ВОПРОСОВ)
+# =========================
+@dp.message(Command("questions_list"))
+@rate_limit()
+@require_auth()
+@require_role("teacher")
+@safe_send_message
+async def cmd_questions_list(message: Message, user: Dict):
+    """Получить список всех вопросов"""
+    api_token = user.get("api_token", "")
+
+    try:
+        questions = await api_client.get_questions(api_token)
+
+        if not questions:
+            await message.answer("❓ <b>Нет вопросов в системе</b>")
+            return
+
+        text = "❓ <b>Список вопросов:</b>\n\n"
+        for question in questions[:10]:  # Ограничиваем вывод 10 вопросами
+            author = data_storage.users.get(question.get('author_id', 0))
+            author_name = author.get('full_name', 'Неизвестно') if author else 'Неизвестно'
+
+            text += f"📝 <b>{question.get('title', 'Без названия')}</b> (ID: {question.get('id', '?')})\n"
+            text += f"   📄 Текст: {question.get('text', 'Нет текста')[:50]}...\n"
+            text += f"   👨‍🏫 Автор: {author_name}\n"
+            text += f"   🔢 Вариантов: {len(question.get('options', []))}\n"
+            text += f"   ✅ Правильный: {question.get('correct', '?')}\n"
+            text += f"   📚 Версия: {question.get('version', '1')}\n\n"
+
+        if len(questions) > 10:
+            text += f"\n... и еще {len(questions) - 10} вопросов"
+
+        await message.answer(text)
+    except Exception as e:
+        logger.error(f"Ошибка при получении вопросов: {e}")
+        await message.answer(f"❌ <b>Ошибка:</b>\n\n{str(e)[:200]}...")
+
+
+# =========================
+# КОМАНДА CREATE_QUESTION (СОЗДАНИЕ ВОПРОСА)
+# =========================
+@dp.message(Command("create_question"))
+@rate_limit()
+@require_auth()
+@require_role("teacher")
+@safe_send_message
+async def cmd_create_question(message: Message, user: Dict):
+    """Создать новый вопрос"""
+    args = message.text.split(maxsplit=1)
+    if len(args) < 2:
+        await message.answer(
+            "ℹ️ <b>Использование:</b> <code>/create_question Название; Текст; Вариант1|Вариант2|Вариант3; НомерПравильногоОтвета</code>\n\nПример: <code>/create_question Типы данных Python; Что такое Python?; Язык программирования|Змея|Оба варианта верны; 2</code>\n\nПримечания:\n1. Разделители: ; между полями, | между вариантами ответов\n2. Нумерация ответов с 0")
+        return
+
+    try:
+        # Парсим сложную строку
+        parts = args[1].split(';', 3)
+        if len(parts) < 4:
+            await message.answer(
+                "❌ <b>Неверный формат</b>\n\nНужно 4 поля, разделенных точкой с запятой:\nНазвание; Текст; Варианты; НомерПравильногоОтвета")
+            return
+
+        title = parts[0].strip()
+        text = parts[1].strip()
+        options_str = parts[2].strip()
+        correct_str = parts[3].strip()
+
+        # Парсим варианты ответов
+        options = [opt.strip() for opt in options_str.split('|') if opt.strip()]
+        if len(options) < 2:
+            await message.answer("❌ <b>Недостаточно вариантов ответа</b>\n\nНужно минимум 2 варианта ответа.")
+            return
+
+        # Парсим номер правильного ответа
+        try:
+            correct = int(correct_str)
+            if correct < 0 or correct >= len(options):
+                await message.answer(
+                    f"❌ <b>Неверный номер правильного ответа</b>\n\nНомер должен быть от 0 до {len(options) - 1}.")
+                return
+        except ValueError:
+            await message.answer("❌ <b>Неверный номер правильного ответа</b>\n\nНомер должен быть числом.")
+            return
+
+        author_id = user.get("user_id")
+        api_token = user.get("api_token", "")
+
+        result = await api_client.create_question(api_token, title, text, options, correct, author_id)
+
+        if 'error' in result:
+            await message.answer(f"❌ <b>Ошибка:</b> {result['error']}")
+        else:
+            question_id = result.get('question_id', '?')
+            await message.answer(
+                f"✅ <b>Вопрос создан</b>\n\nID вопроса: {question_id}\nНазвание: {title}\nВариантов: {len(options)}\nПравильный ответ: {correct}")
+    except Exception as e:
+        logger.error(f"Ошибка при создании вопроса: {e}")
+        await message.answer(f"❌ <b>Ошибка:</b>\n\n{str(e)[:200]}...")
+
+
+# =========================
+# КОМАНДА MY_COURSES (МОИ КУРСЫ)
+# =========================
+@dp.message(Command("my_courses"))
+@rate_limit()
+@require_auth()
+@safe_send_message
+async def cmd_my_courses(message: Message, user: Dict):
+    """Получить мои курсы"""
+    api_token = user.get("api_token", "")
+    user_id = user.get("user_id")
+
+    try:
+        user_data = await api_client.get_user_courses_grades(api_token, user_id)
+        courses = user_data.get('courses', [])
+
+        if not courses:
+            await message.answer("📚 <b>У вас нет записанных курсов</b>")
+            return
+
+        text = "📚 <b>Ваши курсы:</b>\n\n"
+        for course in courses:
+            teacher = data_storage.users.get(course.get('teacher_id', 0))
+            teacher_name = teacher.get('full_name', 'Неизвестно') if teacher else 'Неизвестно'
+
+            text += f"🎓 <b>{course.get('name', 'Без названия')}</b> (ID: {course.get('id', '?')})\n"
+            text += f"   📝 Описание: {course.get('description', 'Нет описания')}\n"
+            text += f"   👨‍🏫 Преподаватель: {teacher_name}\n"
+            text += f"   📊 Статус: {'🟢 Активен' if course.get('is_active', True) else '🔴 Неактивен'}\n\n"
+
+        await message.answer(text)
+    except Exception as e:
+        logger.error(f"Ошибка при получении курсов пользователя: {e}")
+        await message.answer(f"❌ <b>Ошибка:</b>\n\n{str(e)[:200]}...")
+
+
+# =========================
+# КОМАНДА MY_GRADES (МОИ ОЦЕНКИ)
+# =========================
+@dp.message(Command("my_grades"))
+@rate_limit()
+@require_auth()
+@safe_send_message
+async def cmd_my_grades(message: Message, user: Dict):
+    """Получить мои оценки"""
+    api_token = user.get("api_token", "")
+    user_id = user.get("user_id")
+
+    try:
+        user_data = await api_client.get_user_courses_grades(api_token, user_id)
+        attempts = user_data.get('attempts', [])
+
+        if not attempts:
+            await message.answer("📊 <b>У вас нет завершенных тестов</b>")
+            return
+
+        # Фильтруем только завершенные попытки
+        completed_attempts = [a for a in attempts if a.get('status') == 'completed']
+
+        if not completed_attempts:
+            await message.answer("📊 <b>У вас нет завершенных тестов</b>")
+            return
+
+        text = "📊 <b>Ваши оценки:</b>\n\n"
+
+        # Группируем попытки по тестам
+        test_grades = {}
+        for attempt in completed_attempts:
+            test_id = attempt.get('test_id')
+            if test_id not in test_grades:
+                test_grades[test_id] = []
+            test_grades[test_id].append(attempt.get('score', 0))
+
+        # Выводим информацию по тестам
+        for test_id, grades in list(test_grades.items())[:10]:  # Ограничиваем вывод 10 тестами
+            test = data_storage.tests.get(test_id, {})
+            test_name = test.get('name', f'Тест {test_id}')
+            course_id = test.get('course_id', '?')
+            course = data_storage.courses.get(course_id, {})
+            course_name = course.get('name', f'Курс {course_id}')
+
+            avg_grade = sum(grades) / len(grades) if grades else 0
+            best_grade = max(grades) if grades else 0
+            attempts_count = len(grades)
+
+            text += f"🧪 <b>{test_name}</b>\n"
+            text += f"   📚 Курс: {course_name}\n"
+            text += f"   📈 Средний балл: {avg_grade:.1f}%\n"
+            text += f"   🏆 Лучший результат: {best_grade}%\n"
+            text += f"   🔢 Попыток: {attempts_count}\n\n"
+
+        if len(test_grades) > 10:
+            text += f"\n... и еще {len(test_grades) - 10} тестов"
+
+        # Общая статистика
+        total_attempts = len(completed_attempts)
+        avg_score = sum(a.get('score', 0) for a in completed_attempts) / total_attempts if total_attempts > 0 else 0
+        best_score = max(a.get('score', 0) for a in completed_attempts) if completed_attempts else 0
+
+        text += f"\n<b>Общая статистика:</b>\n"
+        text += f"  • Всего завершенных тестов: {total_attempts}\n"
+        text += f"  • Средний балл: {avg_score:.1f}%\n"
+        text += f"  • Лучший результат: {best_score}%\n"
+
+        await message.answer(text)
+    except Exception as e:
+        logger.error(f"Ошибка при получении оценок пользователя: {e}")
+        await message.answer(f"❌ <b>Ошибка:</b>\n\n{str(e)[:200]}...")
+
+
+# =========================
+# КОМАНДА MY_ATTEMPTS (МОИ ПОПЫТКИ)
+# =========================
+@dp.message(Command("my_attempts"))
+@rate_limit()
+@require_auth()
+@safe_send_message
+async def cmd_my_attempts(message: Message, user: Dict):
+    """Получить мои попытки"""
+    api_token = user.get("api_token", "")
+    user_id = user.get("user_id")
+
+    try:
+        user_data = await api_client.get_user_courses_grades(api_token, user_id)
+        attempts = user_data.get('attempts', [])
+
+        if not attempts:
+            await message.answer("📝 <b>У вас нет попыток прохождения тестов</b>")
+            return
+
+        text = "📝 <b>Ваши попытки:</b>\n\n"
+
+        for attempt in attempts[:10]:  # Ограничиваем вывод 10 попытками
+            test_id = attempt.get('test_id')
+            test = data_storage.tests.get(test_id, {})
+            test_name = test.get('name', f'Тест {test_id}')
+            status = attempt.get('status', 'unknown')
+            score = attempt.get('score', '?')
+
+            status_emoji = "🟢" if status == 'completed' else "🟡" if status == 'in_progress' else "⚪"
+            status_text = "Завершено" if status == 'completed' else "В процессе" if status == 'in_progress' else "Неизвестно"
+
+            text += f"{status_emoji} <b>{test_name}</b> (ID теста: {test_id})\n"
+            text += f"   📊 Статус: {status_text}\n"
+            if status == 'completed':
+                text += f"   🎯 Результат: {score}%\n"
+            text += f"   🆔 ID попытки: {attempt.get('id', '?')}\n\n"
+
+        if len(attempts) > 10:
+            text += f"\n... и еще {len(attempts) - 10} попыток"
+
+        # Статистика
+        completed = [a for a in attempts if a.get('status') == 'completed']
+        in_progress = [a for a in attempts if a.get('status') == 'in_progress']
+
+        text += f"<b>Статистика:</b>\n"
+        text += f"  • Всего попыток: {len(attempts)}\n"
+        text += f"  • Завершено: {len(completed)}\n"
+        text += f"  • В процессе: {len(in_progress)}\n"
+
+        if completed:
+            avg_score = sum(a.get('score', 0) for a in completed) / len(completed)
+            text += f"  • Средний балл: {avg_score:.1f}%\n"
+
+        await message.answer(text)
+    except Exception as e:
+        logger.error(f"Ошибка при получении попыток пользователя: {e}")
+        await message.answer(f"❌ <b>Ошибка:</b>\n\n{str(e)[:200]}...")
+
+
+# =========================
+# КОМАНДА START_TEST (НАЧАТЬ ТЕСТ)
+# =========================
+@dp.message(Command("start_test"))
+@rate_limit()
+@require_auth()
+@safe_send_message
+async def cmd_start_test(message: Message, user: Dict):
+    """Начать тест"""
+    args = message.text.split()
+    if len(args) < 2:
+        await message.answer(
+            "ℹ️ <b>Использование:</b> <code>/start_test ID_теста</code>\n\nПример: <code>/start_test 1</code>\n\nСначала посмотрите доступные тесты с помощью /tests")
+        return
+
+    try:
+        test_id = int(args[1])
+        api_token = user.get("api_token", "")
+        user_id = user.get("user_id")
+
+        # Проверяем, существует ли тест и активен ли он
+        test = data_storage.tests.get(test_id)
+        if not test:
+            await message.answer(f"❌ <b>Тест {test_id} не найден</b>")
+            return
+
+        if not test.get('is_active', False):
+            await message.answer(
+                f"❌ <b>Тест {test_id} не активен</b>\n\nЭтот тест временно недоступен для прохождения.")
+            return
+
+        # Проверяем, есть ли у пользователя активная попытка для этого теста
+        active_attempt = None
+        for attempt_id, attempt in data_storage.attempts.items():
+            if (attempt["user_id"] == user_id and
+                    attempt["test_id"] == test_id and
+                    attempt["status"] == "in_progress"):
+                active_attempt = attempt
+                break
+
+        if active_attempt:
+            await message.answer(
+                f"ℹ️ <b>У вас уже есть активная попытка для этого теста</b>\n\nID попытки: {active_attempt['id']}\nПродолжайте прохождение.")
+            return
+
+        # Создаем новую попытку
+        result = await api_client.create_attempt(api_token, test_id, user_id)
+
+        if 'error' in result:
+            await message.answer(f"❌ <b>Ошибка:</b> {result['error']}")
+        else:
+            attempt_id = result.get('attempt_id')
+            test_name = test.get('name', f'Тест {test_id}')
+
+            text = f"🚀 <b>Тест начат!</b>\n\n"
+            text += f"🧪 Тест: {test_name}\n"
+            text += f"🆔 ID попытки: {attempt_id}\n"
+            text += f"❓ Вопросов: {len(test.get('questions', []))}\n\n"
+            text += f"<b>Доступные команды:</b>\n"
+            text += f"/answer ID_попытки ID_вопроса Номер_ответа - ответить на вопрос\n"
+            text += f"/finish_test ID_попытки - завершить тест\n"
+            text += f"/my_attempts - мои попытки\n\n"
+            text += f"<b>Пример:</b>\n"
+            text += f"<code>/answer {attempt_id} 1 0</code> - ответить на вопрос 1 вариантом 0"
+
+            await message.answer(text)
+    except ValueError:
+        await message.answer("❌ <b>Неверный ID теста</b>\n\nID должен быть числом.")
+    except Exception as e:
+        logger.error(f"Ошибка при начале теста: {e}")
+        await message.answer(f"❌ <b>Ошибка:</b>\n\n{str(e)[:200]}...")
+
+
+# =========================
+# КОМАНДА ANSWER (ОТВЕТ НА ВОПРОС)
+# =========================
+@dp.message(Command("answer"))
+@rate_limit()
+@require_auth()
+@safe_send_message
+async def cmd_answer(message: Message, user: Dict):
+    """Ответить на вопрос в тесте"""
+    args = message.text.split()
+    if len(args) < 4:
+        await message.answer(
+            "ℹ️ <b>Использование:</b> <code>/answer ID_попытки ID_вопроса Номер_ответа</code>\n\nПример: <code>/answer 1001 1 0</code>\n\nПримечание: нумерация ответов с 0")
+        return
+
+    try:
+        attempt_id = int(args[1])
+        question_id = int(args[2])
+        answer_index = int(args[3])
+
+        api_token = user.get("api_token", "")
+
+        # Проверяем, что попытка принадлежит пользователю
+        attempt = data_storage.attempts.get(attempt_id)
+        if not attempt or attempt.get('user_id') != user.get('user_id'):
+            await message.answer("❌ <b>Попытка не найдена или не принадлежит вам</b>")
+            return
+
+        # Проверяем статус попытки
+        if attempt.get('status') != 'in_progress':
+            await message.answer(
+                "❌ <b>Попытка уже завершена</b>\n\nВы не можете отвечать на вопросы в завершенной попытке.")
+            return
+
+        result = await api_client.update_attempt_answer(api_token, attempt_id, question_id, answer_index)
+
+        if 'error' in result:
+            await message.answer(f"❌ <b>Ошибка:</b> {result['error']}")
+        else:
+            # Получаем информацию о вопросе
+            question = data_storage.questions.get(question_id, {})
+            options = question.get('options', [])
+            answer_text = options[answer_index] if answer_index < len(options) else f"Вариант {answer_index}"
+
+            await message.answer(
+                f"✅ <b>Ответ сохранен</b>\n\nВопрос: {question_id}\nОтвет: {answer_text}\nПопытка: {attempt_id}")
+    except ValueError:
+        await message.answer("❌ <b>Неверные параметры</b>\n\nВсе параметры должны быть числами.")
+    except Exception as e:
+        logger.error(f"Ошибка при сохранении ответа: {e}")
+        await message.answer(f"❌ <b>Ошибка:</b>\n\n{str(e)[:200]}...")
+
+
+# =========================
+# КОМАНДА FINISH_TEST (ЗАВЕРШИТЬ ТЕСТ)
+# =========================
+@dp.message(Command("finish_test"))
+@rate_limit()
+@require_auth()
+@safe_send_message
+async def cmd_finish_test(message: Message, user: Dict):
+    """Завершить тест и получить результат"""
+    args = message.text.split()
+    if len(args) < 2:
+        await message.answer(
+            "ℹ️ <b>Использование:</b> <code>/finish_test ID_попытки</code>\n\nПример: <code>/finish_test 1001</code>")
+        return
+
+    try:
+        attempt_id = int(args[1])
+        api_token = user.get("api_token", "")
+
+        # Проверяем, что попытка принадлежит пользователю
+        attempt = data_storage.attempts.get(attempt_id)
+        if not attempt or attempt.get('user_id') != user.get('user_id'):
+            await message.answer("❌ <b>Попытка не найдена или не принадлежит вам</b>")
+            return
+
+        # Проверяем статус попытки
+        if attempt.get('status') != 'in_progress':
+            await message.answer(f"ℹ️ <b>Попытка уже завершена</b>\n\nРезультат: {attempt.get('score', '?')}%")
+            return
+
+        result = await api_client.complete_attempt(api_token, attempt_id)
+
+        if 'error' in result:
+            await message.answer(f"❌ <b>Ошибка:</b> {result['error']}")
+        else:
+            score = result.get('score', 0)
+            test_id = attempt.get('test_id')
+            test = data_storage.tests.get(test_id, {})
+            test_name = test.get('name', f'Тест {test_id}')
+
+            # Определяем оценку
+            if score >= 90:
+                grade = "Отлично! 🎉"
+                emoji = "🟢"
+            elif score >= 70:
+                grade = "Хорошо! 👍"
+                emoji = "🟡"
+            elif score >= 50:
+                grade = "Удовлетворительно"
+                emoji = "🟠"
+            else:
+                grade = "Неудовлетворительно 😔"
+                emoji = "🔴"
+
+            text = f"{emoji} <b>Тест завершен!</b>\n\n"
+            text += f"🧪 Тест: {test_name}\n"
+            text += f"🆔 ID попытки: {attempt_id}\n"
+            text += f"🎯 Результат: {score}%\n"
+            text += f"📊 Оценка: {grade}\n\n"
+
+            if score < 50:
+                text += "💡 <b>Совет:</b> Рекомендуем повторить материал и попробовать снова.\n"
+            elif score < 70:
+                text += "💡 <b>Совет:</b> Неплохой результат! Можно улучшить.\n"
+            elif score < 90:
+                text += "💡 <b>Совет:</b> Хороший результат! Так держать!\n"
+            else:
+                text += "💡 <b>Совет:</b> Отличный результат! Вы прекрасно усвоили материал!\n"
+
+            text += "\nПосмотреть все свои попытки: /my_attempts"
+
+            await message.answer(text)
+    except ValueError:
+        await message.answer("❌ <b>Неверный ID попытки</b>\n\nID должен быть числом.")
+    except Exception as e:
+        logger.error(f"Ошибка при завершении теста: {e}")
+        await message.answer(f"❌ <b>Ошибка:</b>\n\n{str(e)[:200]}...")
+
+
+# =========================
 # ОБНОВЛЕННАЯ КОМАНДА HELP (ОБЩАЯ) - ДОСТУПНА ВСЕМ
 # =========================
 @dp.message(Command("help"))
@@ -2200,6 +3311,29 @@ async def cmd_help(message: Message):
 /profile — ваш профиль
 /logout — выход из системы
 /logout_all — выход на всех устройствах
+
+<b>Управление пользователями:</b>
+/users — список пользователей
+/user_info ID — информация о пользователе
+/update_fullname ID ФИО — изменить ФИО
+/block_user ID true/false — блокировка/разблокировка
+
+<b>Управление курсами:</b>
+/all_courses — все курсы
+/create_course Название; Описание — создать курс
+/course_info ID — информация о курсе
+/course_students ID — студенты курса
+/enroll_student ID_курса ID_студента — записать студента
+
+<b>Управление тестами:</b>
+/course_tests ID_курса — тесты курса
+/add_test ID_курса; Название — добавить тест
+/activate_test ID_курса ID_теста true/false — активация теста
+/test_results ID_теста — результаты теста
+
+<b>Управление вопросами:</b>
+/questions_list — все вопросы
+/create_question Название; Текст; Варианты; НомерПравильногоОтвета — создать вопрос
 
 <b>Специальные справки:</b>
 /help_teacher — подробная справка для преподавателей
@@ -2224,14 +3358,22 @@ async def cmd_help(message: Message):
 /logout — выход из системы
 /logout_all — выход на всех устройствах
 
+<b>Тестирование:</b>
+/tests — список доступных тестов
+/start_test ID — начать тест
+/answer ID_попытки ID_вопроса Номер_ответа — ответить на вопрос
+/finish_test ID_попытки — завершить тест
+
+<b>Мои данные:</b>
+/my_courses — мои курсы
+/my_grades — мои оценки
+/my_attempts — мои попытки
+
 <b>Специальные справки:</b>
 /help_student — подробная справка для студентов
 /help_test — команды для тестировщиков
 
 <b>Быстрые команды:</b>
-/tests — список тестов
-/my_courses — мои курсы
-/my_grades — мои оценки
 /ping — проверка работы бота
 /echo — эхо-команда
 """
@@ -2619,6 +3761,42 @@ async def cmd_tests(message: Message, user: Dict):
         logger.error(f"Ошибка при получении тестов: {e}")
         await message.answer(
             f"❌ <b>Ошибка при загрузке тестов:</b>\n\n{str(e)[:200]}...")
+
+
+# =========================
+# ОБРАБОТЧИК ДЛЯ КНОПКИ START_TEST
+# =========================
+@dp.callback_query(F.data.startswith("start_test_"))
+async def callback_start_test(callback: CallbackQuery):
+    """Обработка кнопки Начать тест"""
+    try:
+        test_id = int(callback.data[10:])
+
+        # Создаем фейковое сообщение для обработки командой /start_test
+        # Используем безопасный метод создания сообщения
+        class FakeMessage:
+            def __init__(self, original_message, test_id):
+                self.message_id = original_message.message_id
+                self.chat = original_message.chat
+                self.date = original_message.date
+                self.text = f"/start_test {test_id}"
+                self.from_user = original_message.from_user
+
+        fake_message = FakeMessage(callback.message, test_id)
+
+        # Получаем пользователя
+        chat_id = callback.from_user.id
+        current_user = await get_user(chat_id)
+
+        if not current_user or current_user.get("status") != UserStatus.AUTHORIZED:
+            await callback.answer("❌ Требуется авторизация", show_alert=True)
+            return
+
+        await cmd_start_test(fake_message, current_user)
+        await callback.answer()
+    except Exception as e:
+        logger.error(f"Ошибка в callback_start_test: {e}")
+        await callback.answer("❌ Ошибка при запуске теста", show_alert=True)
 
 
 # =========================
