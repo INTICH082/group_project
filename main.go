@@ -221,6 +221,25 @@ func ListCoursesHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(courses)
 }
 
+// HealthCheckHandler проверяет состояние API и базы данных
+func HealthCheckHandler(w http.ResponseWriter, r *http.Request) {
+	// Проверяем соединение с базой данных
+	if err := db.Ping(); err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]string{
+			"status":   "error",
+			"database": "unreachable",
+		})
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]string{
+		"status":  "ok",
+		"service": "api-logic",
+	})
+}
+
 // --- MAIN С ЛОГИКОЙ МАРШРУТИЗАЦИИ ---
 
 func main() {
@@ -249,7 +268,7 @@ func main() {
 		w.Write([]byte("Course archived"))
 	})))
 	// --- МАРШРУТЫ ---
-
+	mux.HandleFunc("/health", withLog(HealthCheckHandler))
 	// Вопросы (Questions)
 	mux.HandleFunc("/teacher/question/create", withLog(AuthMiddleware("quest:create", CreateQuestionHandler)))
 	mux.HandleFunc("/teacher/question/update", withLog(AuthMiddleware("quest:update", UpdateQuestionHandler)))
