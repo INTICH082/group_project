@@ -1,81 +1,39 @@
 package main
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
-	"io"
 	"log"
 	"net/http"
 	"os"
 	"strconv"
-	"strings"
-
-	"github.com/golang-jwt/jwt/v5"
 )
 
-var jwtKey = []byte("iplaygodotandclaimfun")
+// --- ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ---
 
-// MyCustomClaims согласно ТЗ
-type MyCustomClaims struct {
-	UserID      int      `json:"user_id"`
-	Role        string   `json:"role"`
-	Permissions []string `json:"permissions"`
-	IsBlocked   bool     `json:"is_blocked"`
-	jwt.RegisteredClaims
-}
-
-// --- MIDDLEWARE (Критически важно по ТЗ) ---
-
-func AuthMiddleware(requiredPermission string, next http.HandlerFunc) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		authHeader := r.Header.Get("Authorization")
-		if authHeader == "" {
-			http.Error(w, "Missing token", http.StatusUnauthorized)
-			return
-		}
-
-		tokenString := strings.TrimPrefix(authHeader, "Bearer ")
-		claims := &MyCustomClaims{}
-
-		token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
-			return jwtKey, nil
-		})
-
-		if err != nil || !token.Valid {
-			http.Error(w, "Invalid token", http.StatusUnauthorized)
-			return
-		}
-
-		// ТЗ: "Для пользователя запрещены все действия... отвечать кодом 418"
-		if claims.IsBlocked {
-			w.WriteHeader(http.StatusTeapot)
-			fmt.Fprint(w, "I'm a teapot (User is blocked)")
-			return
-		}
-
-		// Проверка разрешений
-		if requiredPermission != "" {
-			hasPerm := false
-			for _, p := range claims.Permissions {
-				if p == requiredPermission {
-					hasPerm = true
-					break
-				}
-			}
-			if !hasPerm {
-				http.Error(w, "Forbidden: "+requiredPermission, http.StatusForbidden)
-				return
-			}
-		}
-
-		// Передаем UserID через контекст, чтобы хендлеры его видели
-		ctx := context.WithValue(r.Context(), "user_id", claims.UserID)
-		next.ServeHTTP(w, r.WithContext(ctx))
+func getPort() string {
+	if p := os.Getenv("PORT"); p != "" {
+		return p
 	}
+	return "8080"
 }
 
-// --- ХЕНДЛЕРЫ ---
+// applyCORS добавляет заголовки для работы с фронтендом
+func applyCORS(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE, PATCH")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+
+		if r.Method == "OPTIONS" {
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
+// --- ОБРАБОТЧИКИ: ВОПРОСЫ ---
 
 func CreateQuestionHandler(w http.ResponseWriter, r *http.Request) {
 	var req struct {
@@ -85,38 +43,92 @@ func CreateQuestionHandler(w http.ResponseWriter, r *http.Request) {
 		Correct int      `json:"correct_option"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Bad JSON", http.StatusBadRequest)
+		http.Error(w, "Invalid JSON", http.StatusBadRequest)
 		return
 	}
 
-	// Берем ID автора из контекста (из токена)
-	authorID := r.Context().Value("user_id").(int)
+	authorID := r.Context().Value(ContextUserID).(int)
 	id, err := CreateQuestion(req.Title, req.Text, req.Options, req.Correct, authorID)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(map[string]int{"id": id})
 }
 
-// ТЗ: Активировать/Деактивировать тест
-func UpdateTestStatusHandler(w http.ResponseWriter, r *http.Request) {
-	testID, _ := strconv.Atoi(r.URL.Query().Get("id"))
-	active, _ := strconv.ParseBool(r.URL.Query().Get("active"))
+func UpdateQuestionHandler(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		ID      int      `json:"id"`
+		Text    string   `json:"text"`
+		Options []string `json:"options"`
+		Correct int      `json:"correct_option"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		return
+	}
 
-	err := SetTestStatus(testID, active)
+	if err := UpdateQuestion(req.ID, req.Text, req.Options, req.Correct); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.Write([]byte("Question updated to a new version"))
+}
+
+func DeleteQuestionHandler(w http.ResponseWriter, r *http.Request) {
+	id, _ := strconv.Atoi(r.URL.Query().Get("id"))
+	if err := DeleteQuestion(id); err != nil {
+		http.Error(w, err.Error(), http.StatusForbidden)
+		return
+	}
+	w.Write([]byte("Question marked as deleted"))
+}
+
+// --- ОБРАБОТЧИКИ: ТЕСТЫ ---
+
+func CreateTestHandler(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		CourseID    int    `json:"course_id"`
+		Name        string `json:"name"`
+		QuestionIDs []int  `json:"question_ids"`
+	}
+	json.NewDecoder(r.Body).Decode(&req)
+
+	id, err := CreateTest(req.CourseID, req.Name, req.QuestionIDs)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	fmt.Fprint(w, "Test status updated")
+	json.NewEncoder(w).Encode(map[string]int{"test_id": id})
 }
 
+func UpdateTestStatusHandler(w http.ResponseWriter, r *http.Request) {
+	testID, _ := strconv.Atoi(r.URL.Query().Get("id"))
+	active, _ := strconv.ParseBool(r.URL.Query().Get("active"))
+
+	if err := SetTestStatus(testID, active); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	fmt.Fprintf(w, "Test %d status set to %v", testID, active)
+}
+
+func GetFullTestHandler(w http.ResponseWriter, r *http.Request) {
+	testID, _ := strconv.Atoi(r.URL.Query().Get("id"))
+	test, err := GetFullTest(testID)
+	if err != nil {
+		http.Error(w, "Test not found", http.StatusNotFound)
+		return
+	}
+	json.NewEncoder(w).Encode(test)
+}
+
+// --- ОБРАБОТЧИКИ: ПРОХОЖДЕНИЕ ---
+
 func StartTestHandler(w http.ResponseWriter, r *http.Request) {
-	userID := r.Context().Value("user_id").(int)
+	userID := r.Context().Value(ContextUserID).(int)
 	testID, _ := strconv.Atoi(r.URL.Query().Get("test_id"))
 
 	attemptID, err := StartAttempt(userID, testID)
@@ -124,198 +136,36 @@ func StartTestHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-
-	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]int{"attempt_id": attemptID})
+}
+
+func SubmitAnswerHandler(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		AttemptID  int `json:"attempt_id"`
+		QuestionID int `json:"question_id"`
+		Option     int `json:"selected_option"`
+	}
+	json.NewDecoder(r.Body).Decode(&req)
+
+	if err := SubmitAnswer(req.AttemptID, req.QuestionID, req.Option); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.Write([]byte("Answer saved"))
 }
 
 func FinishTestHandler(w http.ResponseWriter, r *http.Request) {
 	attID, _ := strconv.Atoi(r.URL.Query().Get("attempt_id"))
-
 	score, err := FinishAttempt(attID)
 	if err != nil {
-		log.Printf("❌ Finish Error: %v", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-
-	// Возвращаем просто число или JSON, тест ожидает увидеть результат
-	fmt.Fprintf(w, "%.2f%%", score)
-}
-func SubmitAnswerHandler(w http.ResponseWriter, r *http.Request) {
-	// 1. Пробуем достать ID из URL Query
-	attID, _ := strconv.Atoi(r.URL.Query().Get("attempt_id"))
-	qID, _ := strconv.Atoi(r.URL.Query().Get("question_id"))
-
-	// 2. Читаем тело (там лежит выбранный вариант)
-	var req struct {
-		Option     int `json:"option"`
-		AttemptID  int `json:"attempt_id"`
-		QuestionID int `json:"question_id"`
-	}
-
-	bodyBytes, _ := io.ReadAll(r.Body)
-	if len(bodyBytes) > 0 {
-		json.Unmarshal(bodyBytes, &req)
-	}
-
-	// 3. Если в URL было пусто, берем из JSON
-	if attID == 0 {
-		attID = req.AttemptID
-	}
-	if qID == 0 {
-		qID = req.QuestionID
-	}
-
-	log.Printf("📝 Ответ студента: Attempt=%d, Question=%d, Option=%d", attID, qID, req.Option)
-
-	if attID == 0 || qID == 0 {
-		log.Printf("⚠️ Ошибка парсинга: att:%d, q:%d", attID, qID)
-		http.Error(w, fmt.Sprintf("строка ответа не найдена (attempt: %d, question: %d)", attID, qID), http.StatusBadRequest)
-		return
-	}
-
-	// 4. Вызываем функцию из database.go
-	err := SubmitAnswer(attID, qID, req.Option)
-	if err != nil {
-		log.Printf("❌ Ошибка SubmitAnswer: %v", err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	w.WriteHeader(http.StatusOK)
-	fmt.Fprint(w, "OK")
+	json.NewEncoder(w).Encode(map[string]interface{}{"score": score})
 }
 
-// Хендлер добавления вопроса в тест
-func AddQuestionToTestHandler(w http.ResponseWriter, r *http.Request) {
-	var tID, qID int
+// --- ОБРАБОТЧИКИ: КУРСЫ ---
 
-	// 1. Пробуем достать из URL Query (?test_id=..&question_id=..)
-	tID, _ = strconv.Atoi(r.URL.Query().Get("test_id"))
-	qID, _ = strconv.Atoi(r.URL.Query().Get("question_id"))
-
-	// 2. Если не нашли, пробуем альтернативные имена (?id=..&qid=..)
-	if tID == 0 {
-		tID, _ = strconv.Atoi(r.URL.Query().Get("id"))
-	}
-	if qID == 0 {
-		qID, _ = strconv.Atoi(r.URL.Query().Get("question_id"))
-	}
-
-	// 3. Если всё еще 0, пробуем прочитать JSON из Body
-	if tID == 0 || qID == 0 {
-		var req struct {
-			TestID     int `json:"test_id"`
-			QuestionID int `json:"question_id"`
-			ID         int `json:"id"` // на случай если тест шлет "id"
-		}
-		json.NewDecoder(r.Body).Decode(&req)
-		if tID == 0 {
-			if req.TestID != 0 {
-				tID = req.TestID
-			} else {
-				tID = req.ID
-			}
-		}
-		if qID == 0 {
-			qID = req.QuestionID
-		}
-	}
-
-	log.Printf("📥 Попытка добавить вопрос %d в тест %d", qID, tID)
-
-	if tID == 0 || qID == 0 {
-		http.Error(w, "Не удалось определить ID теста или вопроса", http.StatusBadRequest)
-		return
-	}
-
-	// Вызываем функцию из database.go
-	err := AddQuestionToTest(tID, qID)
-	if err != nil {
-		log.Printf("❌ Ошибка в AddQuestionToTest: %v", err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	w.WriteHeader(http.StatusOK)
-	fmt.Fprint(w, "OK")
-}
-
-// Хендлер удаления вопроса из теста
-func RemoveQuestionFromTestHandler(w http.ResponseWriter, r *http.Request) {
-	testID, _ := strconv.Atoi(r.URL.Query().Get("test_id"))
-	questionID, _ := strconv.Atoi(r.URL.Query().Get("question_id"))
-
-	err := RemoveQuestionFromTest(testID, questionID)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusForbidden)
-		return
-	}
-
-	w.WriteHeader(http.StatusOK)
-	fmt.Fprint(w, "Вопрос удален из теста")
-}
-func UpdateQuestionHandler(w http.ResponseWriter, r *http.Request) {
-	// 1. Пробуем взять ID из URL (?id=65)
-	idStr := r.URL.Query().Get("id")
-	qID, _ := strconv.Atoi(idStr)
-
-	var req struct {
-		ID            int      `json:"id"`
-		Title         string   `json:"title"`
-		Text          string   `json:"text"`
-		Options       []string `json:"options"`
-		CorrectOption int      `json:"correct"` // Проверь, чтобы это совпадало с JSON теста
-	}
-
-	// 2. Декодируем JSON
-	bodyBytes, _ := io.ReadAll(r.Body)
-	json.Unmarshal(bodyBytes, &req)
-
-	// 3. Если в URL не было ID, берем из JSON
-	if qID == 0 {
-		qID = req.ID
-	}
-
-	log.Printf("🔄 Обновление вопроса ID: %d", qID)
-
-	if qID == 0 {
-		http.Error(w, "ID вопроса не указан", http.StatusBadRequest)
-		return
-	}
-
-	// 4. Вызываем функцию из database.go
-	// Передай те поля, которые требует твоя функция UpdateQuestion
-	err := UpdateQuestion(qID, req.Text, req.Options, req.CorrectOption)
-	if err != nil {
-		log.Printf("❌ Ошибка в UpdateQuestion: %v", err)
-		http.Error(w, "Ошибка при обновлении вопроса: "+err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	w.WriteHeader(http.StatusOK)
-	fmt.Fprint(w, "OK")
-}
-
-// Добавим сразу и хендлер удаления (с проверкой на использование в тестах)
-func DeleteQuestionHandler(w http.ResponseWriter, r *http.Request) {
-	id, _ := strconv.Atoi(r.URL.Query().Get("id"))
-	if id == 0 {
-		http.Error(w, "Нужен id вопроса", http.StatusBadRequest)
-		return
-	}
-
-	err := DeleteQuestion(id) // Ту функцию, что я давал выше
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusForbidden) // 403 если вопрос в тесте
-		return
-	}
-
-	fmt.Fprint(w, "Вопрос помечен как удаленный")
-}
-
-// Хендлер записи на курс
 func EnrollHandler(w http.ResponseWriter, r *http.Request) {
 	cID, _ := strconv.Atoi(r.URL.Query().Get("course_id"))
 	uID, _ := strconv.Atoi(r.URL.Query().Get("user_id"))
@@ -324,184 +174,106 @@ func EnrollHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	fmt.Fprint(w, "Пользователь успешно записан на курс")
+	w.Write([]byte("User enrolled successfully"))
 }
-func GetTestsHandler(w http.ResponseWriter, r *http.Request) {
-	// 1. Извлекаем параметры из URL
-	courseID, _ := strconv.Atoi(r.URL.Query().Get("course_id"))
-	if courseID == 0 {
-		http.Error(w, "Параметр course_id обязателен", http.StatusBadRequest)
+
+// Хендлеры Пользователей
+func BlockUserHandler(w http.ResponseWriter, r *http.Request) {
+	uID, _ := strconv.Atoi(r.URL.Query().Get("id"))
+	block, _ := strconv.ParseBool(r.URL.Query().Get("block"))
+	if err := SetUserBlockStatus(uID, block); err != nil {
+		http.Error(w, err.Error(), 500)
+		return
+	}
+	fmt.Fprintf(w, "User block status: %v", block)
+}
+
+func ChangeFullNameHandler(w http.ResponseWriter, r *http.Request) {
+	targetID, _ := strconv.Atoi(r.URL.Query().Get("id"))
+	currentUserID := r.Context().Value(ContextUserID).(int)
+
+	// ТЗ: Себе можно (+), другому — только если есть спец. права
+	if targetID != currentUserID {
+		// Здесь можно добавить проверку на админа, если нужно
+		http.Error(w, "You can only change your own name", 403)
 		return
 	}
 
-	// 2. Получаем данные пользователя (которые положил кент в Middleware)
-	// Если кент еще не доделал Middleware, пока можно закомментировать проверку ниже
-	uIDVal := r.Context().Value("userID")
-	roleVal := r.Context().Value("role")
-
-	if uIDVal != nil && roleVal != nil {
-		userID := uIDVal.(int)
-		role := roleVal.(string)
-
-		// ТЗ: Студент видит тесты только если он записан на курс
-		if role == "student" {
-			enrolled, err := IsUserEnrolled(courseID, userID)
-			if err != nil || !enrolled {
-				http.Error(w, "Доступ запрещен: вы не записаны на этот курс", http.StatusForbidden)
-				return
-			}
-		}
-	}
-
-	// 3. Получаем тесты из БД
-	// (Убедись, что у тебя есть функция GetTestsByCourse в database.go)
-	tests, err := GetTestsByCourse(courseID)
-	if err != nil {
-		http.Error(w, "Ошибка БД: "+err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(tests)
+	name := r.URL.Query().Get("name")
+	UpdateUserFullName(targetID, name)
+	w.Write([]byte("Name updated"))
 }
-func UpdateTestHandler(w http.ResponseWriter, r *http.Request) {
-	// Если ты используешь стандартный mux, ID можно брать из Query или параметров
-	testID, _ := strconv.Atoi(r.URL.Query().Get("id"))
-	if testID == 0 {
-		// Попробуй достать из URL, если у тебя роутинг вида /tests/{id}
-		// testID = ...
-	}
 
+// Хендлеры Курсов
+func CreateCourseHandler(w http.ResponseWriter, r *http.Request) {
 	var req struct {
-		Name        string `json:"name"`
-		QuestionIDs []int  `json:"question_ids"`
-		IsActive    bool   `json:"is_active"`
+		Name      string
+		Desc      string
+		TeacherID int
 	}
-
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Bad JSON", http.StatusBadRequest)
-		return
-	}
-
-	log.Printf("📥 Обновление теста %d: вопросов пришло %d", testID, len(req.QuestionIDs))
-
-	err := UpdateTest(testID, req.Name, req.QuestionIDs, req.IsActive)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	w.WriteHeader(http.StatusOK)
-	fmt.Fprint(w, "OK")
-}
-func UniversalAddQuestionHandler(w http.ResponseWriter, r *http.Request) {
-	// Пробуем все варианты имен параметров, которые может слать тест
-	tID, _ := strconv.Atoi(r.URL.Query().Get("test_id"))
-	if tID == 0 {
-		tID, _ = strconv.Atoi(r.URL.Query().Get("id"))
-	}
-
-	qID, _ := strconv.Atoi(r.URL.Query().Get("question_id"))
-
-	log.Printf("📥 Добавление: Test=%d, Question=%d", tID, qID)
-
-	if tID == 0 || qID == 0 {
-		http.Error(w, "Missing test_id or question_id", http.StatusBadRequest)
-		return
-	}
-
-	if err := AddQuestionToTest(tID, qID); err != nil {
-		log.Printf("❌ Ошибка: %v", err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	w.WriteHeader(http.StatusOK)
+	json.NewDecoder(r.Body).Decode(&req)
+	id, _ := CreateCourse(req.Name, req.Desc, req.TeacherID)
+	json.NewEncoder(w).Encode(map[string]int{"course_id": id})
 }
 
-// Добавь этот хендлер в блок хендлеров в main.go
-func GetFullTestHandler(w http.ResponseWriter, r *http.Request) {
-	testID, _ := strconv.Atoi(r.URL.Query().Get("id"))
-	if testID == 0 {
-		http.Error(w, "Нужен id теста", http.StatusBadRequest)
-		return
-	}
-
-	// ВАЖНО: Тебе нужно будет добавить эту функцию GetFullTest в database.go
-	test, err := GetFullTest(testID)
-	if err != nil {
-		http.Error(w, "Тест не найден: "+err.Error(), http.StatusNotFound)
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(test)
+func ListCoursesHandler(w http.ResponseWriter, r *http.Request) {
+	courses, _ := GetAllCourses()
+	json.NewEncoder(w).Encode(courses)
 }
+
+// --- MAIN С ЛОГИКОЙ МАРШРУТИЗАЦИИ ---
+
 func main() {
+	// 1. Подключаем БД
 	InitDB()
+
 	mux := http.NewServeMux()
 
-	// --- МИДЛВАРИ И ЛОГИРОВАНИЕ ---
+	// 2. Middleware для логирования
 	withLog := func(next http.HandlerFunc) http.HandlerFunc {
 		return func(w http.ResponseWriter, r *http.Request) {
-			log.Printf("➡️ [%s] %s", r.Method, r.URL.String())
+			log.Printf("➡️  [%s] %s", r.Method, r.URL.String())
 			next(w, r)
 		}
 	}
+	// --- ПОЛЬЗОВАТЕЛИ (Управление) ---
+	mux.HandleFunc("/admin/user/block", withLog(AuthMiddleware("user:block:write", BlockUserHandler)))
+	mux.HandleFunc("/user/update-name", withLog(AuthMiddleware("user:fullName:write", ChangeFullNameHandler)))
 
-	// --- РЕСУРС: ВОПРОСЫ ---
+	// --- ДИСЦИПЛИНЫ (Управление) ---
+	mux.HandleFunc("/courses", withLog(AuthMiddleware("", ListCoursesHandler))) // Доступно всем
+	mux.HandleFunc("/teacher/course/create", withLog(AuthMiddleware("course:add", CreateCourseHandler)))
+	mux.HandleFunc("/teacher/course/delete", withLog(AuthMiddleware("course:del", func(w http.ResponseWriter, r *http.Request) {
+		id, _ := strconv.Atoi(r.URL.Query().Get("id"))
+		DeleteCourse(id)
+		w.Write([]byte("Course archived"))
+	})))
+	// --- МАРШРУТЫ ---
+
+	// Вопросы (Questions)
 	mux.HandleFunc("/teacher/question/create", withLog(AuthMiddleware("quest:create", CreateQuestionHandler)))
 	mux.HandleFunc("/teacher/question/update", withLog(AuthMiddleware("quest:update", UpdateQuestionHandler)))
 	mux.HandleFunc("/teacher/question/delete", withLog(AuthMiddleware("quest:del", DeleteQuestionHandler)))
-	mux.HandleFunc("/test/get", withLog(AuthMiddleware("course:read", GetFullTestHandler)))
-	// --- РЕСУРС: ТЕСТЫ ---
+
+	// Тесты (Tests)
 	mux.HandleFunc("/teacher/test/create", withLog(AuthMiddleware("course:test:add", CreateTestHandler)))
 	mux.HandleFunc("/teacher/test/status", withLog(AuthMiddleware("course:test:write", UpdateTestStatusHandler)))
-	mux.HandleFunc("/test/update", withLog(UpdateTestHandler))
-	mux.HandleFunc("/test/question/add", withLog(UniversalAddQuestionHandler))
-	mux.HandleFunc("/teacher/test/question/add", withLog(AuthMiddleware("test:quest:add", UniversalAddQuestionHandler)))
-	mux.HandleFunc("/teacher/test/question/remove", withLog(AuthMiddleware("test:quest:del", RemoveQuestionFromTestHandler)))
+	mux.HandleFunc("/test/get", withLog(AuthMiddleware("course:read", GetFullTestHandler)))
 
-	// --- РЕСУРС: КУРСЫ ---
-	mux.HandleFunc("/course/tests", withLog(AuthMiddleware("course:read", GetTestsHandler)))
-	mux.HandleFunc("/teacher/course/enroll", withLog(AuthMiddleware("course:user:add", EnrollHandler)))
-	mux.HandleFunc("/teacher/course/kick", withLog(AuthMiddleware("course:user:del", func(w http.ResponseWriter, r *http.Request) {
-		cID, _ := strconv.Atoi(r.URL.Query().Get("course_id"))
-		uID, _ := strconv.Atoi(r.URL.Query().Get("user_id"))
-		UnenrollUser(cID, uID)
-		fmt.Fprint(w, "Пользователь отчислен")
-	})))
-
-	// --- ПРОХОЖДЕНИЕ ТЕСТА (Студент) ---
+	// Прохождение (Право "" — доступно любому авторизованному)
 	mux.HandleFunc("/test/start", withLog(AuthMiddleware("", StartTestHandler)))
 	mux.HandleFunc("/test/answer", withLog(AuthMiddleware("", SubmitAnswerHandler)))
 	mux.HandleFunc("/test/finish", withLog(AuthMiddleware("", FinishTestHandler)))
 
-	// --- ГЛОБАЛЬНЫЙ CORS HANDLER ---
-	// Это позволит твоему HTML-файлу делать запросы к API
-	finalHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Разрешаем запросы с любого домена (для разработки)
-		w.Header().Set("Access-Control-Allow-Origin", "*")
-		w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
-		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+	// Курсы и Студенты
+	mux.HandleFunc("/teacher/course/enroll", withLog(AuthMiddleware("course:user:add", EnrollHandler)))
 
-		// Если это предварительный запрос (Preflight), сразу отвечаем 200
-		if r.Method == "OPTIONS" {
-			w.WriteHeader(http.StatusOK)
-			return
-		}
-
-		mux.ServeHTTP(w, r)
-	})
-
-	port := os.Getenv("PORT")
-	if port == "" {
-		port = "8080"
-	}
-
+	// 3. Запуск сервера с CORS
+	port := getPort()
 	log.Printf("🚀 API Server started on :%s", port)
-	log.Println("Secret verified: iplaygodotandclaimfun")
+	log.Printf("Secret verified: iplaygodotandclaimfun")
 
-	if err := http.ListenAndServe(":"+port, finalHandler); err != nil {
+	if err := http.ListenAndServe(":"+port, applyCORS(mux)); err != nil {
 		log.Fatal(err)
 	}
 }
