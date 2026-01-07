@@ -445,7 +445,9 @@ async def cmd_start(message: Message):
 
 {code_text}
 
-Нажмите "Проверить статус" после ввода кода.
+⏳ <b>Код действителен 5 минут</b>
+
+После ввода кода нажмите "Проверить статус".
 """
         else:
             provider_name = "GitHub" if provider == "github" else "Яндекс ID" if provider == "yandex" else provider
@@ -493,7 +495,7 @@ async def cmd_help(message: Message):
 <b>Авторизация:</b>
 /login — вход через код/GitHub/Яндекс
 /logout — выход
-/logout all=true — выход со всех устройств
+/logout_all — выход со всех устройств
 
 <b>Дисциплины и тесты:</b>
 /courses — список дисциплин
@@ -693,9 +695,9 @@ async def callback_start_test(callback: CallbackQuery, user: Dict):
 
 
 # =========================
-# ОБРАБОТКА ОТВЕТОВ НА ТЕСТ
+# ОБРАБОТКА ОТВЕТОВ НА ТЕСТ (ИСПРАВЛЕННЫЙ ФИЛЬТР)
 # =========================
-@dp.message()
+@dp.message(F.text & ~F.text.startswith('/'))
 @rate_limit()
 @safe_send_message
 async def handle_test_answers(message: Message):
@@ -706,11 +708,7 @@ async def handle_test_answers(message: Message):
     # Проверяем, есть ли активный тест
     context_data = await redis_client.get(f"test_context:{chat_id}")
     if not context_data:
-        # Если теста нет, проверяем команды
-        if text.startswith('/'):
-            return  # Обработка команд будет в других хендлерах
-        else:
-            await message.answer("🤖 <b>Неизвестная команда</b>\n\nИспользуйте /help для просмотра доступных команд.")
+        # Если теста нет и это не команда, игнорируем
         return
 
     # Обрабатываем ответ на вопрос теста
@@ -801,7 +799,7 @@ async def handle_test_answers(message: Message):
 
 
 # =========================
-# ОСТАЛЬНЫЕ КОМАНДЫ (БЕЗ ИЗМЕНЕНИЙ)
+# ОСТАЛЬНЫЕ КОМАНДЫ (ИСПРАВЛЕННЫЕ)
 # =========================
 @dp.message(Command("login"))
 @rate_limit()
@@ -855,6 +853,28 @@ async def cmd_logout(message: Message):
         await message.answer("✅ <b>Выход выполнен со всех устройств</b>")
     else:
         await message.answer("🚪 <b>Вы вышли из системы</b>")
+
+    stats.remove_active_user(chat_id)
+    await delete_user(chat_id)
+
+
+@dp.message(Command("logout_all"))
+@rate_limit()
+@safe_send_message
+async def cmd_logout_all(message: Message):
+    chat_id = message.chat.id
+    user = await get_user(chat_id)
+
+    if not user:
+        await message.answer("❌ <b>Вы не авторизованы</b>\n\nСначала выполните /login.")
+        return
+
+    if user.get("status") != UserStatus.AUTHORIZED:
+        await delete_user(chat_id)
+        await message.answer("🚪 <b>Процесс авторизации прерван</b>")
+        return
+
+    await message.answer("✅ <b>Выход выполнен со всех устройств</b>")
 
     stats.remove_active_user(chat_id)
     await delete_user(chat_id)
@@ -917,9 +937,16 @@ async def cmd_status(message: Message):
 
 @dp.message(Command("courses"))
 @rate_limit()
-@require_auth()
 @safe_send_message
-async def cmd_courses(message: Message, user: Dict):
+async def cmd_courses(message: Message):
+    """Список дисциплин"""
+    chat_id = message.chat.id
+    user = await get_user(chat_id)
+
+    if not user or user.get("status") != UserStatus.AUTHORIZED:
+        await message.answer("❌ <b>Требуется авторизация</b>\n\nИспользуйте /login для входа.")
+        return
+
     text = """
 🎓 <b>Доступные дисциплины</b>
 
