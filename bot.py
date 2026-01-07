@@ -208,10 +208,11 @@ auth_service = AuthServiceStub()
 
 
 # =========================
-# CORE SERVICE STUB
+# CORE SERVICE STUB - УЛУЧШЕННЫЙ ДЛЯ ПРОФИЛЯ И ТЕСТОВ
 # =========================
 class CoreServiceStub:
     async def get_tests(self, access_token: str) -> List[Dict]:
+        """Получить список доступных тестов (заглушка)"""
         return [
             {"id": 1, "name": "Python Basics", "description": "Основы программирования на Python",
              "questions_count": 10, "active": True},
@@ -220,19 +221,55 @@ class CoreServiceStub:
             {"id": 3, "name": "Docker", "description": "Контейнеризация и Docker", "questions_count": 12,
              "active": False},
             {"id": 4, "name": "Базы данных", "description": "SQL и NoSQL базы данных", "questions_count": 15,
+             "active": True},
+            {"id": 5, "name": "Веб-разработка", "description": "Основы HTML, CSS, JavaScript", "questions_count": 20,
              "active": True}
         ]
 
-    async def get_user_profile(self, access_token: str, user_id: str) -> Dict:
+    async def get_user_profile(self, user_data: Dict) -> Dict:
+        """Получить профиль пользователя (заглушка на основе данных из Redis)"""
+        user_id = user_data.get("user_id", "")
+        email = user_data.get("email", "")
+
+        # Генерируем фиктивные данные на основе email
+        if "test" in email:
+            name = "Тестовый Пользователь"
+            role = "student"
+            created_at = datetime.now().strftime("%Y-%m-%d")
+            completed_tests = 3
+            average_score = 78.5
+        else:
+            # Извлекаем имя из email
+            email_prefix = email.split("@")[0] if "@" in email else "user"
+            name = f"Пользователь {email_prefix.capitalize()}"
+            role = "student"
+            created_at = "2024-01-15"
+            completed_tests = 5
+            average_score = 85.0
+
         return {
             "id": user_id,
-            "email": f"user_{user_id[:8]}@example.com",
-            "name": "Иван Иванов",
-            "role": "student",
-            "created_at": "2024-01-01T00:00:00",
-            "completed_tests": 5,
-            "average_score": 85.5
+            "email": email,
+            "name": name,
+            "role": role,
+            "created_at": created_at,
+            "completed_tests": completed_tests,
+            "average_score": average_score,
+            "last_active": datetime.now().strftime("%Y-%m-%d %H:%M")
         }
+
+    async def get_test_details(self, test_id: int, access_token: str) -> Dict:
+        """Получить детали теста (заглушка)"""
+        tests_data = {
+            1: {"name": "Python Basics", "description": "Тест по основам Python", "duration": 30, "max_score": 100},
+            2: {"name": "Async IO", "description": "Асинхронное программирование", "duration": 25, "max_score": 100},
+            3: {"name": "Docker", "description": "Контейнеризация Docker", "duration": 40, "max_score": 100},
+            4: {"name": "Базы данных", "description": "SQL и NoSQL базы данных", "duration": 35, "max_score": 100},
+            5: {"name": "Веб-разработка", "description": "Основы веб-разработки", "duration": 45, "max_score": 100}
+        }
+
+        return tests_data.get(test_id, {"name": f"Тест {test_id}", "description": "Описание теста", "duration": 30,
+                                        "max_score": 100})
 
 
 core_service = CoreServiceStub()
@@ -293,7 +330,7 @@ def require_auth():
                 except:
                     pass
                 return
-            return await handler(event, *args, **kwargs)
+            return await handler(event, user, *args, **kwargs)
 
         return wrapper
 
@@ -367,7 +404,7 @@ async def get_all_authorized_users() -> List[Dict]:
 
 
 # =========================
-# COMMAND HANDLERS (ОСТАВЛЯЕМ РАБОЧИЕ КОМАНДЫ)
+# COMMAND HANDLERS
 # =========================
 @dp.message(Command("start"))
 @rate_limit()
@@ -460,8 +497,7 @@ async def cmd_help(message: Message):
 
 <b>Дисциплины и тесты:</b>
 /courses — список дисциплин
-/tests — список тестов
-/starttest id — начать тест
+/tests — список тестов с кнопками для начала
 
 <b>Профиль:</b>
 /profile — информация о пользователе
@@ -478,6 +514,295 @@ async def cmd_help(message: Message):
     await message.answer(help_text)
 
 
+# =========================
+# ПРОФИЛЬ ПОЛЬЗОВАТЕЛЯ - ЗАГЛУШКА
+# =========================
+@dp.message(Command("profile"))
+@rate_limit()
+@require_auth()
+@safe_send_message
+async def cmd_profile(message: Message, user: Dict):
+    """Информация о пользователе - заглушка на основе данных из Redis"""
+    chat_id = message.chat.id
+    current_user = await get_user(chat_id)
+
+    if not current_user:
+        await message.answer("❌ <b>Пользователь не найден</b>")
+        return
+
+    # Получаем профиль из заглушки
+    profile = await core_service.get_user_profile(current_user)
+
+    # Форматируем дату авторизации
+    auth_date = "Неизвестно"
+    if current_user.get("authorized_at"):
+        try:
+            auth_dt = datetime.fromisoformat(current_user["authorized_at"].replace('Z', '+00:00'))
+            auth_date = auth_dt.strftime("%d.%m.%Y %H:%M")
+        except:
+            auth_date = current_user["authorized_at"]
+
+    text = f"""
+👤 <b>Профиль пользователя</b>
+
+<b>Основная информация:</b>
+📧 <b>Email:</b> {profile.get('email', 'Неизвестно')}
+👤 <b>Имя:</b> {profile.get('name', 'Неизвестно')}
+🎭 <b>Роль:</b> {profile.get('role', 'student')}
+📅 <b>Дата регистрации:</b> {profile.get('created_at', 'Неизвестно')}
+🔑 <b>ID пользователя:</b> <code>{profile.get('id', 'Неизвестно')}</code>
+
+<b>Статистика обучения:</b>
+✅ <b>Пройдено тестов:</b> {profile.get('completed_tests', 0)}
+🏆 <b>Средний балл:</b> {profile.get('average_score', 0)}%
+📊 <b>Последняя активность:</b> {profile.get('last_active', 'Неизвестно')}
+
+<b>Сессия в Telegram:</b>
+🤖 <b>Авторизован:</b> {auth_date}
+🔐 <b>Статус:</b> 🟢 Активен
+"""
+
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="📊 Мои результаты", callback_data="my_results")],
+        [InlineKeyboardButton(text="⚙️ Настройки профиля", callback_data="profile_settings")],
+        [InlineKeyboardButton(text="🔄 Обновить данные", callback_data="refresh_profile")]
+    ])
+
+    await message.answer(text, reply_markup=kb)
+
+
+# =========================
+# СПИСОК ТЕСТОВ С КНОПКАМИ
+# =========================
+@dp.message(Command("tests"))
+@rate_limit()
+@require_auth()
+@safe_send_message
+async def cmd_tests(message: Message, user: Dict):
+    """Список доступных тестов с кнопками для начала"""
+    chat_id = message.chat.id
+    current_user = await get_user(chat_id)
+
+    if not current_user:
+        await message.answer("❌ <b>Требуется авторизация</b>\n\nИспользуйте /login для входа.")
+        return
+
+    # Получаем список тестов из заглушки
+    tests = await core_service.get_tests(current_user.get("access_token", ""))
+
+    # Активные тесты
+    active_tests = [t for t in tests if t.get("active")]
+    inactive_tests = [t for t in tests if not t.get("active")]
+
+    # Формируем текст
+    text = "📚 <b>Доступные тесты</b>\n\n"
+
+    if active_tests:
+        text += "🟢 <b>Активные тесты:</b>\n"
+        for test in active_tests:
+            text += f"  • <b>{test['name']}</b>\n"
+            text += f"    📝 {test['description']}\n"
+            text += f"    ❓ Вопросов: {test.get('questions_count', 0)}\n\n"
+
+    if inactive_tests:
+        text += "🔴 <b>Неактивные тесты:</b>\n"
+        for test in inactive_tests:
+            text += f"  • <b>{test['name']}</b> (недоступен)\n"
+
+    # Создаем кнопки для активных тестов
+    buttons = []
+    for test in active_tests:
+        buttons.append([
+            InlineKeyboardButton(
+                text=f"▶️ Начать тест: {test['name']}",
+                callback_data=f"start_test_{test['id']}"
+            )
+        ])
+
+    # Добавляем информационные кнопки
+    buttons.append([
+        InlineKeyboardButton(text="📊 Мои результаты", callback_data="my_test_results"),
+        InlineKeyboardButton(text="🔄 Обновить список", callback_data="refresh_tests")
+    ])
+
+    kb = InlineKeyboardMarkup(inline_keyboard=buttons)
+
+    if not active_tests:
+        text += "\n😔 <b>В данный момент нет активных тестов для прохождения.</b>"
+        kb = None
+
+    await message.answer(text, reply_markup=kb)
+
+
+# =========================
+# НАЧАЛО ТЕСТА ПО КНОПКЕ
+# =========================
+@dp.callback_query(F.data.startswith("start_test_"))
+@require_auth()
+async def callback_start_test(callback: CallbackQuery, user: Dict):
+    """Обработчик начала теста по кнопке"""
+    try:
+        test_id = int(callback.data[11:])
+        await callback.answer(f"🚀 Начинаем тест #{test_id}")
+
+        # Получаем детали теста из заглушки
+        test_details = await core_service.get_test_details(test_id, user.get("access_token", ""))
+
+        # Сохраняем контекст теста в Redis
+        test_context = {
+            "test_id": test_id,
+            "test_name": test_details.get("name", f"Тест {test_id}"),
+            "started_at": datetime.now().isoformat(),
+            "current_question": 0,
+            "answers": {},
+            "user_id": user.get("user_id"),
+            "chat_id": callback.message.chat.id
+        }
+
+        await redis_client.setex(
+            f"test_context:{callback.message.chat.id}",
+            3600,  # 1 час на прохождение
+            json.dumps(test_context)
+        )
+
+        # Отправляем первый вопрос (заглушка)
+        text = f"""
+🧪 <b>Начинаем тест: {test_details.get('name', f'Тест {test_id}')}</b>
+
+<b>Описание:</b> {test_details.get('description', 'Описание теста')}
+<b>Длительность:</b> {test_details.get('duration', 30)} минут
+<b>Максимальный балл:</b> {test_details.get('max_score', 100)}
+
+<b>Первый вопрос:</b>
+
+1. Что такое Python?
+   a) Язык программирования
+   b) Змея
+   c) Оба варианта верны
+
+Отправьте номер правильного ответа (1-3).
+"""
+
+        await callback.message.answer(text)
+
+    except ValueError:
+        await callback.answer("❌ Ошибка: неверный ID теста")
+    except Exception as e:
+        logger.error(f"Error starting test: {e}")
+        await callback.answer("❌ Ошибка при начале теста")
+
+
+# =========================
+# ОБРАБОТКА ОТВЕТОВ НА ТЕСТ
+# =========================
+@dp.message()
+@rate_limit()
+@safe_send_message
+async def handle_test_answers(message: Message):
+    """Обработка ответов на вопросы теста"""
+    chat_id = message.chat.id
+    text = message.text or ""
+
+    # Проверяем, есть ли активный тест
+    context_data = await redis_client.get(f"test_context:{chat_id}")
+    if not context_data:
+        # Если теста нет, проверяем команды
+        if text.startswith('/'):
+            return  # Обработка команд будет в других хендлерах
+        else:
+            await message.answer("🤖 <b>Неизвестная команда</b>\n\nИспользуйте /help для просмотра доступных команд.")
+        return
+
+    # Обрабатываем ответ на вопрос теста
+    try:
+        context = json.loads(context_data)
+        current_q = context.get("current_question", 0)
+
+        # Пример вопросов (в реальной системе брались бы из базы)
+        questions = [
+            {
+                "text": "Что такое Python?",
+                "options": ["Язык программирования", "Змея", "Оба варианта верны"],
+                "correct": 2  # Номер правильного ответа (0-based)
+            },
+            {
+                "text": "Что такое Docker?",
+                "options": ["Контейнеризация", "Игра", "Операционная система"],
+                "correct": 0
+            },
+            {
+                "text": "Что такое API?",
+                "options": ["Интерфейс программирования", "Аппаратный интерфейс", "Оба варианта"],
+                "correct": 0
+            }
+        ]
+
+        # Проверяем ответ
+        try:
+            answer = int(text.strip())
+            if answer < 1 or answer > 3:
+                raise ValueError
+        except:
+            await message.answer("❌ <b>Отправьте число от 1 до 3</b>")
+            return
+
+        # Сохраняем ответ
+        context["answers"][current_q] = answer - 1  # Сохраняем как 0-based
+        context["current_question"] = current_q + 1
+
+        # Проверяем, закончен ли тест
+        if current_q + 1 >= len(questions):
+            # Тест завершен
+            await redis_client.delete(f"test_context:{chat_id}")
+
+            # Подсчитываем результаты
+            correct = 0
+            for i, q in enumerate(questions):
+                if context["answers"].get(i) == q.get("correct", -1):
+                    correct += 1
+
+            score = int((correct / len(questions)) * 100) if questions else 0
+
+            text = f"""
+🎉 <b>Тест завершен!</b>
+
+<b>Результат:</b> {score}%
+<b>Правильных ответов:</b> {correct} из {len(questions)}
+
+🏆 <b>Отличная работа!</b>
+
+Ваши ответы сохранены. Результаты будут доступны в профиле.
+"""
+            await message.answer(text)
+        else:
+            # Показываем следующий вопрос
+            await redis_client.setex(
+                f"test_context:{chat_id}",
+                3600,
+                json.dumps(context)
+            )
+
+            question = questions[current_q + 1]
+            text = f"""
+<b>Вопрос {current_q + 2} из {len(questions)}:</b>
+{question['text']}
+
+1. {question['options'][0]}
+2. {question['options'][1]}
+3. {question['options'][2]}
+
+<b>Отправьте номер правильного ответа (1-3).</b>
+"""
+            await message.answer(text)
+
+    except Exception as e:
+        logger.error(f"Error processing test answer: {e}")
+        await message.answer("❌ <b>Ошибка при обработке ответа</b>")
+
+
+# =========================
+# ОСТАЛЬНЫЕ КОМАНДЫ (БЕЗ ИЗМЕНЕНИЙ)
+# =========================
 @dp.message(Command("login"))
 @rate_limit()
 @safe_send_message
@@ -590,37 +915,6 @@ async def cmd_status(message: Message):
     await message.answer(text)
 
 
-@dp.message(Command("tests"))
-@rate_limit()
-@require_auth()
-@safe_send_message
-async def cmd_tests(message: Message, user: Dict):
-    tests = await core_service.get_tests(user.get("access_token", ""))
-
-    text = "📚 <b>Доступные тесты</b>\n\n"
-    buttons = []
-
-    for test in tests:
-        status = "🟢" if test.get("active") else "🔴"
-        text += f"{status} <b>{test['name']}</b>\n"
-        text += f"📝 {test['description']}\n"
-        text += f"❓ Вопросов: {test.get('questions_count', 0)}\n\n"
-
-        if test.get("active"):
-            buttons.append([
-                InlineKeyboardButton(
-                    text=f"▶️ {test['name']}",
-                    callback_data=f"start_test_{test['id']}"
-                )
-            ])
-
-    if not buttons:
-        text += "\n😔 <b>Нет активных тестов для прохождения</b>"
-
-    kb = InlineKeyboardMarkup(inline_keyboard=buttons) if buttons else None
-    await message.answer(text, reply_markup=kb)
-
-
 @dp.message(Command("courses"))
 @rate_limit()
 @require_auth()
@@ -650,39 +944,6 @@ async def cmd_courses(message: Message, user: Dict):
    • Мониторинг
 """
     await message.answer(text)
-
-
-@dp.message(Command("profile"))
-@rate_limit()
-@require_auth()
-@safe_send_message
-async def cmd_profile(message: Message, user: Dict):
-    user_id = user.get("user_id", "")
-    access_token = user.get("access_token", "")
-
-    profile = await core_service.get_user_profile(access_token, user_id)
-
-    text = f"""
-👤 <b>Профиль пользователя</b>
-
-<b>Основная информация:</b>
-📧 <b>Email:</b> {profile.get('email', 'Неизвестно')}
-👤 <b>Имя:</b> {profile.get('name', 'Неизвестно')}
-🎭 <b>Роль:</b> {profile.get('role', 'student')}
-📅 <b>Дата регистрации:</b> {profile.get('created_at', 'Неизвестно')}
-
-<b>Статистика:</b>
-✅ <b>Пройдено тестов:</b> {profile.get('completed_tests', 0)}
-🏆 <b>Средний балл:</b> {profile.get('average_score', 0)}%
-
-<b>Статус:</b> 🟢 Активен
-"""
-    kb = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="📊 Мои результаты", callback_data="my_results")],
-        [InlineKeyboardButton(text="⚙️ Настройки", callback_data="settings")]
-    ])
-
-    await message.answer(text, reply_markup=kb)
 
 
 @dp.message(Command("services"))
@@ -772,9 +1033,6 @@ async def cmd_echo(message: Message):
         await message.answer("📢 <b>Напишите что-нибудь после /echo</b>\n\nПример: <code>/echo Привет, мир!</code>")
 
 
-# =========================
-# КОМАНДА ДЛЯ ТЕСТИРОВАНИЯ (БЫСТРАЯ АВТОРИЗАЦИЯ)
-# =========================
 @dp.message(Command("test_auth"))
 @rate_limit()
 @safe_send_message
@@ -815,7 +1073,7 @@ async def cmd_test_auth(message: Message):
 
 
 # =========================
-# CALLBACK HANDLERS
+# CALLBACK HANDLERS (ОСТАЛЬНЫЕ)
 # =========================
 @dp.callback_query(F.data == "login")
 async def callback_login(callback: CallbackQuery):
@@ -897,7 +1155,6 @@ async def callback_check_auth(callback: CallbackQuery):
 
         # Добавляем кнопку для тестирования
         try:
-            current_text = callback.message.text
             kb = InlineKeyboardMarkup(inline_keyboard=[
                 [InlineKeyboardButton(text="🔄 Проверить статус", callback_data=f"check_auth_{login_token}")],
                 [InlineKeyboardButton(text="🚀 Тест: Подтвердить авторизацию",
@@ -997,20 +1254,6 @@ async def callback_cancel_auth(callback: CallbackQuery):
     await callback.message.edit_text("🚪 <b>Авторизация отменена</b>", reply_markup=None)
 
 
-@dp.callback_query(F.data.startswith("start_test_"))
-@require_auth()
-async def callback_start_test(callback: CallbackQuery, user: Dict):
-    try:
-        test_id = int(callback.data[11:])
-        await callback.answer(f"🚀 Начинаем тест #{test_id}")
-
-        # Заглушка для начала теста
-        await callback.message.answer(f"🧪 <b>Начинаем тест #{test_id}</b>\n\nСкоро здесь будут вопросы...")
-
-    except ValueError:
-        await callback.answer("❌ Ошибка: неверный ID теста")
-
-
 # =========================
 # BACKGROUND TASK - ТОЛЬКО ДЛЯ ОЧИСТКИ
 # =========================
@@ -1038,18 +1281,6 @@ async def check_anonymous_users_task():
             logger.error(f"Error in check_anonymous_users_task: {e}")
 
         await asyncio.sleep(30)  # Проверка каждые 30 секунд
-
-
-# =========================
-# MESSAGE HANDLER
-# =========================
-@dp.message()
-@rate_limit()
-@safe_send_message
-async def handle_message(message: Message):
-    text = message.text or ""
-    if not text.startswith('/'):
-        await message.answer("🤖 <b>Неизвестная команда</b>\n\nИспользуйте /help для просмотра доступных команд.")
 
 
 # =========================
