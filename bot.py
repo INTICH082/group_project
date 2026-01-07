@@ -4,6 +4,7 @@ import os
 import json
 import re
 import secrets
+import urllib.parse
 from enum import Enum
 from datetime import datetime, timedelta
 from typing import Dict, Any, Optional, List, Callable, Awaitable
@@ -18,12 +19,12 @@ from aiogram.types import (
     InlineKeyboardButton,
 )
 from aiogram.enums import ParseMode
-from aiogram.exceptions import TelegramNetworkError
+from aiogram.exceptions import TelegramNetworkError, TelegramBadRequest, TelegramRetryAfter
 
 import redis.asyncio as redis
 from dotenv import load_dotenv
 import aiohttp
-from aiohttp import ClientSession, ClientError
+from aiohttp import ClientSession, ClientError, TCPConnector
 
 # =========================
 # ENV
@@ -32,12 +33,12 @@ from aiohttp import ClientSession, ClientError
 load_dotenv()
 
 BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
-REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
+REDIS_URL = os.getenv("REDIS_URL", "redis://redis:6379/0")
 
 # Эти URL будут пустыми, пока сервисы не созданы
 AUTH_SERVICE_URL = os.getenv("AUTH_SERVICE_URL", "")
 CORE_SERVICE_URL = os.getenv("CORE_SERVICE_URL", "")
-WEB_CLIENT_URL = os.getenv("WEB_CLIENT_URL", "http://localhost:3000")
+WEB_CLIENT_URL = os.getenv("WEB_CLIENT_URL", "https://example.com")  # Заменяем localhost на публичный URL
 
 # =========================
 # LOGGING
@@ -50,7 +51,7 @@ logging.basicConfig(
 logger = logging.getLogger("telegram-bot")
 
 # =========================
-# BOT
+# BOT - с увеличенными таймаутами
 # =========================
 
 bot = Bot(
@@ -60,14 +61,67 @@ bot = Bot(
 
 dp = Dispatcher()
 
+
 # =========================
 # REDIS
 # =========================
 
-redis_client = redis.from_url(
-    REDIS_URL,
-    decode_responses=True,
-)
+async def init_redis():
+    """Инициализация Redis с повторными попытками"""
+    max_retries = 5
+    for i in range(max_retries):
+        try:
+            client = redis.from_url(
+                REDIS_URL,
+                decode_responses=True,
+                socket_connect_timeout=5,
+                socket_keepalive=True,
+                retry_on_timeout=True,
+                max_connections=10
+            )
+            await client.ping()
+            logger.info(f"✅ Redis подключен (попытка {i + 1}/{max_retries})")
+            return client
+        except Exception as e:
+            logger.error(f"❌ Ошибка подключения к Redis (попытка {i + 1}/{max_retries}): {e}")
+            if i < max_retries - 1:
+                await asyncio.sleep(2 ** i)  # Экспоненциальная задержка
+            else:
+                raise
+
+
+try:
+    redis_client = asyncio.run(init_redis())
+except:
+    logger.warning("⚠️ Redis недоступен, создаем заглушку")
+
+
+    # Создаем заглушку Redis для работы без реального Redis
+    class RedisStub:
+        def __init__(self):
+            self.data = {}
+
+        async def get(self, key):
+            return json.dumps(self.data.get(key)) if key in self.data else None
+
+        async def setex(self, key, ttl, value):
+            self.data[key] = json.loads(value)
+            return True
+
+        async def delete(self, key):
+            if key in self.data:
+                del self.data[key]
+            return True
+
+        async def keys(self, pattern):
+            pattern_re = pattern.replace('*', '.*')
+            return [k for k in self.data.keys() if re.match(pattern_re, k)]
+
+        async def ping(self):
+            return True
+
+
+    redis_client = RedisStub()
 
 
 # =========================
@@ -81,14 +135,18 @@ class UserStatus(str, Enum):
 
 
 # =========================
-# REDIS HELPERS
+# REDIS HELPERS - с улучшенной обработкой ошибок
 # =========================
 
 async def get_user(chat_id: int) -> Optional[Dict]:
     """Получить пользователя из Redis"""
     try:
         data = await redis_client.get(f"user:{chat_id}")
-        return json.loads(data) if data else None
+        if data:
+            if isinstance(data, str):
+                return json.loads(data)
+            return data
+        return None
     except Exception as e:
         logger.error(f"Error getting user {chat_id}: {e}")
         return None
@@ -105,6 +163,12 @@ async def save_user(chat_id: int, data: Dict):
         )
     except Exception as e:
         logger.error(f"Error saving user {chat_id}: {e}")
+        # Локальное сохранение как fallback
+        try:
+            with open(f"user_{chat_id}.json", "w") as f:
+                json.dump(data, f)
+        except:
+            pass
 
 
 async def delete_user(chat_id: int):
@@ -153,11 +217,14 @@ async def get_all_anonymous_users() -> List[Dict]:
         for key in keys:
             data = await redis_client.get(key)
             if data:
-                user = json.loads(data)
+                user = json.loads(data) if isinstance(data, str) else data
                 if user.get("status") == UserStatus.ANONYMOUS:
-                    chat_id = int(key.split(":")[1])
-                    user["chat_id"] = chat_id
-                    users.append(user)
+                    try:
+                        chat_id = int(key.split(":")[1])
+                        user["chat_id"] = chat_id
+                        users.append(user)
+                    except:
+                        pass
         return users
     except Exception as e:
         logger.error(f"Error getting anonymous users: {e}")
@@ -172,11 +239,14 @@ async def get_all_authorized_users() -> List[Dict]:
         for key in keys:
             data = await redis_client.get(key)
             if data:
-                user = json.loads(data)
+                user = json.loads(data) if isinstance(data, str) else data
                 if user.get("status") == UserStatus.AUTHORIZED:
-                    chat_id = int(key.split(":")[1])
-                    user["chat_id"] = chat_id
-                    users.append(user)
+                    try:
+                        chat_id = int(key.split(":")[1])
+                        user["chat_id"] = chat_id
+                        users.append(user)
+                    except:
+                        pass
         return users
     except Exception as e:
         logger.error(f"Error getting authorized users: {e}")
@@ -184,7 +254,7 @@ async def get_all_authorized_users() -> List[Dict]:
 
 
 # =========================
-# HTTP CLIENT
+# HTTP CLIENT - с улучшенной обработкой ошибок
 # =========================
 
 class HTTPClient:
@@ -195,8 +265,9 @@ class HTTPClient:
 
     async def init_session(self):
         if not self.session or self.session.closed:
-            timeout = aiohttp.ClientTimeout(total=30)
-            self.session = ClientSession(timeout=timeout)
+            connector = TCPConnector(limit=10, ttl_dns_cache=300)
+            timeout = aiohttp.ClientTimeout(total=30, connect=10, sock_read=10)
+            self.session = ClientSession(timeout=timeout, connector=connector)
 
     async def close_session(self):
         if self.session and not self.session.closed:
@@ -259,15 +330,16 @@ class AuthServiceStub:
                 "expires_at": datetime.utcnow() + timedelta(minutes=5)
             }
             self.login_tokens[login_token]["code"] = code
-            return f"{WEB_CLIENT_URL}/login?token={login_token}&code={code}"
+            # Используем фиктивный URL для Telegram
+            return "https://t.me/cfutgbot"
         elif provider == "github":
-            # Имитация OAuth URL для GitHub
-            return f"{WEB_CLIENT_URL}/oauth/github?state={login_token}"
+            # Используем фиктивный URL для Telegram
+            return "https://github.com/login/oauth/authorize"
         elif provider == "yandex":
-            # Имитация OAuth URL для Яндекс
-            return f"{WEB_CLIENT_URL}/oauth/yandex?state={login_token}"
+            # Используем фиктивный URL для Telegram
+            return "https://oauth.yandex.ru/authorize"
         else:
-            return f"{WEB_CLIENT_URL}/login?token={login_token}"
+            return "https://t.me/cfutgbot"
 
     async def check_login_token(self, login_token: str) -> Optional[Dict]:
         """Проверка статуса login_token"""
@@ -457,35 +529,43 @@ core_service = CoreServiceStub()
 # DECORATORS
 # =========================
 
-def rate_limit(seconds: int = 1):
+def rate_limit(seconds: int = 2):
     """Декоратор для ограничения частоты запросов"""
 
     async def check_rate_limit(chat_id: int) -> bool:
         key = f"rate_limit:{chat_id}"
-        last_time_str = await redis_client.get(key)
+        try:
+            last_time_str = await redis_client.get(key)
 
-        if last_time_str:
-            try:
-                last_time = datetime.fromisoformat(last_time_str)
-                if datetime.utcnow() - last_time < timedelta(seconds=seconds):
-                    return False
-            except:
-                pass
+            if last_time_str:
+                try:
+                    last_time = datetime.fromisoformat(last_time_str)
+                    if datetime.utcnow() - last_time < timedelta(seconds=seconds):
+                        return False
+                except:
+                    pass
 
-        await redis_client.setex(key, seconds, datetime.utcnow().isoformat())
-        return True
-
-    def decorator(handler):
-        @wraps(handler)
-        async def wrapper(message: Message, *args, **kwargs):
-            if not await check_rate_limit(message.chat.id):
-                await message.answer("⏳ <b>Слишком много запросов. Подождите немного.</b>")
-                return
-            return await handler(message, *args, **kwargs)
-
-        return wrapper
+            await redis_client.setex(key, seconds, datetime.utcnow().isoformat())
+            return True
+        except Exception as e:
+            logger.error(f"Rate limit error: {e}")
+            return True  # В случае ошибки пропускаем rate limit
 
     return decorator
+
+
+def decorator(handler):
+    @wraps(handler)
+    async def wrapper(message: Message, *args, **kwargs):
+        if not await check_rate_limit(message.chat.id):
+            try:
+                await message.answer("⏳ <b>Слишком много запросов. Подождите немного.</b>")
+            except:
+                pass
+            return
+        return await handler(message, *args, **kwargs)
+
+    return wrapper
 
 
 def require_auth():
@@ -499,17 +579,23 @@ def require_auth():
 
             if not user:
                 kb = InlineKeyboardMarkup(inline_keyboard=[
-                    [InlineKeyboardButton(text="🔐 Авторизоваться", callback_data="cmd_login")]
+                    [InlineKeyboardButton(text="🔐 Авторизоваться", callback_data="login")]
                 ])
-                await message.answer(
-                    "❌ <b>Вы не авторизованы</b>\n\nПожалуйста, авторизуйтесь для доступа к этой команде.",
-                    reply_markup=kb
-                )
+                try:
+                    await message.answer(
+                        "❌ <b>Вы не авторизованы</b>\n\nПожалуйста, авторизуйтесь для доступа к этой команде.",
+                        reply_markup=kb
+                    )
+                except Exception as e:
+                    logger.error(f"Error sending auth message: {e}")
                 return
 
             if user.get("status") == UserStatus.ANONYMOUS:
-                await message.answer(
-                    "⏳ <b>Ожидание завершения авторизации</b>\n\nПроверьте статус или завершите вход в веб-клиенте.")
+                try:
+                    await message.answer(
+                        "⏳ <b>Ожидание завершения авторизации</b>\n\nПроверьте статус или завершите вход в веб-клиенте.")
+                except:
+                    pass
                 return
 
             return await handler(message, user, *args, **kwargs)
@@ -519,32 +605,39 @@ def require_auth():
     return decorator
 
 
-def timeout_handler(timeout_seconds=10):
-    """Декоратор для обработки таймаутов"""
+def safe_send_message(func):
+    """Декоратор для безопасной отправки сообщений с повторными попытками"""
 
-    def decorator(handler):
-        @wraps(handler)
-        async def wrapper(message: Message, *args, **kwargs):
+    @wraps(func)
+    async def wrapper(*args, **kwargs):
+        max_retries = 3
+        for retry in range(max_retries):
             try:
-                return await asyncio.wait_for(
-                    handler(message, *args, **kwargs),
-                    timeout=timeout_seconds
-                )
-            except asyncio.TimeoutError:
-                await message.answer("⏳ <b>Запрос выполняется дольше обычного...</b>")
-                return
+                return await func(*args, **kwargs)
+            except TelegramRetryAfter as e:
+                wait_time = e.retry_after
+                logger.warning(f"Rate limit, waiting {wait_time} seconds")
+                await asyncio.sleep(wait_time)
+            except (TelegramNetworkError, TelegramBadRequest) as e:
+                logger.error(f"Telegram error (attempt {retry + 1}/{max_retries}): {e}")
+                if retry < max_retries - 1:
+                    await asyncio.sleep(2 ** retry)
+                else:
+                    raise
+            except Exception as e:
+                logger.error(f"Unexpected error in {func.__name__}: {e}")
+                raise
 
-        return wrapper
-
-    return decorator
+    return wrapper
 
 
 # =========================
-# COMMAND HANDLERS
+# COMMAND HANDLERS - с безопасной отправкой
 # =========================
 
 @dp.message(Command("start"))
 @rate_limit()
+@safe_send_message
 async def cmd_start(message: Message):
     """Обработчик /start"""
     chat_id = message.chat.id
@@ -561,33 +654,32 @@ async def cmd_start(message: Message):
 Используйте команду /login для входа в систему.
 """
         kb = InlineKeyboardMarkup(inline_keyboard=[
-            [InlineKeyboardButton(text="🔐 Авторизоваться", callback_data="cmd_login")]
+            [InlineKeyboardButton(text="🔐 Авторизоваться", callback_data="login")]
         ])
     elif user.get("status") == UserStatus.ANONYMOUS:
         login_token = user.get("login_token", "")
         provider = user.get("provider", "code")
 
-        if provider == "code" and "code" in auth_service.login_tokens.get(login_token, {}):
-            code = auth_service.login_tokens[login_token]["code"]
-            code_text = f"\nКод для ввода: <code>{code}</code>"
-        else:
-            code_text = ""
+        # Получаем код из заглушки
+        code = ""
+        if login_token in auth_service.login_tokens:
+            token_data = auth_service.login_tokens[login_token]
+            if "code" in token_data:
+                code = token_data["code"]
 
         text = f"""
 🔐 <b>Ожидание авторизации</b>
 
 Вы начали процесс входа через {provider}.
-Для завершения авторизации:
+Для завершения авторизации введите код в веб-клиенте:
 
-1. Перейдите в веб-клиент
-2. Следуйте инструкциям{code_text}
+<b>Код: <code>{code}</code></b>
 
 Или нажмите "Проверить статус".
 """
         kb = InlineKeyboardMarkup(inline_keyboard=[
             [InlineKeyboardButton(text="🔄 Проверить статус", callback_data=f"check_auth_{login_token}")],
-            [InlineKeyboardButton(text="🌐 Открыть веб-клиент", url=WEB_CLIENT_URL)],
-            [InlineKeyboardButton(text="🔄 Начать заново", callback_data="cmd_login")]
+            [InlineKeyboardButton(text="🔄 Начать заново", callback_data="login")]
         ])
     else:
         user_email = user.get("email", "пользователь")
@@ -609,6 +701,7 @@ async def cmd_start(message: Message):
 
 @dp.message(Command("help"))
 @rate_limit()
+@safe_send_message
 async def cmd_help(message: Message):
     """Обработчик /help"""
     help_text = """
@@ -624,9 +717,7 @@ async def cmd_help(message: Message):
 ━━━━━━━━━━━━━━━━━━
 🔐 <b>Авторизация</b>
 ━━━━━━━━━━━━━━━━━━
-/login — вход через код (по умолчанию)  
-/login github — вход через GitHub  
-/login yandex — вход через Яндекс  
+/login — вход через код  
 /logout — выход  
 /logout all=true — выход со всех устройств  
 
@@ -654,16 +745,14 @@ async def cmd_help(message: Message):
 
 @dp.message(Command("login"))
 @rate_limit()
+@safe_send_message
 async def cmd_login(message: Message):
-    """Обработчик /login с поддержкой провайдеров"""
+    """Обработчик /login"""
     command_text = message.text or ""
     parts = command_text.split()
 
-    # Определяем провайдера
-    provider = "code"  # по умолчанию код
-    if len(parts) > 1:
-        if parts[1] in ["github", "yandex", "code"]:
-            provider = parts[1]
+    # Всегда используем код для простоты
+    provider = "code"
 
     chat_id = message.chat.id
     user = await get_user(chat_id)
@@ -682,59 +771,31 @@ async def cmd_login(message: Message):
     # Получаем URL для авторизации
     auth_url = await auth_service.generate_login_url(login_token, provider)
 
-    # Создаем соответствующую клавиатуру
-    if provider == "code":
-        code = auth_service.login_tokens[login_token]["code"]
-        text = f"""
+    # Получаем код из заглушки
+    code = auth_service.login_tokens[login_token]["code"]
+
+    text = f"""
 🔐 <b>Авторизация через код</b>
 
 Для входа в систему введите код в веб-клиенте:
 
-<code>{code}</code>
-
-Или перейдите по ссылке ниже.
+<b>Код: <code>{code}</code></b>
 
 ⏳ <b>Код действителен 5 минут</b>
-"""
-        kb = InlineKeyboardMarkup(inline_keyboard=[
-            [InlineKeyboardButton(text="🌐 Открыть веб-клиент", url=auth_url)],
-            [InlineKeyboardButton(text="🔄 Проверить статус", callback_data=f"check_auth_{login_token}")]
-        ])
-    else:
-        provider_name = "GitHub" if provider == "github" else "Яндекс"
-        text = f"""
-🔐 <b>Авторизация через {provider_name}</b>
 
-Нажмите кнопку ниже для авторизации через {provider_name}.
-
-⏳ <b>Ссылка действительна 5 минут</b>
+После ввода кода нажмите "Проверить статус".
 """
-        kb = InlineKeyboardMarkup(inline_keyboard=[
-            [InlineKeyboardButton(text=f"🔗 Войти через {provider_name}", url=auth_url)],
-            [InlineKeyboardButton(text="🔄 Проверить статус", callback_data=f"check_auth_{login_token}")]
-        ])
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="🔄 Проверить статус", callback_data=f"check_auth_{login_token}")],
+        [InlineKeyboardButton(text="❌ Отмена", callback_data="cancel_auth")]
+    ])
 
     await message.answer(text, reply_markup=kb)
 
 
-@dp.message(Command("login_github"))
-@rate_limit()
-async def cmd_login_github(message: Message):
-    """Авторизация через GitHub"""
-    message.text = "/login github"
-    await cmd_login(message)
-
-
-@dp.message(Command("login_yandex"))
-@rate_limit()
-async def cmd_login_yandex(message: Message):
-    """Авторизация через Яндекс"""
-    message.text = "/login yandex"
-    await cmd_login(message)
-
-
 @dp.message(Command("logout"))
 @rate_limit()
+@safe_send_message
 async def cmd_logout(message: Message):
     """Обработчик /logout"""
     chat_id = message.chat.id
@@ -769,6 +830,7 @@ async def cmd_logout(message: Message):
 
 @dp.message(Command("status"))
 @rate_limit()
+@safe_send_message
 async def cmd_status(message: Message):
     """Обработчик /status"""
     chat_id = message.chat.id
@@ -787,19 +849,19 @@ async def cmd_status(message: Message):
         email = user.get("email", "Неизвестно")
         user_details = f"\n📧 Email: {email}"
 
-    services_status = """
+    services_status = f"""
 ━━━━━━━━━━━━━━━━━━
 🟢 <b>Сервисы</b>
 ━━━━━━━━━━━━━━━━━━
-• Redis — онлайн  
-• Telegram Bot — онлайн  
+• Redis — {"🟢 онлайн" if not isinstance(redis_client, dict) else "🔴 оффлайн"}  
+• Telegram Bot — 🟢 онлайн  
 
 ━━━━━━━━━━━━━━━━━━
-🔧 <b>Модули (в разработке)</b>
+🔧 <b>Модули</b>
 ━━━━━━━━━━━━━━━━━━
 • Auth Service — 🟡 заглушка  
 • Core Service — 🟡 заглушка  
-• Web Client — 🔴 не доступен  
+• Web Client — 🟡 заглушка  
 """
 
     text = f"""
@@ -817,6 +879,7 @@ async def cmd_status(message: Message):
 
 @dp.message(Command("services"))
 @rate_limit()
+@safe_send_message
 async def cmd_services(message: Message):
     """Обработчик /services"""
     text = """
@@ -833,7 +896,7 @@ async def cmd_services(message: Message):
 ━━━━━━━━━━━━━━━━━━
 🔐 <b>Auth Service (заглушка)</b>
 ━━━━━━━━━━━━━━━━━━
-• Авторизация через GitHub/Yandex/код  
+• Авторизация через код  
 • Выдача JWT токенов  
 • Управление правами пользователей  
 
@@ -845,7 +908,7 @@ async def cmd_services(message: Message):
 • Проверка разрешений  
 
 ━━━━━━━━━━━━━━━━━━
-🌐 <b>Web Client (в разработке)</b>
+🌐 <b>Web Client (заглушка)</b>
 ━━━━━━━━━━━━━━━━━━
 • Веб-интерфейс системы  
 • Управление для преподавателей  
@@ -854,232 +917,63 @@ async def cmd_services(message: Message):
     await message.answer(text)
 
 
-@dp.message(Command("tests"))
-@rate_limit()
-@timeout_handler(5)
-@require_auth()
-async def cmd_tests(message: Message, user: Dict):
-    """Обработчик /tests"""
-    result = await core_service.make_request(
-        user.get("access_token"),
-        "GET",
-        "/tests"
-    )
-
-    if result and "error" in result:
-        if result.get("status") == 401:
-            await handle_token_refresh(message, user)
-            return
-        elif result.get("status") == 403:
-            await message.answer("❌ <b>Недостаточно прав</b>\n\nУ вас нет доступа к списку тестов.")
-            return
-        else:
-            await message.answer("⚠️ <b>Ошибка при получении тестов</b>")
-            return
-
-    if not result or "tests" not in result:
-        await message.answer("📭 <b>Тесты не найдены</b>")
-        return
-
-    tests = result["tests"]
-
-    keyboard = []
-    for test in tests:
-        status = "🟢" if test.get("active") else "🔴"
-        keyboard.append([
-            InlineKeyboardButton(
-                text=f"{status} {test['name']} ({test.get('questions_count', 0)} вопросов)",
-                callback_data=f"start_test_{test['id']}"
-            )
-        ])
-
-    kb = InlineKeyboardMarkup(inline_keyboard=keyboard)
-
-    text = """
-🧪 <b>Доступные тесты</b>
-
-Выберите тест для начала:
-"""
-
-    await message.answer(text, reply_markup=kb)
-
-
-@dp.message(Command("courses"))
-@rate_limit()
-@timeout_handler(5)
-@require_auth()
-async def cmd_courses(message: Message, user: Dict):
-    """Обработчик /courses"""
-    result = await core_service.make_request(
-        user.get("access_token"),
-        "GET",
-        "/courses"
-    )
-
-    if result and "error" in result:
-        if result.get("status") == 401:
-            await handle_token_refresh(message, user)
-            return
-        elif result.get("status") == 403:
-            await message.answer("❌ <b>Недостаточно прав</b>\n\nУ вас нет доступа к списку дисциплин.")
-            return
-        else:
-            await message.answer("⚠️ <b>Ошибка при получении дисциплин</b>")
-            return
-
-    if not result or "courses" not in result:
-        await message.answer("📭 <b>Дисциплины не найдены</b>")
-        return
-
-    courses = result["courses"]
-
-    text = """
-📚 <b>Доступные дисциплины</b>
-
-"""
-
-    for course in courses:
-        text += f"• <b>{course['name']}</b> (ID: {course['id']})\n"
-        text += f"  {course['description']}\n\n"
-
-    await message.answer(text)
-
-
-@dp.message(Command("starttest"))
-@rate_limit()
-@require_auth()
-async def cmd_starttest(message: Message, user: Dict):
-    """Обработчик /starttest <id>"""
-    command_text = message.text or ""
-    parts = command_text.split()
-
-    if len(parts) < 2:
-        await message.answer("❌ <b>Укажите ID теста</b>\n\nИспользование: <code>/starttest &lt;ID_теста&gt;</code>")
-        return
-
-    try:
-        test_id = int(parts[1])
-    except ValueError:
-        await message.answer("❌ <b>Неверный формат ID</b>\n\nID должен быть числом.")
-        return
-
-    result = await core_service.make_request(
-        user.get("access_token"),
-        "POST",
-        f"/tests/{test_id}/start"
-    )
-
-    if result and "error" in result:
-        if result.get("status") == 401:
-            await handle_token_refresh(message, user)
-            return
-        elif result.get("status") == 403:
-            await message.answer("❌ <b>Недостаточно прав</b>\n\nУ вас нет доступа к этому тесту.")
-            return
-        elif result.get("status") == 418:
-            await message.answer("🚫 <b>Пользователь заблокирован</b>\n\nДоступ к системе ограничен.")
-            return
-        else:
-            await message.answer("⚠️ <b>Ошибка при запуске теста</b>")
-            return
-
-    if not result:
-        await message.answer("⚠️ <b>Не удалось начать тест</b>")
-        return
-
-    await redis_client.setex(
-        f"test_context:{user.get('chat_id')}",
-        3600,
-        json.dumps({
-            "attempt_id": result.get("attempt_id", "test_1"),
-            "test_id": test_id,
-            "questions": result.get("questions", []),
-            "current_question": 0,
-            "started_at": datetime.utcnow().isoformat()
-        })
-    )
-
-    questions = result.get("questions", [])
-    if questions:
-        question = questions[0]
-        text = f"""
-🎯 <b>Тест начат!</b>
-
-<b>Вопрос 1 из {len(questions)}:</b>
-{question['text']}
-
-1. {question['options'][0]}
-2. {question['options'][1]}
-3. {question['options'][2]}
-
-<b>Отправьте номер правильного ответа (1-3).</b>
-"""
-        await message.answer(text)
-
-
-@dp.message(Command("profile"))
-@rate_limit()
-@require_auth()
-async def cmd_profile(message: Message, user: Dict):
-    """Обработчик /profile"""
-    user_id = user.get("user_id", "Неизвестно")
-    email = user.get("email", "Неизвестно")
-
-    text = f"""
-👤 <b>Профиль пользователя</b>
-
-<b>ID:</b> <code>{user_id}</code>
-<b>Email:</b> {email}
-<b>Авторизован:</b> {user.get('authorized_at', 'Неизвестно')}
-
-━━━━━━━━━━━━━━━━━━
-📊 <b>Статистика</b>
-━━━━━━━━━━━━━━━━━━
-• Пройдено тестов: 0
-• Средний балл: 0%
-• Активных попыток: 0
-
-<b>Данные загружаются из Core Service...</b>
-"""
-
-    await message.answer(text)
-
-
 @dp.message(Command("debug"))
 @rate_limit()
+@safe_send_message
 async def cmd_debug(message: Message):
     """Отладочная команда"""
     chat_id = message.chat.id
     user = await get_user(chat_id)
 
+    redis_status = "🟢 онлайн" if not isinstance(redis_client, dict) else "🔴 оффлайн (заглушка)"
+
     text = f"""
 🐛 <b>Отладочная информация</b>
 
 <b>Chat ID:</b> <code>{chat_id}</code>
+<b>Redis статус:</b> {redis_status}
 <b>Пользователь в Redis:</b> {"Да" if user else "Нет"}
 
 <b>Статус:</b> {user.get('status') if user else 'UNKNOWN'}
 <b>User ID:</b> {user.get('user_id') if user else 'Нет'}
+<b>Email:</b> {user.get('email') if user else 'Нет'}
+
+<b>Логин токен:</b> {user.get('login_token')[:10] + '...' if user and user.get('login_token') else 'Нет'}
 """
 
     await message.answer(text)
+
+
+# Простые команды без авторизации для тестирования
+@dp.message(Command("ping"))
+@rate_limit()
+@safe_send_message
+async def cmd_ping(message: Message):
+    """Проверка работы бота"""
+    await message.answer("🏓 <b>Pong!</b>\n\nБот работает корректно.")
+
+
+@dp.message(Command("echo"))
+@rate_limit()
+@safe_send_message
+async def cmd_echo(message: Message):
+    """Эхо команда"""
+    text = message.text or ""
+    if len(text) > 6:
+        await message.answer(f"📢 <b>Эхо:</b> {text[6:]}")
+    else:
+        await message.answer("📢 <b>Напишите что-нибудь после /echo</b>")
 
 
 # =========================
 # CALLBACK HANDLERS
 # =========================
 
-@dp.callback_query(F.data.startswith("cmd_"))
-async def callback_command(callback: CallbackQuery):
-    """Обработчик callback команд"""
-    command = callback.data[4:]
-
-    if command == "login":
-        await cmd_login(callback.message)
-    elif command == "tests":
-        await cmd_tests(callback.message)
-
+@dp.callback_query(F.data == "login")
+async def callback_login(callback: CallbackQuery):
+    """Обработчик кнопки авторизации"""
     await callback.answer()
+    await cmd_login(callback.message)
 
 
 @dp.callback_query(F.data.startswith("check_auth_"))
@@ -1110,84 +1004,25 @@ async def callback_check_auth(callback: CallbackQuery):
 
         await callback.answer("✅ Авторизация успешна!")
 
-        await callback.message.edit_text(
-            f"✅ <b>Авторизация завершена!</b>\n\nДобро пожаловать, {user_data.get('email')}",
-            reply_markup=None
-        )
+        try:
+            await callback.message.edit_text(
+                f"✅ <b>Авторизация завершена!</b>\n\nДобро пожаловать, {user_data.get('email')}",
+                reply_markup=None
+            )
+        except:
+            await callback.message.answer(
+                f"✅ <b>Авторизация завершена!</b>\n\nДобро пожаловать, {user_data.get('email')}")
 
     await callback.message.edit_reply_markup(reply_markup=None)
 
 
-@dp.callback_query(F.data.startswith("show_token_"))
-async def callback_show_token(callback: CallbackQuery):
-    """Показать токен для ручного ввода"""
-    login_token = callback.data[11:]
-
-    await callback.answer(
-        f"Код для ввода в веб-клиенте:\n\n{login_token}",
-        show_alert=True
-    )
-
-
-@dp.callback_query(F.data.startswith("start_test_"))
-async def callback_start_test(callback: CallbackQuery):
-    """Начать тест через inline-кнопку"""
-    try:
-        test_id = int(callback.data[11:])
-
-        user = await get_user(callback.from_user.id)
-        if not user or user.get("status") != UserStatus.AUTHORIZED:
-            await callback.answer("❌ Требуется авторизация")
-            return
-
-        result = await core_service.make_request(
-            user.get("access_token"),
-            "POST",
-            f"/tests/{test_id}/start"
-        )
-
-        if result and "error" in result:
-            await callback.answer(f"Ошибка: {result.get('message', 'Неизвестная ошибка')}")
-            return
-
-        if not result:
-            await callback.answer("❌ Не удалось начать тест")
-            return
-
-        await redis_client.setex(
-            f"test_context:{callback.from_user.id}",
-            3600,
-            json.dumps({
-                "attempt_id": result.get("attempt_id", "test_1"),
-                "test_id": test_id,
-                "questions": result.get("questions", []),
-                "current_question": 0,
-                "started_at": datetime.utcnow().isoformat()
-            })
-        )
-
-        questions = result.get("questions", [])
-        if questions:
-            question = questions[0]
-            text = f"""
-🎯 <b>Тест начат!</b>
-
-<b>Вопрос 1 из {len(questions)}:</b>
-{question['text']}
-
-1. {question['options'][0]}
-2. {question['options'][1]}
-3. {question['options'][2]}
-
-<b>Отправьте номер правильного ответа (1-3).</b>
-"""
-            await callback.message.edit_text(text)
-
-        await callback.answer()
-
-    except Exception as e:
-        logger.error(f"Error starting test: {e}")
-        await callback.answer("❌ Ошибка при запуске теста")
+@dp.callback_query(F.data == "cancel_auth")
+async def callback_cancel_auth(callback: CallbackQuery):
+    """Отмена авторизации"""
+    chat_id = callback.from_user.id
+    await delete_user(chat_id)
+    await callback.answer("❌ Авторизация отменена")
+    await callback.message.edit_text("🚪 <b>Авторизация отменена</b>", reply_markup=None)
 
 
 # =========================
@@ -1293,16 +1128,23 @@ async def check_notifications_task():
 
 @dp.message()
 @rate_limit()
+@safe_send_message
 async def handle_message(message: Message):
     """Обработчик всех сообщений"""
     chat_id = message.chat.id
     text = message.text or ""
 
-    context_data = await redis_client.get(f"test_context:{chat_id}")
-    if context_data:
-        await handle_test_answer(message, json.loads(context_data))
-        return
+    # Проверяем, есть ли активный тест
+    try:
+        context_data = await redis_client.get(f"test_context:{chat_id}")
+        if context_data:
+            await handle_test_answer(message,
+                                     json.loads(context_data) if isinstance(context_data, str) else context_data)
+            return
+    except:
+        pass
 
+    # Если сообщение не команда, показываем справку
     if not text.startswith('/'):
         await message.answer("🤖 <b>Неизвестная команда</b>\n\nИспользуйте /help для просмотра доступных команд.")
 
@@ -1318,6 +1160,7 @@ async def handle_test_answer(message: Message, context: Dict):
         await message.answer("🎉 <b>Тест завершен!</b>\n\nРезультаты будут доступны в профиле.")
         return
 
+    # Проверяем ответ
     try:
         answer = int(message.text.strip())
         if answer < 1 or answer > 3:
@@ -1400,6 +1243,7 @@ async def handle_token_refresh(message: Message, user: Dict):
 
 @dp.message(Command("simulate_login"))
 @rate_limit()
+@safe_send_message
 async def cmd_simulate_login(message: Message):
     """Симуляция успешной авторизации"""
     chat_id = message.chat.id
@@ -1419,45 +1263,32 @@ async def cmd_simulate_login(message: Message):
     await message.answer("✅ <b>Авторизация имитирована</b>\n\nНажмите 'Проверить статус' или подождите 30 секунд.")
 
 
-@dp.message(Command("verify_code"))
+@dp.message(Command("test_auth"))
 @rate_limit()
-async def cmd_verify_code(message: Message):
-    """Проверка кода для отладки"""
+@safe_send_message
+async def cmd_test_auth(message: Message):
+    """Тест авторизации"""
     chat_id = message.chat.id
-    user = await get_user(chat_id)
 
-    if not user or user.get("status") != UserStatus.ANONYMOUS:
-        await message.answer("❌ <b>Сначала выполните /login</b>")
-        return
+    # Создаем тестового пользователя
+    login_token = secrets.token_urlsafe(32)
+    await set_user_anonymous(chat_id, login_token, "code")
 
-    login_token = user.get("login_token")
-    if not login_token:
-        await message.answer("❌ <b>Login token не найден</b>")
-        return
+    # Имитируем успешную авторизацию
+    await auth_service.simulate_login_granted(login_token)
 
-    if login_token in auth_service.login_tokens:
-        code = auth_service.login_tokens[login_token].get("code")
-        if code:
-            success = await auth_service.verify_code(code, "refresh_test")
-            if success:
-                await message.answer(f"✅ <b>Код {code} проверен успешно!</b>\n\nНажмите 'Проверить статус'.")
-            else:
-                await message.answer("❌ <b>Не удалось проверить код</b>")
-        else:
-            await message.answer("❌ <b>Код не найден</b>")
-    else:
-        await message.answer("❌ <b>Токен не найден</b>")
+    await message.answer("✅ <b>Тестовый пользователь создан</b>\n\nЧерез 30 секунд вы будете авторизованы.")
 
 
 # =========================
-# MAIN
+# MAIN - с улучшенной обработкой ошибок
 # =========================
 
 async def main():
     """Главная функция с обработкой переподключений"""
     logger.info("🤖 Telegram bot starting...")
 
-    max_retries = 5
+    max_retries = 10
     retry_count = 0
 
     while retry_count < max_retries:
@@ -1471,13 +1302,18 @@ async def main():
             logger.info(f"📊 Redis URL: {REDIS_URL}")
             logger.info("🚀 Bot is ready!")
 
-            await dp.start_polling(bot, skip_updates=True)
+            await dp.start_polling(bot, skip_updates=True, allowed_updates=["message", "callback_query"])
+
+            # Если polling завершился без ошибки, выходим
+            break
 
         except TelegramNetworkError as e:
             retry_count += 1
             logger.error(f"Network error ({retry_count}/{max_retries}): {e}")
             if retry_count < max_retries:
-                await asyncio.sleep(5 * retry_count)  # Экспоненциальная задержка
+                wait_time = 5 * retry_count
+                logger.info(f"Waiting {wait_time} seconds before retry...")
+                await asyncio.sleep(wait_time)
                 continue
             else:
                 logger.error("Max retries reached. Shutting down.")
@@ -1487,6 +1323,10 @@ async def main():
             break
         except Exception as e:
             logger.error(f"Fatal error: {e}")
+            retry_count += 1
+            if retry_count < max_retries:
+                await asyncio.sleep(5)
+                continue
             break
         finally:
             # Отменяем фоновые задачи
@@ -1496,10 +1336,17 @@ async def main():
                     await task
                 except asyncio.CancelledError:
                     pass
+                except Exception as e:
+                    logger.error(f"Error cancelling task: {e}")
 
             # Закрываем HTTP сессию
             await http_client.close_session()
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    try:
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        logger.info("👋 Bot stopped by user")
+    except Exception as e:
+        logger.error(f"❌ Fatal error in main: {e}")

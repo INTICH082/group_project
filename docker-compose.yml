@@ -8,33 +8,33 @@ services:
       - "6379:6379"
     volumes:
       - redis_data:/data
-    command: redis-server --appendonly yes
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
-      interval: 5s
-      timeout: 3s
-      retries: 3
-    networks:
-      - bot-network
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   telegram-bot:
     build: .
     container_name: telegram-bot
     env_file:
       - .env
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+      - WEB_CLIENT_URL=https://t.me/cfutgbot
     depends_on:
       redis:
         condition: service_healthy
     restart: unless-stopped
-    networks:
-      - bot-network
     command: >
-      sh -c "sleep 10 && python bot.py"
-
-networks:
-  bot-network:
-    driver: bridge
+      sh -c "sleep 5 && python bot.py"
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
 volumes:
   redis_data:
