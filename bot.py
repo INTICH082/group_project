@@ -131,12 +131,13 @@ redis_client = SimpleRedis()
 
 
 # =========================
-# AUTH SERVICE STUB - ИСПРАВЛЕННЫЙ (без автоматической авторизации)
+# AUTH SERVICE STUB - ИСПРАВЛЕННЫЙ
 # =========================
 class AuthServiceStub:
     def __init__(self):
         self.login_tokens = {}
         self.codes = {}
+        self.confirmed_logins = set()  # Для заглушки: подтвержденные логины
 
     async def generate_login_url(self, login_token: str, provider: str = "code") -> str:
         code = secrets.randbelow(900000) + 100000
@@ -149,7 +150,8 @@ class AuthServiceStub:
             "provider": provider,
             "code": code if provider == "code" else None,
             "created_at": datetime.utcnow(),
-            "user_agent": "telegram-bot"
+            "user_agent": "telegram-bot",
+            "confirmed": False  # Флаг подтверждения
         }
 
         if provider == "github":
@@ -160,18 +162,43 @@ class AuthServiceStub:
             return "https://t.me/cfutgbot"
 
     async def check_login_token(self, login_token: str) -> Optional[Dict]:
+        """Проверка статуса токена - теперь с заглушкой для проверки"""
         if login_token not in self.login_tokens:
             return None
 
         token_data = self.login_tokens[login_token]
 
-        # Заглушка для проверки: возвращаем pending до тех пор, пока не будет вызвано ручное подтверждение
-        # В реальной системе здесь была бы проверка с Auth Service
-        return {"status": token_data["status"]}
+        # Заглушка: проверяем, был ли токен подтвержден
+        if token_data.get("confirmed"):
+            # Генерируем тестовые данные пользователя
+            user_id = f"user_{secrets.token_hex(8)}"
+            email = f"user_{login_token[:8]}@example.com"
 
-    async def simulate_auth_confirmation(self, login_token: str):
-        """Имитация подтверждения авторизации (заглушка для тестирования)"""
+            return {
+                "status": "granted",
+                "access_token": f"access_{secrets.token_hex(16)}",
+                "refresh_token": f"refresh_{secrets.token_hex(16)}",
+                "user": {
+                    "id": user_id,
+                    "email": email
+                }
+            }
+
+        # Если не подтвержден, возвращаем pending
+        return {"status": "pending"}
+
+    async def confirm_login(self, login_token: str):
+        """Подтверждение логина (заглушка для тестирования)"""
         if login_token in self.login_tokens:
+            self.login_tokens[login_token]["confirmed"] = True
+            self.login_tokens[login_token]["status"] = "granted"
+            return True
+        return False
+
+    async def manual_auth_for_testing(self, login_token: str):
+        """Ручная авторизация для тестирования (вызывается из /test_auth)"""
+        if login_token in self.login_tokens:
+            self.login_tokens[login_token]["confirmed"] = True
             self.login_tokens[login_token]["status"] = "granted"
             return True
         return False
@@ -256,10 +283,13 @@ def require_auth():
             user = await get_user(chat_id)
             if not user or user.get("status") != UserStatus.AUTHORIZED:
                 try:
-                    await bot.send_message(
-                        chat_id,
-                        "❌ <b>Требуется авторизация</b>\n\nИспользуйте /login для входа."
-                    )
+                    if isinstance(event, Message):
+                        await bot.send_message(
+                            chat_id,
+                            "❌ <b>Требуется авторизация</b>\n\nИспользуйте /login для входа."
+                        )
+                    elif isinstance(event, CallbackQuery):
+                        await event.answer("❌ Требуется авторизация", show_alert=True)
                 except:
                     pass
                 return
@@ -337,7 +367,7 @@ async def get_all_authorized_users() -> List[Dict]:
 
 
 # =========================
-# COMMAND HANDLERS
+# COMMAND HANDLERS (ОСТАВЛЯЕМ РАБОЧИЕ КОМАНДЫ)
 # =========================
 @dp.message(Command("start"))
 @rate_limit()
@@ -441,6 +471,9 @@ async def cmd_help(message: Message):
 /debug — отладочная информация
 /ping — проверка работы бота
 /echo — эхо-команда
+
+<b>Команды для тестирования:</b>
+/test_auth — быстрая авторизация (для тестирования)
 """
     await message.answer(help_text)
 
@@ -740,6 +773,48 @@ async def cmd_echo(message: Message):
 
 
 # =========================
+# КОМАНДА ДЛЯ ТЕСТИРОВАНИЯ (БЫСТРАЯ АВТОРИЗАЦИЯ)
+# =========================
+@dp.message(Command("test_auth"))
+@rate_limit()
+@safe_send_message
+async def cmd_test_auth(message: Message):
+    """Быстрая авторизация для тестирования (минуя веб-клиент)"""
+    chat_id = message.chat.id
+    user = await get_user(chat_id)
+
+    if user and user.get("status") == UserStatus.AUTHORIZED:
+        await message.answer(f"✅ <b>Вы уже авторизованы как {user.get('email')}</b>")
+        return
+
+    # Создаем фейковые данные для авторизации
+    user_id = f"test_user_{secrets.token_hex(6)}"
+    email = f"test_{chat_id}@example.com"
+    access_token = f"test_access_{secrets.token_hex(16)}"
+    refresh_token = f"test_refresh_{secrets.token_hex(16)}"
+
+    # Устанавливаем пользователя как авторизованного
+    await set_user_authorized(chat_id, access_token, refresh_token, user_id, email)
+
+    text = f"""
+✅ <b>Тестовая авторизация успешна!</b>
+
+Вы авторизованы для тестирования:
+📧 <b>Email:</b> {email}
+👤 <b>User ID:</b> {user_id}
+
+<b>Доступные команды:</b>
+• /tests — список тестов
+• /courses — список дисциплин
+• /profile — ваш профиль
+• /logout — выход
+
+<b>Примечание:</b> Это тестовая авторизация без использования сервисов.
+"""
+    await message.answer(text)
+
+
+# =========================
 # CALLBACK HANDLERS
 # =========================
 @dp.callback_query(F.data == "login")
@@ -800,6 +875,7 @@ async def callback_login_provider(callback: CallbackQuery):
 
     kb = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="🔄 Проверить статус", callback_data=f"check_auth_{login_token}")],
+        [InlineKeyboardButton(text="🚀 Быстрая авторизация (тест)", callback_data="test_auth_quick")],
         [InlineKeyboardButton(text="❌ Отмена", callback_data="cancel_auth")]
     ])
 
@@ -809,37 +885,28 @@ async def callback_login_provider(callback: CallbackQuery):
 
 @dp.callback_query(F.data.startswith("check_auth_"))
 async def callback_check_auth(callback: CallbackQuery):
+    """Проверка статуса авторизации - теперь с заглушкой"""
     login_token = callback.data[11:]
     result = await auth_service.check_login_token(login_token)
 
     if not result:
         await callback.answer("❌ Токен не найден или истек")
     elif result.get("status") == "pending":
-        # Заглушка для проверки - имитируем ручное подтверждение
-        # В реальной системе здесь была бы проверка с Auth Service
-        confirmed = await auth_service.simulate_auth_confirmation(login_token)
-        if confirmed:
-            # Создаем фейковые данные пользователя
-            user_id = f"user_{secrets.token_hex(8)}"
-            email = f"user_{login_token[:8]}@example.com"
-            access_token = f"access_{secrets.token_hex(16)}"
-            refresh_token = f"refresh_{secrets.token_hex(16)}"
+        # Заглушка: сообщаем, что авторизация еще не подтверждена
+        await callback.answer("⏳ Ожидание подтверждения авторизации в веб-клиенте")
 
-            await set_user_authorized(
-                callback.from_user.id,
-                access_token,
-                refresh_token,
-                user_id,
-                email
-            )
-
-            await callback.answer("✅ Авторизация успешна!")
-            await callback.message.edit_text(
-                f"✅ <b>Авторизация завершена!</b>\n\nДобро пожаловать, {email}",
-                reply_markup=None
-            )
-        else:
-            await callback.answer("⏳ Ожидание подтверждения входа")
+        # Добавляем кнопку для тестирования
+        try:
+            current_text = callback.message.text
+            kb = InlineKeyboardMarkup(inline_keyboard=[
+                [InlineKeyboardButton(text="🔄 Проверить статус", callback_data=f"check_auth_{login_token}")],
+                [InlineKeyboardButton(text="🚀 Тест: Подтвердить авторизацию",
+                                      callback_data=f"confirm_auth_{login_token}")],
+                [InlineKeyboardButton(text="❌ Отмена", callback_data="cancel_auth")]
+            ])
+            await callback.message.edit_reply_markup(reply_markup=kb)
+        except:
+            pass
     elif result.get("status") == "granted":
         user_data = result.get("user", {})
         access_token = result["access_token"]
@@ -858,6 +925,68 @@ async def callback_check_auth(callback: CallbackQuery):
             f"✅ <b>Авторизация завершена!</b>\n\nДобро пожаловать, {user_data.get('email')}",
             reply_markup=None
         )
+
+
+@dp.callback_query(F.data.startswith("confirm_auth_"))
+async def callback_confirm_auth(callback: CallbackQuery):
+    """Подтверждение авторизации для тестирования (заглушка)"""
+    login_token = callback.data[13:]
+
+    # Подтверждаем авторизацию в заглушке
+    success = await auth_service.confirm_login(login_token)
+
+    if success:
+        # Теперь проверяем токен еще раз
+        result = await auth_service.check_login_token(login_token)
+
+        if result and result.get("status") == "granted":
+            user_data = result.get("user", {})
+            access_token = result["access_token"]
+            refresh_token = result["refresh_token"]
+
+            await set_user_authorized(
+                callback.from_user.id,
+                access_token,
+                refresh_token,
+                user_data.get("id"),
+                user_data.get("email")
+            )
+
+            await callback.answer("✅ Авторизация подтверждена и успешна!")
+            await callback.message.edit_text(
+                f"✅ <b>Авторизация завершена!</b>\n\nДобро пожаловать, {user_data.get('email')}\n\n<em>Примечание: использована заглушка для тестирования</em>",
+                reply_markup=None
+            )
+        else:
+            await callback.answer("❌ Ошибка подтверждения")
+    else:
+        await callback.answer("❌ Токен не найден")
+
+
+@dp.callback_query(F.data == "test_auth_quick")
+async def callback_test_auth_quick(callback: CallbackQuery):
+    """Быстрая тестовая авторизация через callback"""
+    chat_id = callback.from_user.id
+    user = await get_user(chat_id)
+
+    if user and user.get("status") == UserStatus.AUTHORIZED:
+        await callback.answer("✅ Вы уже авторизованы")
+        return
+
+    # Создаем фейковые данные для авторизации
+    user_id = f"test_user_{secrets.token_hex(6)}"
+    email = f"test_{chat_id}@example.com"
+    access_token = f"test_access_{secrets.token_hex(16)}"
+    refresh_token = f"test_refresh_{secrets.token_hex(16)}"
+
+    # Устанавливаем пользователя как авторизованного
+    await set_user_authorized(chat_id, access_token, refresh_token, user_id, email)
+
+    await callback.answer("✅ Тестовая авторизация успешна!")
+    await callback.message.edit_text(
+        f"✅ <b>Тестовая авторизация успешна!</b>\n\nДобро пожаловать, {email}\n\n<em>Использована тестовая авторизация без веб-клиента</em>",
+        reply_markup=None
+    )
 
 
 @dp.callback_query(F.data == "cancel_auth")
@@ -883,10 +1012,10 @@ async def callback_start_test(callback: CallbackQuery, user: Dict):
 
 
 # =========================
-# BACKGROUND TASK - ИСПРАВЛЕННАЯ (не авторизует автоматически)
+# BACKGROUND TASK - ТОЛЬКО ДЛЯ ОЧИСТКИ
 # =========================
 async def check_anonymous_users_task():
-    """Циклическая проверка anonymous пользователей - только уведомления"""
+    """Циклическая проверка anonymous пользователей - только удаление просроченных"""
     while True:
         try:
             keys = await redis_client.keys("user:*")
@@ -895,18 +1024,16 @@ async def check_anonymous_users_task():
                 if data:
                     user = json.loads(data)
                     if user.get("status") == UserStatus.ANONYMOUS:
-                        login_token = user.get("login_token")
-                        if login_token:
-                            # Проверяем, не истек ли токен (больше 5 минут)
-                            created_at_str = user.get("created_at")
-                            if created_at_str:
-                                try:
-                                    created_at = datetime.fromisoformat(created_at_str)
-                                    if (datetime.utcnow() - created_at).seconds > 300:  # 5 минут
-                                        # Удаляем просроченного пользователя
-                                        await delete_user(user.get("chat_id"))
-                                except:
-                                    pass
+                        created_at_str = user.get("created_at")
+                        if created_at_str:
+                            try:
+                                created_at = datetime.fromisoformat(created_at_str)
+                                if (datetime.utcnow() - created_at).seconds > 300:  # 5 минут
+                                    # Удаляем просроченного пользователя
+                                    chat_id = int(key.split(":")[1])
+                                    await delete_user(chat_id)
+                            except:
+                                pass
         except Exception as e:
             logger.error(f"Error in check_anonymous_users_task: {e}")
 
@@ -927,7 +1054,7 @@ async def handle_message(message: Message):
 
 # =========================
 # MAIN
-# ========================
+# =========================
 async def main():
     logger.info("🤖 Telegram bot starting...")
 
