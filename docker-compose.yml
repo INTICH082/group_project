@@ -10,6 +10,13 @@ services:
       - redis_data:/data
     command: redis-server --appendonly yes
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 3
+    networks:
+      - bot-network
 
   telegram-bot:
     build: .
@@ -17,11 +24,17 @@ services:
     env_file:
       - .env
     depends_on:
-      - redis
+      redis:
+        condition: service_healthy
     restart: unless-stopped
-    volumes:
-      - ./:/app
-    command: python bot.py
+    networks:
+      - bot-network
+    command: >
+      sh -c "sleep 10 && python bot.py"
+
+networks:
+  bot-network:
+    driver: bridge
 
 volumes:
   redis_data:
