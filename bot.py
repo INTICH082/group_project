@@ -5,6 +5,7 @@ import json
 import secrets
 import jwt
 import aiohttp
+from aiohttp import web
 from datetime import datetime, timedelta
 from typing import Dict, Any, Optional, List
 from functools import wraps
@@ -27,6 +28,7 @@ REDIS_URL = os.getenv("REDIS_URL", "redis://redis:6379/0")
 API_BASE_URL = os.getenv("API_BASE_URL", "https://my-app-logic.onrender.com")
 JWT_SECRET = os.getenv("JWT_SECRET", "iplaygodotandclaimfun")
 DEFAULT_COURSE_ID = int(os.getenv("DEFAULT_COURSE_ID", "1"))
+HTTP_PORT = int(os.getenv("HTTP_PORT", "8080"))
 
 # =========================
 # LOGGING
@@ -244,7 +246,6 @@ class APIClient:
 
             logger.info(f"📚 Получен ответ: {type(response)}")
 
-            # Если ответ - строка, пытаемся распарсить
             if isinstance(response, dict) and "text" in response:
                 try:
                     parsed = json.loads(response["text"])
@@ -257,12 +258,10 @@ class APIClient:
                     logger.error(f"📚 Ошибка парсинга текста: {e}")
                     return []
 
-            # Если ответ уже список
             if isinstance(response, list):
                 logger.info(f"📚 Получен список из {len(response)} тестов")
                 return response
 
-            # Если ответ в другом формате
             if isinstance(response, dict):
                 tests = response.get("tests", []) or response.get("data", []) or []
                 logger.info(f"📚 Тесты из dict: {type(tests)}, длина: {len(tests) if tests else 0}")
@@ -273,7 +272,6 @@ class APIClient:
 
         except Exception as e:
             logger.error(f"📚 Ошибка при получении тестов: {e}")
-            # Возвращаем тестовые данные для демонстрации
             return [
                 {"id": 56, "name": "Тест по Python", "is_active": True, "question_ids": [1, 2, 3]},
                 {"id": 57, "name": "Тест по Docker", "is_active": True, "question_ids": [1, 2]},
@@ -287,7 +285,6 @@ class APIClient:
             return await self.request("POST", f"/test/start?test_id={test_id}", token)
         except Exception as e:
             logger.error(f"🚀 Ошибка запуска теста: {e}")
-            # Возвращаем заглушку для демонстрации
             return {"attempt_id": 1000 + test_id, "id": 1000 + test_id}
 
     async def submit_answer(self, token: str, attempt_id: int, question_id: int, option: int) -> Dict:
@@ -314,26 +311,54 @@ class APIClient:
         """Получить детали вопроса (заглушка, пока нет API)"""
         questions_data = {
             1: {
+                "id": 1,
                 "text": "Что такое Python?",
                 "options": ["Язык программирования", "Змея", "Оба варианта верны"],
                 "correct": 2
             },
             2: {
+                "id": 2,
                 "text": "Что такое Docker?",
                 "options": ["Контейнеризация", "Игра", "Операционная система"],
                 "correct": 0
             },
             3: {
+                "id": 3,
                 "text": "Что такое API?",
                 "options": ["Интерфейс программирования", "Аппаратный интерфейс", "Оба варианта"],
                 "correct": 0
+            },
+            4: {
+                "id": 4,
+                "text": "Какая компания создала Python?",
+                "options": ["Google", "Microsoft", "Guido van Rossum", "Apple"],
+                "correct": 2
+            },
+            5: {
+                "id": 5,
+                "text": "Что такое контейнеризация?",
+                "options": ["Упаковка приложения со всеми зависимостями",
+                            "Виртуализация на уровне ОС",
+                            "Оба варианта верны",
+                            "Ни один из вариантов"],
+                "correct": 2
             }
         }
         return questions_data.get(question_id, {
+            "id": question_id,
             "text": f"Вопрос {question_id}",
-            "options": ["Вариант 1", "Вариант 2", "Вариант 3"],
+            "options": ["Вариант 1", "Вариант 2", "Вариант 3", "Вариант 4"],
             "correct": 0
         })
+
+    async def get_test_questions(self, token: str, test_id: int) -> List[int]:
+        """Получить список вопросов теста (заглушка)"""
+        test_questions = {
+            56: [1, 2, 3, 4],  # Тест по Python
+            57: [1, 2, 5],  # Тест по Docker
+            61: []  # Тест по API (пустой)
+        }
+        return test_questions.get(test_id, [1, 2, 3])
 
 
 api_client = APIClient(API_BASE_URL, JWT_SECRET)
@@ -374,7 +399,6 @@ def require_auth():
     def decorator(handler):
         @wraps(handler)
         async def wrapper(event, *args, **kwargs):
-            # Получаем chat_id в зависимости от типа события
             if isinstance(event, Message):
                 chat_id = event.chat.id
             elif isinstance(event, CallbackQuery):
@@ -431,7 +455,6 @@ async def set_user_anonymous(chat_id: int, login_token: str, provider: str = "co
 
 async def set_user_authorized(chat_id: int, user_id: int, email: str, role: str = "student"):
     """Устанавливаем пользователя как авторизованного с токеном для API"""
-    # Генерируем JWT токен для API
     permissions = []
     if role == "teacher":
         permissions = ["quest:create", "quest:update", "course:read", "course:test:add",
@@ -480,6 +503,239 @@ async def get_all_authorized_users() -> List[Dict]:
 
 
 # =========================
+# HTTP SERVER для health-check
+# =========================
+async def health_check(request):
+    """Health check endpoint для мониторинга"""
+    status = {
+        "status": "healthy",
+        "service": "telegram-bot",
+        "timestamp": datetime.utcnow().isoformat(),
+        "redis": "connected" if redis_client.connected else "disconnected",
+        "active_users": stats.get_active_users_count(),
+        "commands_processed": stats.commands_count
+    }
+    return web.json_response(status)
+
+
+async def start_http_server():
+    """Запуск HTTP сервера для health-check"""
+    app = web.Application()
+    app.router.add_get('/health', health_check)
+    app.router.add_get('/status', health_check)
+
+    # Статическая страница с информацией о боте
+    async def info_page(request):
+        html_content = f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Telegram Test Bot</title>
+            <style>
+                body {{ font-family: Arial, sans-serif; margin: 40px; }}
+                .container {{ max-width: 800px; margin: 0 auto; }}
+                .status {{ padding: 10px; border-radius: 5px; margin: 10px 0; }}
+                .healthy {{ background-color: #d4edda; color: #155724; }}
+                .unhealthy {{ background-color: #f8d7da; color: #721c24; }}
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <h1>🤖 Telegram Test Bot</h1>
+                <div class="status {'healthy' if redis_client.connected else 'unhealthy'}">
+                    <h3>Статус системы</h3>
+                    <p><strong>Redis:</strong> {'🟢 Подключен' if redis_client.connected else '🔴 Отключен'}</p>
+                    <p><strong>Активных пользователей:</strong> {stats.get_active_users_count()}</p>
+                    <p><strong>Обработано команд:</strong> {stats.commands_count}</p>
+                    <p><strong>Время (UTC):</strong> {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')}</p>
+                </div>
+                <h3>API Endpoints</h3>
+                <ul>
+                    <li><a href="/health">/health</a> - Health check (JSON)</li>
+                    <li><a href="/status">/status</a> - Статус системы (JSON)</li>
+                </ul>
+                <h3>Telegram Bot</h3>
+                <p>Бот работает в режиме polling. Для использования найдите бота в Telegram.</p>
+                <p><strong>Основные команды:</strong> /start, /login, /tests, /status</p>
+            </div>
+        </body>
+        </html>
+        """
+        return web.Response(text=html_content, content_type='text/html')
+
+    app.router.add_get('/', info_page)
+
+    runner = web.AppRunner(app)
+    await runner.setup()
+    site = web.TCPSite(runner, '0.0.0.0', HTTP_PORT)
+    await site.start()
+    logger.info(f"🌐 HTTP сервер запущен на порту {HTTP_PORT}")
+    return runner
+
+
+# =========================
+# УЛУЧШЕННАЯ АВТОРИЗАЦИОННАЯ ЗАГЛУШКА ПО КОДУ
+# =========================
+class AuthServiceStub:
+    def __init__(self):
+        self.login_tokens = {}  # {login_token: {status, provider, code_data, created_at, user_agent, confirmed}}
+        self.codes = {}  # {code: {login_token, expires_at, created_at}}
+        self.code_to_token = {}  # {code: login_token} - для быстрого поиска
+
+    async def generate_login_url(self, login_token: str, provider: str = "code") -> str:
+        """Генерация URL для авторизации (заглушка для кода)"""
+        # Шаг 2: Генерация случайного кода (5-6 цифр)
+        code = str(secrets.randbelow(900000) + 100000)  # 6 цифр
+
+        if provider == "code":
+            # Шаг 2: Сохраняем код с временем устаревания (1 минута)
+            expires_at = datetime.utcnow() + timedelta(minutes=1)
+            self.codes[code] = {
+                "login_token": login_token,
+                "expires_at": expires_at.isoformat(),
+                "created_at": datetime.utcnow().isoformat()
+            }
+            self.code_to_token[code] = login_token
+
+        # Шаг 3: Сохраняем login_token с временем устаревания (5 минут)
+        expires_at = datetime.utcnow() + timedelta(minutes=5)
+        self.login_tokens[login_token] = {
+            "status": "pending",
+            "provider": provider,
+            "code": code if provider == "code" else None,
+            "expires_at": expires_at.isoformat(),
+            "created_at": datetime.utcnow().isoformat(),
+            "user_agent": "telegram-bot",
+            "confirmed": False,
+            "user_data": None
+        }
+
+        # Шаг 4: Возвращаем код
+        return code
+
+    async def check_login_token(self, login_token: str) -> Optional[Dict]:
+        """Проверка статуса токена авторизации"""
+        if login_token not in self.login_tokens:
+            return None
+
+        token_data = self.login_tokens[login_token]
+
+        # Проверяем не устарел ли токен (5 минут)
+        expires_at = datetime.fromisoformat(token_data["expires_at"])
+        if datetime.utcnow() > expires_at:
+            # Удаляем устаревший токен
+            if login_token in self.login_tokens:
+                del self.login_tokens[login_token]
+            # Удаляем связанный код если есть
+            code_to_delete = None
+            for code, data in self.codes.items():
+                if data["login_token"] == login_token:
+                    code_to_delete = code
+                    break
+            if code_to_delete:
+                del self.codes[code_to_delete]
+                del self.code_to_token[code_to_delete]
+            return None
+
+        if token_data.get("confirmed"):
+            user_data = token_data.get("user_data")
+            if not user_data:
+                # Генерируем тестовые данные пользователя
+                user_id = secrets.randbelow(1000) + 100
+                email = f"user_{login_token[:8]}@example.com"
+                user_data = {
+                    "id": user_id,
+                    "email": email,
+                    "role": "student"
+                }
+                token_data["user_data"] = user_data
+
+            return {
+                "status": "granted",
+                "access_token": f"access_{secrets.token_hex(16)}",
+                "refresh_token": f"refresh_{secrets.token_hex(16)}",
+                "user": user_data
+            }
+
+        return {"status": "pending"}
+
+    async def confirm_code(self, code: str, refresh_token: str = None) -> Dict:
+        """Подтверждение авторизации по коду (имитация ввода кода пользователем)"""
+        # Шаг 7: Ищем код в словаре
+        if code not in self.codes:
+            return {"error": "Код не найден или устарел"}
+
+        code_data = self.codes[code]
+        login_token = code_data["login_token"]
+
+        # Шаг 8: Проверяем не устарел ли код (1 минута)
+        expires_at = datetime.fromisoformat(code_data["expires_at"])
+        if datetime.utcnow() > expires_at:
+            # Удаляем устаревший код и токен
+            del self.codes[code]
+            del self.code_to_token[code]
+            if login_token in self.login_tokens:
+                del self.login_tokens[login_token]
+            return {"error": "Код устарел"}
+
+        # Шаг 9: Проверяем токен обновления (заглушка - всегда OK)
+        if refresh_token:
+            # В реальности здесь была бы проверка подписи токена
+            pass
+
+        # Шаг 10: Если всё OK - подтверждаем авторизацию
+        if login_token in self.login_tokens:
+            # Генерируем тестовые данные пользователя из "токена обновления"
+            # В реальности email брался бы из токена обновления
+            user_id = secrets.randbelow(1000) + 100
+            email = f"user_{secrets.token_hex(8)}@example.com"
+
+            self.login_tokens[login_token]["confirmed"] = True
+            self.login_tokens[login_token]["status"] = "granted"
+            self.login_tokens[login_token]["user_data"] = {
+                "id": user_id,
+                "email": email,
+                "role": "student"
+            }
+
+            # Удаляем использованный код
+            del self.codes[code]
+            del self.code_to_token[code]
+
+            # Шаг 11: Возвращаем успех
+            return {
+                "status": "success",
+                "login_token": login_token,
+                "user": {
+                    "id": user_id,
+                    "email": email
+                }
+            }
+
+        return {"error": "Токен входа не найден"}
+
+    async def simulate_web_client_auth(self, login_token: str):
+        """Имитация авторизации через веб-клиент (для тестирования)"""
+        if login_token not in self.login_tokens:
+            return False
+
+        token_data = self.login_tokens[login_token]
+        if token_data["provider"] != "code":
+            return False
+
+        code = token_data["code"]
+        if not code:
+            return False
+
+        # Имитируем ввод кода в веб-клиенте
+        result = await self.confirm_code(code, "dummy_refresh_token")
+        return "error" not in result
+
+
+auth_service = AuthServiceStub()
+
+
+# =========================
 # COMMAND HANDLERS
 # =========================
 @dp.message(Command("start"))
@@ -507,17 +763,25 @@ async def cmd_start(message: Message):
         provider = user.get("provider", "code")
 
         if provider == "code":
-            code = auth_service.codes.get(login_token, "Ожидание генерации...")
+            # Получаем код из заглушки
+            if login_token in auth_service.login_tokens:
+                code = auth_service.login_tokens[login_token].get("code", "Ожидание генерации...")
+            else:
+                code = "Ожидание..."
+
             text = f"""
 🔐 <b>Ожидание авторизации через код</b>
 
 Для завершения авторизации введите код в веб-клиенте:
 
-<b>Код: <code>{code if code else 'Генерация...'}</code></b>
+<b>Код: <code>{code}</code></b>
 
-⏳ <b>Код действителен 5 минут</b>
+⏳ <b>Код действителен 1 минуту</b>
 
 После ввода кода нажмите "Проверить статус".
+
+Для тестирования можете использовать команду:
+<code>/simulate_auth</code>
 """
         else:
             provider_name = "GitHub" if provider == "github" else "Яндекс ID"
@@ -570,6 +834,7 @@ async def cmd_help(message: Message):
 /logout — выход
 /logout_all — выход со всех устройств
 /test_auth — быстрая авторизация (для разработчиков)
+/simulate_auth — имитация веб-авторизации по коду
 
 <b>Тесты:</b>
 /tests — список тестов
@@ -632,7 +897,7 @@ async def callback_login_github(callback: CallbackQuery):
     login_token = secrets.token_urlsafe(32)
     await set_user_anonymous(chat_id, login_token, "github")
 
-    auth_url = await auth_service.generate_login_url(login_token, "github")
+    auth_url = f"https://github.com/login/oauth/authorize?client_id=stub&state={login_token}"
 
     text = f"""
 🔐 <b>Авторизация через GitHub</b>
@@ -668,7 +933,7 @@ async def callback_login_yandex(callback: CallbackQuery):
     login_token = secrets.token_urlsafe(32)
     await set_user_anonymous(chat_id, login_token, "yandex")
 
-    auth_url = await auth_service.generate_login_url(login_token, "yandex")
+    auth_url = f"https://oauth.yandex.ru/authorize?response_type=code&client_id=stub&state={login_token}"
 
     text = f"""
 🔐 <b>Авторизация через Яндекс ID</b>
@@ -693,7 +958,7 @@ async def callback_login_yandex(callback: CallbackQuery):
 
 @dp.callback_query(F.data == "login_code")
 async def callback_login_code(callback: CallbackQuery):
-    """Авторизация через код"""
+    """Авторизация через код с улучшенной заглушкой"""
     chat_id = callback.from_user.id
     user = await get_user(chat_id)
 
@@ -704,8 +969,8 @@ async def callback_login_code(callback: CallbackQuery):
     login_token = secrets.token_urlsafe(32)
     await set_user_anonymous(chat_id, login_token, "code")
 
-    auth_url = await auth_service.generate_login_url(login_token, "code")
-    code = auth_service.codes.get(login_token, "Ожидание...")
+    # Генерируем код через улучшенную заглушку
+    code = await auth_service.generate_login_url(login_token, "code")
 
     text = f"""
 🔐 <b>Авторизация через код</b>
@@ -714,9 +979,13 @@ async def callback_login_code(callback: CallbackQuery):
 
 <b>Код: <code>{code}</code></b>
 
-⏳ <b>Код действителен 5 минут</b>
+⏳ <b>Код действителен 1 минуту</b>
+⏳ <b>Токен входа действителен 5 минут</b>
 
 После ввода кода нажмите "Проверить статус".
+
+Для тестирования можете использовать команду:
+<code>/simulate_auth</code>
 """
 
     kb = InlineKeyboardMarkup(inline_keyboard=[
@@ -726,6 +995,36 @@ async def callback_login_code(callback: CallbackQuery):
 
     await callback.message.edit_text(text, reply_markup=kb, parse_mode=ParseMode.HTML)
     await callback.answer()
+
+
+# =========================
+# КОМАНДА ДЛЯ ИМИТАЦИИ ВЕБ-АВТОРИЗАЦИИ
+# =========================
+@dp.message(Command("simulate_auth"))
+@rate_limit()
+@safe_send_message
+async def cmd_simulate_auth(message: Message):
+    """Имитация авторизации через веб-клиент"""
+    chat_id = message.chat.id
+    user = await get_user(chat_id)
+
+    if not user or user.get("status") != UserStatus.ANONYMOUS:
+        await message.answer("❌ <b>Нет ожидающей авторизации</b>\n\nСначала используйте /login и выберите Code.")
+        return
+
+    login_token = user.get("login_token")
+    if not login_token:
+        await message.answer("❌ <b>Ошибка: токен входа не найден</b>")
+        return
+
+    # Имитируем авторизацию через веб-клиент
+    result = await auth_service.simulate_web_client_auth(login_token)
+
+    if result:
+        await message.answer(
+            "✅ <b>Имитация веб-авторизации успешна!</b>\n\nТеперь нажмите 'Проверить статус' или подождите несколько секунд.")
+    else:
+        await message.answer("❌ <b>Ошибка имитации авторизации</b>\n\nВозможно, код устарел или токен не найден.")
 
 
 # =========================
@@ -804,14 +1103,14 @@ async def callback_login_teacher(callback: CallbackQuery):
 
 
 # =========================
-# СПИСОК ТЕСТОВ - БЕЗ КНОПОК
+# СПИСОК ТЕСТОВ - С КНОПКАМИ ДЛЯ ЗАПУСКА
 # =========================
 @dp.message(Command("tests"))
 @rate_limit()
 @require_auth()
 @safe_send_message
 async def cmd_tests(message: Message, user: Dict):
-    """Список доступных тестов с API - без кнопок"""
+    """Список доступных тестов с API и кнопками запуска"""
     chat_id = message.chat.id
     api_token = user.get("api_token", "")
 
@@ -819,14 +1118,10 @@ async def cmd_tests(message: Message, user: Dict):
         await message.answer("❌ <b>Ошибка авторизации</b>\n\nТокен API не найден.")
         return
 
-    # Показываем сообщение о загрузке
     loading_msg = await message.answer("🔄 <b>Загрузка тестов...</b>")
 
     try:
-        # Получаем тесты с API
         tests = await api_client.get_tests(api_token, DEFAULT_COURSE_ID)
-
-        # Удаляем сообщение о загрузке
         await loading_msg.delete()
 
         if not tests:
@@ -834,8 +1129,8 @@ async def cmd_tests(message: Message, user: Dict):
             await message.answer(text)
             return
 
-        # Формируем текст со списком тестов
         text = "📚 <b>Доступные тесты</b>\n\n"
+        buttons = []
 
         for test in tests:
             test_id = test.get("id", "?")
@@ -851,19 +1146,31 @@ async def cmd_tests(message: Message, user: Dict):
             text += f"   ❓ Вопросов: {len(question_ids)}\n"
 
             if question_ids:
-                text += f"   📋 ID вопросов: {', '.join(map(str, question_ids))}\n"
+                text += f"   📋 ID вопросов: {', '.join(map(str, question_ids[:5]))}"
+                if len(question_ids) > 5:
+                    text += f" ... (ещё {len(question_ids) - 5})"
+                text += "\n"
 
             text += "\n"
+
+            # Добавляем кнопку для запуска теста
+            if is_active and len(question_ids) > 0:
+                buttons.append([
+                    InlineKeyboardButton(
+                        text=f"▶️ Начать тест: {test_name}",
+                        callback_data=f"start_test_{test_id}"
+                    )
+                ])
 
         text += "\n<b>Используйте команду:</b>\n<code>/start_test ID_теста [ID_вопроса]</code>\n\n"
         text += "<b>Примеры:</b>\n"
         text += "<code>/start_test 56</code> - начать тест 56 с первого вопроса\n"
         text += "<code>/start_test 56 2</code> - начать тест 56 с вопроса 2"
 
-        await message.answer(text, parse_mode=ParseMode.HTML)
+        kb = InlineKeyboardMarkup(inline_keyboard=buttons) if buttons else None
+        await message.answer(text, reply_markup=kb, parse_mode=ParseMode.HTML)
 
     except Exception as e:
-        # Удаляем сообщение о загрузке
         try:
             await loading_msg.delete()
         except:
@@ -872,6 +1179,110 @@ async def cmd_tests(message: Message, user: Dict):
         logger.error(f"Ошибка при получении тестов: {e}")
         await message.answer(
             f"❌ <b>Ошибка при загрузке тестов:</b>\n\n{str(e)}\n\nПопробуйте использовать /test_auth для тестовой авторизации.")
+
+
+# =========================
+# ЗАПУСК ТЕСТА ЧЕРЕЗ КНОПКУ
+# =========================
+@dp.callback_query(F.data.startswith("start_test_"))
+async def callback_start_test(callback: CallbackQuery):
+    """Запуск теста через кнопку"""
+    try:
+        test_id = int(callback.data[11:])
+        chat_id = callback.from_user.id
+        user = await get_user(chat_id)
+
+        if not user:
+            await callback.answer("❌ Требуется авторизация")
+            return
+
+        api_token = user.get("api_token", "")
+
+        if not api_token:
+            await callback.answer("❌ Ошибка авторизации")
+            return
+
+        # Начинаем тест
+        loading_msg = await callback.message.answer(f"🔄 <b>Запуск теста #{test_id}...</b>")
+
+        try:
+            result = await api_client.start_test(api_token, test_id)
+            await loading_msg.delete()
+
+            attempt_id = result.get("attempt_id") or result.get("id")
+            if not attempt_id:
+                await callback.answer("❌ Не удалось начать тест")
+                return
+
+            # Получаем вопросы теста
+            question_ids = await api_client.get_test_questions(api_token, test_id)
+
+            if not question_ids:
+                await callback.answer("❌ В тесте нет вопросов")
+                return
+
+            # Сохраняем контекст теста
+            test_context = {
+                "test_id": test_id,
+                "attempt_id": attempt_id,
+                "question_ids": question_ids,
+                "current_question_index": 0,
+                "answers": {},
+                "started_at": datetime.now().isoformat(),
+                "api_token": api_token,
+                "user_id": user.get("user_id")
+            }
+
+            await redis_client.setex(
+                f"test_context:{chat_id}",
+                3600,
+                json.dumps(test_context)
+            )
+
+            # Получаем первый вопрос
+            first_question_id = question_ids[0]
+            question_data = await api_client.get_question_details(api_token, first_question_id)
+
+            text = f"""
+🧪 <b>Начинаем тест #{test_id}</b>
+
+<b>ID попытки:</b> {attempt_id}
+<b>Всего вопросов:</b> {len(question_ids)}
+<b>Текущий вопрос:</b> 1 из {len(question_ids)}
+
+<b>Вопрос:</b>
+{question_data.get('text', 'Текст вопроса')}
+"""
+
+            # Создаем кнопки для вариантов ответов
+            buttons = []
+            options = question_data.get("options", ["Вариант 1", "Вариант 2", "Вариант 3"])
+
+            for i, option in enumerate(options):
+                buttons.append([
+                    InlineKeyboardButton(
+                        text=f"{i + 1}. {option}",
+                        callback_data=f"answer_{attempt_id}_{first_question_id}_{i}"
+                    )
+                ])
+
+            # Добавляем кнопку отмены
+            buttons.append([
+                InlineKeyboardButton(text="❌ Отменить тест", callback_data="cancel_test")
+            ])
+
+            kb = InlineKeyboardMarkup(inline_keyboard=buttons)
+            await callback.message.answer(text, reply_markup=kb)
+            await callback.answer()
+
+        except Exception as e:
+            await loading_msg.delete()
+            logger.error(f"Error starting test: {e}")
+            await callback.answer(f"❌ Ошибка: {str(e)}")
+
+    except Exception as e:
+        logger.error(f"Error in callback_start_test: {e}")
+        await callback.answer("❌ Ошибка запуска теста")
 
 
 # =========================
@@ -886,7 +1297,6 @@ async def cmd_start_test(message: Message, user: Dict):
     chat_id = message.chat.id
     api_token = user.get("api_token", "")
 
-    # Извлекаем параметры из команды
     command_text = message.text or ""
     parts = command_text.split()
 
@@ -906,14 +1316,11 @@ async def cmd_start_test(message: Message, user: Dict):
         await message.answer("❌ <b>Ошибка авторизации</b>\n\nТокен API не найден.")
         return
 
-    # Показываем сообщение о запуске
     loading_msg = await message.answer(f"🔄 <b>Запуск теста #{test_id}...</b>")
 
     try:
         # Начинаем тест через API
         result = await api_client.start_test(api_token, test_id)
-
-        # Удаляем сообщение о загрузке
         await loading_msg.delete()
 
         attempt_id = result.get("attempt_id") or result.get("id")
@@ -921,9 +1328,12 @@ async def cmd_start_test(message: Message, user: Dict):
             await message.answer("❌ <b>Ошибка:</b> Не удалось начать тест. Попробуйте позже.")
             return
 
-        # Получаем вопросы теста из API или используем заглушку
-        # В реальном API нужно получить список вопросов
-        question_ids = [1, 2, 3]  # Примерные ID вопросов
+        # Получаем вопросы теста
+        question_ids = await api_client.get_test_questions(api_token, test_id)
+
+        if not question_ids:
+            await message.answer("❌ <b>Ошибка:</b> В тесте нет вопросов.")
+            return
 
         # Определяем, с какого вопроса начинать
         start_question_index = 0
@@ -931,8 +1341,18 @@ async def cmd_start_test(message: Message, user: Dict):
             try:
                 start_question_index = question_ids.index(question_id)
             except ValueError:
-                await message.answer(f"❌ <b>Ошибка:</b> Вопрос с ID {question_id} не найден в тесте.")
-                return
+                # Если вопрос не найден в списке, начинаем с ближайшего доступного
+                # Ищем первый вопрос с ID больше указанного
+                found = False
+                for i, qid in enumerate(question_ids):
+                    if qid >= question_id:
+                        start_question_index = i
+                        found = True
+                        break
+
+                if not found:
+                    await message.answer(f"❌ <b>Ошибка:</b> Вопрос с ID {question_id} не найден в тесте.")
+                    return
 
         # Сохраняем контекст теста
         test_context = {
@@ -962,6 +1382,7 @@ async def cmd_start_test(message: Message, user: Dict):
 <b>ID попытки:</b> {attempt_id}
 <b>Всего вопросов:</b> {len(question_ids)}
 <b>Текущий вопрос:</b> {start_question_index + 1} из {len(question_ids)}
+<b>ID вопроса:</b> {current_question_id}
 
 <b>Вопрос:</b>
 {question_data.get('text', 'Текст вопроса')}
@@ -988,7 +1409,6 @@ async def cmd_start_test(message: Message, user: Dict):
         await message.answer(text, reply_markup=kb)
 
     except Exception as e:
-        # Удаляем сообщение о загрузке
         try:
             await loading_msg.delete()
         except:
@@ -1048,7 +1468,7 @@ async def handle_answer_callback(callback: CallbackQuery):
 
         # Обновляем контекст
         current_index = context.get("current_question_index", 0)
-        context["answers"][current_index] = option_index
+        context["answers"][question_id] = option_index
         context["current_question_index"] = current_index + 1
 
         # Проверяем, закончен ли тест
@@ -1061,10 +1481,20 @@ async def handle_answer_callback(callback: CallbackQuery):
             try:
                 result = await api_client.finish_test(api_token, attempt_id)
 
+                # Подсчитываем правильные ответы
+                correct_count = 0
+                for qid, answer in context["answers"].items():
+                    question_data = await api_client.get_question_details(api_token, qid)
+                    if question_data.get("correct") == answer:
+                        correct_count += 1
+
+                percentage = int((correct_count / len(question_ids)) * 100) if question_ids else 0
+
                 text = f"""
 🎉 <b>Тест завершен!</b>
 
 <b>Результат:</b> {result}
+<b>Ваш результат:</b> {correct_count} из {len(question_ids)} ({percentage}%)
 
 🏆 <b>Отличная работа!</b>
 
@@ -1088,6 +1518,8 @@ async def handle_answer_callback(callback: CallbackQuery):
 
             text = f"""
 <b>Вопрос {current_index + 2} из {len(question_ids)}:</b>
+<b>ID вопроса:</b> {next_question_id}
+
 {question_data.get('text', 'Текст вопроса')}
 """
             # Создаем кнопки для вариантов ответов
@@ -1143,11 +1575,9 @@ async def cmd_profile(message: Message, user: Dict):
         await message.answer("❌ <b>Пользователь не найден</b>")
         return
 
-    # Форматируем дату авторизации (по Москве)
     auth_date = "Неизвестно"
     if current_user.get("authorized_at"):
         try:
-            # Конвертируем UTC время в московское
             auth_dt_utc = datetime.fromisoformat(current_user["authorized_at"].replace('Z', '+00:00'))
             auth_dt_msk = auth_dt_utc + timedelta(hours=3)
             auth_date = auth_dt_msk.strftime("%d.%m.%Y %H:%M (MSK)")
@@ -1297,6 +1727,15 @@ async def cmd_services(message: Message):
 <b>Базы данных</b>
 • PostgreSQL — основное хранилище
 • Redis — кэш и сессии
+
+<b>Веб-сервер</b>
+• Nginx — прокси и статика
+• HTTP сервер — health-check
+
+<b>Авторизация</b>
+• Режим Code — 6-значный код (1 минута)
+• Токен входа — 5 минут
+• Поддержка GitHub/Yandex (заглушки)
 """
     await message.answer(text)
 
@@ -1310,6 +1749,13 @@ async def cmd_debug(message: Message):
 
     authorized_users = await get_all_authorized_users()
 
+    # Статистика авторизации
+    auth_stats = {
+        "pending_tokens": len(auth_service.login_tokens),
+        "active_codes": len(auth_service.codes),
+        "code_to_token": len(auth_service.code_to_token)
+    }
+
     text = f"""
 🐛 <b>Отладочная информация</b>
 
@@ -1318,6 +1764,7 @@ async def cmd_debug(message: Message):
 • Redis: {"🟢 подключен" if redis_client.connected else "🔴 оффлайн"}
 • API: {API_BASE_URL}
 • Время (MSK): {format_moscow_time()}
+• HTTP порт: {HTTP_PORT}
 
 <b>Пользователь:</b>
 • Статус: {user.get('status') if user else 'UNKNOWN'}
@@ -1325,7 +1772,12 @@ async def cmd_debug(message: Message):
 • Email: {user.get('email') if user else 'Нет'}
 • Роль: {user.get('role') if user else 'Нет'}
 
-<b>Статистика:</b>
+<b>Статистика авторизации:</b>
+• Ожидающих токенов: {auth_stats['pending_tokens']}
+• Активных кодов: {auth_stats['active_codes']}
+• Сопоставлений код-токен: {auth_stats['code_to_token']}
+
+<b>Статистика бота:</b>
 • Активных пользователей: {len(authorized_users)}
 • Выполнено команд: {stats.commands_count}
 """
@@ -1348,74 +1800,6 @@ async def cmd_echo(message: Message):
         await message.answer(f"📢 <b>Эхо:</b>\n\n{text[6:]}")
     else:
         await message.answer("📢 <b>Напишите что-нибудь после /echo</b>\n\nПример: <code>/echo Привет, мир!</code>")
-
-
-# =========================
-# АВТОРИЗАЦИОННАЯ ЗАГЛУШКА
-# =========================
-class AuthServiceStub:
-    def __init__(self):
-        self.login_tokens = {}
-        self.codes = {}
-        self.confirmed_logins = set()
-
-    async def generate_login_url(self, login_token: str, provider: str = "code") -> str:
-        """Генерация URL для авторизации"""
-        code = secrets.randbelow(900000) + 100000
-
-        if provider == "code":
-            self.codes[login_token] = code
-
-        self.login_tokens[login_token] = {
-            "status": "pending",
-            "provider": provider,
-            "code": code if provider == "code" else None,
-            "created_at": datetime.utcnow(),
-            "user_agent": "telegram-bot",
-            "confirmed": False
-        }
-
-        # Генерация URL в зависимости от провайдера
-        if provider == "github":
-            return f"https://github.com/login/oauth/authorize?client_id=stub&state={login_token}"
-        elif provider == "yandex":
-            return f"https://oauth.yandex.ru/authorize?response_type=code&client_id=stub&state={login_token}"
-        else:
-            return "https://my-app-logic.onrender.com/auth/code"
-
-    async def check_login_token(self, login_token: str) -> Optional[Dict]:
-        """Проверка статуса токена авторизации"""
-        if login_token not in self.login_tokens:
-            return None
-
-        token_data = self.login_tokens[login_token]
-
-        if token_data.get("confirmed"):
-            user_id = secrets.randbelow(1000) + 100
-            email = f"user_{login_token[:8]}@example.com"
-
-            return {
-                "status": "granted",
-                "access_token": f"access_{secrets.token_hex(16)}",
-                "refresh_token": f"refresh_{secrets.token_hex(16)}",
-                "user": {
-                    "id": user_id,
-                    "email": email
-                }
-            }
-
-        return {"status": "pending"}
-
-    async def confirm_login(self, login_token: str):
-        """Подтверждение авторизации (для тестирования)"""
-        if login_token in self.login_tokens:
-            self.login_tokens[login_token]["confirmed"] = True
-            self.login_tokens[login_token]["status"] = "granted"
-            return True
-        return False
-
-
-auth_service = AuthServiceStub()
 
 
 # =========================
@@ -1449,9 +1833,9 @@ async def callback_check_auth(callback: CallbackQuery):
         user_data = result.get("user", {})
         user_id = user_data.get("id", secrets.randbelow(1000) + 100)
         email = user_data.get("email", f"user_{login_token[:8]}@example.com")
+        role = user_data.get("role", "student")
 
-        # Авторизуем как студента
-        await set_user_authorized(callback.from_user.id, user_id, email, "student")
+        await set_user_authorized(callback.from_user.id, user_id, email, role)
 
         await callback.answer("✅ Авторизация успешна!")
         await callback.message.edit_text(
@@ -1502,12 +1886,25 @@ async def check_anonymous_users_task():
 async def main():
     logger.info("🤖 Telegram bot starting...")
     logger.info(f"📡 API Base URL: {API_BASE_URL}")
+    logger.info(f"🌐 HTTP Server порт: {HTTP_PORT}")
 
     await redis_client.connect()
+
+    # Запуск HTTP сервера для health-check
+    try:
+        http_runner = await start_http_server()
+        logger.info("✅ HTTP сервер запущен для health-check")
+    except Exception as e:
+        logger.error(f"❌ Ошибка запуска HTTP сервера: {e}")
+        http_runner = None
 
     background_task = asyncio.create_task(check_anonymous_users_task())
 
     logger.info("🚀 Bot is ready!")
+    logger.info("📊 Доступны эндпоинты:")
+    logger.info(f"   • http://localhost:{HTTP_PORT}/health")
+    logger.info(f"   • http://localhost:{HTTP_PORT}/status")
+    logger.info(f"   • http://localhost:{HTTP_PORT}/")
 
     try:
         await dp.start_polling(bot, skip_updates=True)
@@ -1516,6 +1913,9 @@ async def main():
     finally:
         background_task.cancel()
         await api_client.close()
+        if http_runner:
+            await http_runner.cleanup()
+            logger.info("🌐 HTTP сервер остановлен")
 
 
 if __name__ == "__main__":
