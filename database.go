@@ -489,19 +489,19 @@ type Question struct {
 	Correct int      `json:"correct"`
 }
 
+// В файле database.go
 func GetFullTest(testID int) (*FullTest, error) {
 	var t FullTest
 	var qIds pq.Int64Array
 
-	// 1. Берем инфу о тесте
 	err := db.QueryRow("SELECT id, name, question_ids FROM tests WHERE id = $1", testID).Scan(&t.ID, &t.Name, &qIds)
 	if err != nil {
 		return nil, err
 	}
 
-	// 2. Если вопросы есть, вытягиваем их детали
 	if len(qIds) > 0 {
-		rows, err := db.Query("SELECT id, title, text, options, correct FROM questions WHERE id = ANY($1)", qIds)
+		// ИСПРАВЛЕНО: correct -> correct_option
+		rows, err := db.Query("SELECT id, title, text, options, correct_option FROM questions WHERE id = ANY($1)", qIds)
 		if err != nil {
 			return nil, err
 		}
@@ -510,12 +510,12 @@ func GetFullTest(testID int) (*FullTest, error) {
 		for rows.Next() {
 			var q Question
 			var opts []byte
+			// ИСПРАВЛЕНО: тут тоже убедись, что Scan идет в правильном порядке
 			if err := rows.Scan(&q.ID, &q.Title, &q.Text, &opts, &q.Correct); err == nil {
 				json.Unmarshal(opts, &q.Options)
 				t.Questions = append(t.Questions, q)
 			}
 		}
 	}
-
 	return &t, nil
 }
