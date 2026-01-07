@@ -5,7 +5,7 @@ import json
 import secrets
 import jwt
 import aiohttp
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 from typing import Dict, Any, Optional, List
 from functools import wraps
 from enum import Enum
@@ -275,9 +275,9 @@ class APIClient:
             logger.error(f"📚 Ошибка при получении тестов: {e}")
             # Возвращаем тестовые данные для демонстрации
             return [
-                {"id": 1, "name": "Тест по Python", "is_active": True, "question_ids": [1, 2, 3]},
-                {"id": 2, "name": "Тест по Docker", "is_active": True, "question_ids": [1, 2]},
-                {"id": 3, "name": "Тест по API", "is_active": False, "question_ids": [1]}
+                {"id": 56, "name": "Тест по Python", "is_active": True, "question_ids": [1, 2, 3]},
+                {"id": 57, "name": "Тест по Docker", "is_active": True, "question_ids": [1, 2]},
+                {"id": 61, "name": "Тест по API", "is_active": False, "question_ids": []}
             ]
 
     async def start_test(self, token: str, test_id: int) -> Dict:
@@ -543,7 +543,6 @@ async def cmd_start(message: Message):
 
 <b>Доступные команды:</b>
 /tests — список тестов
-/courses — список дисциплин
 /profile — ваш профиль
 /logout — выход из системы
 
@@ -572,8 +571,7 @@ async def cmd_help(message: Message):
 /logout_all — выход со всех устройств
 /test_auth — быстрая авторизация (для разработчиков)
 
-<b>Дисциплины и тесты:</b>
-/courses — список дисциплины
+<b>Тесты:</b>
 /tests — список тестов
 /start_test — начать тест по ID
 
@@ -723,7 +721,6 @@ async def callback_login_code(callback: CallbackQuery):
 
     kb = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="🔄 Проверить статус", callback_data=f"check_auth_{login_token}")],
-        [InlineKeyboardButton(text="🚀 Тест: Подтвердить авторизацию", callback_data=f"confirm_auth_{login_token}")],
         [InlineKeyboardButton(text="❌ Отмена", callback_data="cancel_auth")]
     ])
 
@@ -731,29 +728,33 @@ async def callback_login_code(callback: CallbackQuery):
     await callback.answer()
 
 
-@dp.callback_query(F.data == "login_test")
-async def callback_login_test(callback: CallbackQuery):
-    """Тестовая авторизация для разработчиков"""
-    chat_id = callback.from_user.id
+# =========================
+# КОМАНДА ДЛЯ БЫСТРОЙ АВТОРИЗАЦИИ
+# =========================
+@dp.message(Command("test_auth"))
+@rate_limit()
+@safe_send_message
+async def cmd_test_auth(message: Message):
+    """Быстрая авторизация для разработчиков"""
+    chat_id = message.chat.id
     user = await get_user(chat_id)
 
     if user and user.get("status") == UserStatus.AUTHORIZED:
-        await callback.answer("✅ Вы уже авторизованы")
+        await message.answer(f"✅ <b>Вы уже авторизованы как {user.get('email')}</b>")
         return
 
     text = """
-🚀 <b>Тестовая авторизация</b>
+🚀 <b>Тестовая авторизация (для разработчиков)</b>
 
 Выберите роль для тестирования:
 """
     kb = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="👨‍🎓 Студент (тест)", callback_data="login_student")],
-        [InlineKeyboardButton(text="👨‍🏫 Преподаватель (тест)", callback_data="login_teacher")],
-        [InlineKeyboardButton(text="⬅️ Назад", callback_data="login")]
+        [InlineKeyboardButton(text="👨‍🎓 Студент", callback_data="login_student")],
+        [InlineKeyboardButton(text="👨‍🏫 Преподаватель", callback_data="login_teacher")],
+        [InlineKeyboardButton(text="❌ Отмена", callback_data="cancel_auth")]
     ])
 
-    await callback.message.edit_text(text, reply_markup=kb)
-    await callback.answer()
+    await message.answer(text, reply_markup=kb)
 
 
 @dp.callback_query(F.data == "login_student")
@@ -803,42 +804,14 @@ async def callback_login_teacher(callback: CallbackQuery):
 
 
 # =========================
-# КОМАНДА ДЛЯ БЫСТРОЙ АВТОРИЗАЦИИ
-# =========================
-@dp.message(Command("test_auth"))
-@rate_limit()
-@safe_send_message
-async def cmd_test_auth(message: Message):
-    """Быстрая авторизация для разработчиков"""
-    chat_id = message.chat.id
-    user = await get_user(chat_id)
-
-    if user and user.get("status") == UserStatus.AUTHORIZED:
-        await message.answer(f"✅ <b>Вы уже авторизованы как {user.get('email')}</b>")
-        return
-
-    text = """
-🚀 <b>Тестовая авторизация (для разработчиков)</b>
-
-Выберите роль для тестирования:
-"""
-    kb = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="👨‍🎓 Студент", callback_data="login_student")],
-        [InlineKeyboardButton(text="👨‍🏫 Преподаватель", callback_data="login_teacher")]
-    ])
-
-    await message.answer(text, reply_mup=kb)
-
-
-# =========================
-# СПИСОК ТЕСТОВ С API - УЛУЧШЕННАЯ
+# СПИСОК ТЕСТОВ - БЕЗ КНОПОК
 # =========================
 @dp.message(Command("tests"))
 @rate_limit()
 @require_auth()
 @safe_send_message
 async def cmd_tests(message: Message, user: Dict):
-    """Список доступных тестов с API"""
+    """Список доступных тестов с API - без кнопок"""
     chat_id = message.chat.id
     api_token = user.get("api_token", "")
 
@@ -875,34 +848,19 @@ async def cmd_tests(message: Message, user: Dict):
 
             text += f"{status} <b>{test_name}</b> (ID: {test_id})\n"
             text += f"   📊 Статус: {status_text}\n"
-            text += f"   ❓ Вопросов: {len(question_ids)}\n\n"
+            text += f"   ❓ Вопросов: {len(question_ids)}\n"
 
-        # Создаем кнопки для активных тестов
-        buttons = []
-        active_tests = [t for t in tests if t.get("is_active", False)]
+            if question_ids:
+                text += f"   📋 ID вопросов: {', '.join(map(str, question_ids))}\n"
 
-        for test in active_tests:
-            test_id = test.get("id")
-            if test_id:
-                test_name = test.get("name") or test.get("title", f"Тест {test_id}")
-                buttons.append([
-                    InlineKeyboardButton(
-                        text=f"▶️ Начать: {test_name}",
-                        callback_data=f"start_test_{test_id}"
-                    )
-                ])
+            text += "\n"
 
-        # Добавляем информационные кнопки
-        if buttons:
-            buttons.append([
-                InlineKeyboardButton(text="🔄 Обновить список", callback_data="refresh_tests")
-            ])
-            kb = InlineKeyboardMarkup(inline_keyboard=buttons)
-        else:
-            text += "\n😔 <b>В данный момент нет активных тестов для прохождения.</b>"
-            kb = None
+        text += "\n<b>Используйте команду:</b>\n<code>/start_test ID_теста [ID_вопроса]</code>\n\n"
+        text += "<b>Примеры:</b>\n"
+        text += "<code>/start_test 56</code> - начать тест 56 с первого вопроса\n"
+        text += "<code>/start_test 56 2</code> - начать тест 56 с вопроса 2"
 
-        await message.answer(text, reply_markup=kb)
+        await message.answer(text, parse_mode=ParseMode.HTML)
 
     except Exception as e:
         # Удаляем сообщение о загрузке
@@ -917,30 +875,31 @@ async def cmd_tests(message: Message, user: Dict):
 
 
 # =========================
-# КОМАНДА ДЛЯ ЗАПУСКА ТЕСТА - УЛУЧШЕННАЯ
+# ЗАПУСК ТЕСТА - С ID ТЕСТА И ID ВОПРОСА
 # =========================
 @dp.message(Command("start_test"))
 @rate_limit()
 @require_auth()
 @safe_send_message
 async def cmd_start_test(message: Message, user: Dict):
-    """Запуск теста по ID"""
+    """Запуск теста по ID теста и ID вопроса"""
     chat_id = message.chat.id
     api_token = user.get("api_token", "")
 
-    # Извлекаем ID теста из команды
+    # Извлекаем параметры из команды
     command_text = message.text or ""
     parts = command_text.split()
 
     if len(parts) < 2:
         await message.answer(
-            "❌ <b>Использование:</b> <code>/start_test ID_теста</code>\n\nПример: <code>/start_test 1</code>\n\nИспользуйте /tests для просмотра доступных тестов.")
+            "❌ <b>Использование:</b> <code>/start_test ID_теста [ID_вопроса]</code>\n\nПримеры:\n<code>/start_test 56</code> - начать тест 56\n<code>/start_test 56 2</code> - начать тест 56 с вопроса 2")
         return
 
     try:
         test_id = int(parts[1])
+        question_id = int(parts[2]) if len(parts) > 2 else None
     except ValueError:
-        await message.answer("❌ <b>Ошибка:</b> ID теста должен быть числом")
+        await message.answer("❌ <b>Ошибка:</b> ID теста и ID вопроса должны быть числами")
         return
 
     if not api_token:
@@ -962,15 +921,25 @@ async def cmd_start_test(message: Message, user: Dict):
             await message.answer("❌ <b>Ошибка:</b> Не удалось начать тест. Попробуйте позже.")
             return
 
-        # Получаем вопросы теста
+        # Получаем вопросы теста из API или используем заглушку
+        # В реальном API нужно получить список вопросов
         question_ids = [1, 2, 3]  # Примерные ID вопросов
+
+        # Определяем, с какого вопроса начинать
+        start_question_index = 0
+        if question_id:
+            try:
+                start_question_index = question_ids.index(question_id)
+            except ValueError:
+                await message.answer(f"❌ <b>Ошибка:</b> Вопрос с ID {question_id} не найден в тесте.")
+                return
 
         # Сохраняем контекст теста
         test_context = {
             "test_id": test_id,
             "attempt_id": attempt_id,
             "question_ids": question_ids,
-            "current_question_index": 0,
+            "current_question_index": start_question_index,
             "answers": {},
             "started_at": datetime.now().isoformat(),
             "api_token": api_token,
@@ -983,42 +952,40 @@ async def cmd_start_test(message: Message, user: Dict):
             json.dumps(test_context)
         )
 
-        # Получаем первый вопрос
-        if question_ids:
-            first_question_id = question_ids[0]
-            question_data = await api_client.get_question_details(api_token, first_question_id)
+        # Получаем текущий вопрос
+        current_question_id = question_ids[start_question_index]
+        question_data = await api_client.get_question_details(api_token, current_question_id)
 
-            text = f"""
+        text = f"""
 🧪 <b>Начинаем тест #{test_id}</b>
 
 <b>ID попытки:</b> {attempt_id}
 <b>Всего вопросов:</b> {len(question_ids)}
+<b>Текущий вопрос:</b> {start_question_index + 1} из {len(question_ids)}
 
-<b>Вопрос 1 из {len(question_ids)}:</b>
+<b>Вопрос:</b>
 {question_data.get('text', 'Текст вопроса')}
 """
 
-            # Создаем кнопки для вариантов ответов
-            buttons = []
-            options = question_data.get("options", ["Вариант 1", "Вариант 2", "Вариант 3"])
+        # Создаем кнопки для вариантов ответов
+        buttons = []
+        options = question_data.get("options", ["Вариант 1", "Вариант 2", "Вариант 3"])
 
-            for i, option in enumerate(options):
-                buttons.append([
-                    InlineKeyboardButton(
-                        text=f"{i + 1}. {option}",
-                        callback_data=f"answer_{attempt_id}_{first_question_id}_{i}"
-                    )
-                ])
-
-            # Добавляем кнопку отмены
+        for i, option in enumerate(options):
             buttons.append([
-                InlineKeyboardButton(text="❌ Отменить тест", callback_data="cancel_test")
+                InlineKeyboardButton(
+                    text=f"{i + 1}. {option}",
+                    callback_data=f"answer_{attempt_id}_{current_question_id}_{i}"
+                )
             ])
 
-            kb = InlineKeyboardMarkup(inline_keyboard=buttons)
-            await message.answer(text, reply_markup=kb)
-        else:
-            await message.answer("❌ <b>Ошибка:</b> В тесте нет вопросов.")
+        # Добавляем кнопку отмены
+        buttons.append([
+            InlineKeyboardButton(text="❌ Отменить тест", callback_data="cancel_test")
+        ])
+
+        kb = InlineKeyboardMarkup(inline_keyboard=buttons)
+        await message.answer(text, reply_markup=kb)
 
     except Exception as e:
         # Удаляем сообщение о загрузке
@@ -1149,102 +1116,6 @@ async def handle_answer_callback(callback: CallbackQuery):
 
 
 # =========================
-# НАЧАЛО ТЕСТА ЧЕРЕЗ КНОПКУ
-# =========================
-@dp.callback_query(F.data.startswith("start_test_"))
-@require_auth()
-async def callback_start_test(callback: CallbackQuery, user: Dict):
-    """Обработчик начала теста через кнопку"""
-    try:
-        test_id = int(callback.data[11:])
-        api_token = user.get("api_token", "")
-
-        if not api_token:
-            await callback.answer("❌ Ошибка авторизации API")
-            return
-
-        await callback.answer(f"🚀 Начинаем тест #{test_id}")
-
-        # Показываем сообщение о запуске
-        loading_msg = await callback.message.answer(f"🔄 <b>Запуск теста #{test_id}...</b>")
-
-        # Начинаем тест через API
-        result = await api_client.start_test(api_token, test_id)
-
-        # Удаляем сообщение о загрузке
-        await loading_msg.delete()
-
-        attempt_id = result.get("attempt_id") or result.get("id")
-        if not attempt_id:
-            await callback.answer("❌ Не удалось начать тест")
-            await callback.message.answer("❌ <b>Ошибка:</b> Не удалось начать тест. Попробуйте позже.")
-            return
-
-        # Получаем вопросы теста
-        question_ids = [1, 2, 3]  # Примерные ID вопросов
-
-        # Сохраняем контекст теста
-        test_context = {
-            "test_id": test_id,
-            "attempt_id": attempt_id,
-            "question_ids": question_ids,
-            "current_question_index": 0,
-            "answers": {},
-            "started_at": datetime.now().isoformat(),
-            "api_token": api_token,
-            "user_id": user.get("user_id")
-        }
-
-        await redis_client.setex(
-            f"test_context:{callback.message.chat.id}",
-            3600,
-            json.dumps(test_context)
-        )
-
-        # Получаем первый вопрос
-        if question_ids:
-            first_question_id = question_ids[0]
-            question_data = await api_client.get_question_details(api_token, first_question_id)
-
-            text = f"""
-🧪 <b>Начинаем тест #{test_id}</b>
-
-<b>ID попытки:</b> {attempt_id}
-<b>Всего вопросов:</b> {len(question_ids)}
-
-<b>Вопрос 1 из {len(question_ids)}:</b>
-{question_data.get('text', 'Текст вопроса')}
-"""
-
-            # Создаем кнопки для вариантов ответов
-            buttons = []
-            options = question_data.get("options", ["Вариант 1", "Вариант 2", "Вариант 3"])
-
-            for i, option in enumerate(options):
-                buttons.append([
-                    InlineKeyboardButton(
-                        text=f"{i + 1}. {option}",
-                        callback_data=f"answer_{attempt_id}_{first_question_id}_{i}"
-                    )
-                ])
-
-            # Добавляем кнопку отмены
-            buttons.append([
-                InlineKeyboardButton(text="❌ Отменить тест", callback_data="cancel_test")
-            ])
-
-            kb = InlineKeyboardMarkup(inline_keyboard=buttons)
-            await callback.message.answer(text, reply_markup=kb)
-        else:
-            await callback.message.answer("❌ <b>Ошибка:</b> В тесте нет вопросов.")
-
-    except Exception as e:
-        logger.error(f"Error starting test: {e}")
-        await callback.answer("❌ Ошибка при начале теста")
-        await callback.message.answer(f"❌ <b>Ошибка при начале теста:</b>\n\n{str(e)}")
-
-
-# =========================
 # ОТМЕНА ТЕСТА
 # =========================
 @dp.callback_query(F.data == "cancel_test")
@@ -1253,11 +1124,11 @@ async def callback_cancel_test(callback: CallbackQuery):
     chat_id = callback.from_user.id
     await redis_client.delete(f"test_context:{chat_id}")
     await callback.answer("❌ Тест отменен")
-    await callback.message.answer("🚫 <b>Тест отменен</b>\n\nВы можете начать новый тест с помощью /tests.")
+    await callback.message.answer("🚫 <b>Тест отменен</b>\n\nВы можете начать новый тест с помощью /start_test.")
 
 
 # =========================
-# ОСТАЛЬНЫЕ КОМАНДЫ С ПРАВИЛЬНЫМ ВРЕМЕНЕМ
+# ОСТАЛЬНЫЕ КОМАНДЫ
 # =========================
 @dp.message(Command("profile"))
 @rate_limit()
@@ -1303,12 +1174,7 @@ async def cmd_profile(message: Message, user: Dict):
 🔐 <b>Статус:</b> 🟢 Активен
 """
 
-    kb = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="📊 Мои результаты", callback_data="my_results")],
-        [InlineKeyboardButton(text="🔄 Обновить данные", callback_data="refresh_profile")]
-    ])
-
-    await message.answer(text, reply_markup=kb)
+    await message.answer(text)
 
 
 @dp.message(Command("logout"))
@@ -1404,38 +1270,6 @@ async def cmd_status(message: Message):
 • Redis — {redis_status}
 • Telegram Bot — 🟢 онлайн
 • API Backend — 🟢 {API_BASE_URL}
-"""
-    await message.answer(text)
-
-
-@dp.message(Command("courses"))
-@rate_limit()
-@require_auth()
-@safe_send_message
-async def cmd_courses(message: Message, user: Dict):
-    """Список дисциплин"""
-    text = """
-🎓 <b>Доступные дисциплины</b>
-
-1. <b>Программирование</b>
-   • Основы программирования
-   • Объектно-ориентированное программирование
-   • Алгоритмы и структуры данных
-
-2. <b>Базы данных</b>
-   • SQL и реляционные БД
-   • NoSQL базы данных
-   • Оптимизация запросов
-
-3. <b>Веб-разработка</b>
-   • HTML/CSS/JavaScript
-   • Backend разработка
-   • Фреймворки
-
-4. <b>DevOps</b>
-   • Docker и контейнеризация
-   • CI/CD
-   • Мониторинг
 """
     await message.answer(text)
 
@@ -1606,8 +1440,6 @@ async def callback_check_auth(callback: CallbackQuery):
         try:
             kb = InlineKeyboardMarkup(inline_keyboard=[
                 [InlineKeyboardButton(text="🔄 Проверить статус", callback_data=f"check_auth_{login_token}")],
-                [InlineKeyboardButton(text="🚀 Тест: Подтвердить авторизацию",
-                                      callback_data=f"confirm_auth_{login_token}")],
                 [InlineKeyboardButton(text="❌ Отмена", callback_data="cancel_auth")]
             ])
             await callback.message.edit_reply_markup(reply_markup=kb)
@@ -1628,50 +1460,12 @@ async def callback_check_auth(callback: CallbackQuery):
         )
 
 
-@dp.callback_query(F.data.startswith("confirm_auth_"))
-async def callback_confirm_auth(callback: CallbackQuery):
-    """Подтверждение авторизации (для тестирования)"""
-    login_token = callback.data[13:]
-
-    success = await auth_service.confirm_login(login_token)
-
-    if success:
-        result = await auth_service.check_login_token(login_token)
-
-        if result and result.get("status") == "granted":
-            user_data = result.get("user", {})
-            user_id = user_data.get("id", secrets.randbelow(1000) + 100)
-            email = user_data.get("email", f"user_{login_token[:8]}@example.com")
-
-            await set_user_authorized(callback.from_user.id, user_id, email, "student")
-
-            await callback.answer("✅ Авторизация подтверждена и успешна!")
-            await callback.message.edit_text(
-                f"✅ <b>Авторизация завершена!</b>\n\nДобро пожаловать, {email}\n\n<em>Примечание: использована заглушка для тестирования</em>",
-                reply_markup=None
-            )
-        else:
-            await callback.answer("❌ Ошибка подтверждения")
-    else:
-        await callback.answer("❌ Токен не найден")
-
-
 @dp.callback_query(F.data == "cancel_auth")
 async def callback_cancel_auth(callback: CallbackQuery):
     chat_id = callback.from_user.id
     await delete_user(chat_id)
     await callback.answer("❌ Авторизация отменена")
     await callback.message.edit_text("🚪 <b>Авторизация отменена</b>", reply_markup=None)
-
-
-@dp.callback_query(F.data == "refresh_tests")
-async def callback_refresh_tests(callback: CallbackQuery):
-    await callback.answer("🔄 Обновление списка тестов...")
-    user = await get_user(callback.from_user.id)
-    if user and user.get("status") == UserStatus.AUTHORIZED:
-        await cmd_tests(callback.message, user)
-    else:
-        await callback.answer("❌ Требуется авторизация", show_alert=True)
 
 
 # =========================
