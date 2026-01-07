@@ -87,7 +87,7 @@ class SimpleRedis:
 
     async def connect(self):
         try:
-            self.client = redis.from_url(REDIS_URL, decode_responses=True, socket_connect_timeout=2)
+            self.client = redis.from_url(REDIS_URL, decode_responses=True, socket_connect_timeout=5)
             await self.client.ping()
             self.connected = True
             logger.info("✅ Redis подключен")
@@ -145,8 +145,9 @@ class APIClient:
         self.session = None
 
     async def ensure_session(self):
-        if self.session is None:
-            self.session = aiohttp.ClientSession()
+        if self.session is None or self.session.closed:
+            timeout = aiohttp.ClientTimeout(total=30)
+            self.session = aiohttp.ClientSession(timeout=timeout)
 
     async def close(self):
         if self.session:
@@ -178,7 +179,7 @@ class APIClient:
         }
 
         try:
-            async with self.session.request(method, url, headers=headers, json=data) as response:
+            async with self.session.request(method, url, headers=headers, json=data, timeout=30) as response:
                 response_text = await response.text()
 
                 if response.status == 418:  # I'm a teapot
@@ -238,7 +239,6 @@ class APIClient:
 
     async def get_question_details(self, token: str, question_id: int) -> Dict:
         """Получить детали вопроса (заглушка, пока нет API)"""
-        # В реальном API нужно добавить эндпоинт для получения вопроса
         questions_data = {
             1: {
                 "text": "Что такое Python?",
@@ -269,18 +269,15 @@ api_client = APIClient(API_BASE_URL, JWT_SECRET)
 # =========================
 # DECORATORS
 # =========================
-async def check_rate_limit(chat_id: int, seconds: int = 2) -> bool:
-    # TODO: Реализовать проверку лимита запросов
-    return True
-
-
 def rate_limit(seconds: int = 2):
     def decorator(handler):
         @wraps(handler)
         async def wrapper(message: Message, *args, **kwargs):
             stats.increment_commands()
             return await handler(message, *args, **kwargs)
+
         return wrapper
+
     return decorator
 
 
@@ -296,6 +293,7 @@ def safe_send_message(func):
                     await args[0].answer(f"❌ Ошибка: {str(e)}")
                 except:
                     pass
+
     return wrapper
 
 
@@ -325,7 +323,9 @@ def require_auth():
                     pass
                 return
             return await handler(event, user, *args, **kwargs)
+
         return wrapper
+
     return decorator
 
 
@@ -433,28 +433,21 @@ async def cmd_start(message: Message):
         login_token = user.get("login_token", "")
         provider = user.get("provider", "code")
 
-        code = ""
-        # Используем заглушку auth_service
-        if login_token in auth_service.login_tokens:
-            token_data = auth_service.login_tokens[login_token]
-            if token_data.get("code"):
-                code = token_data["code"]
-
         if provider == "code":
-            code_text = f"<b>Код: <code>{code}</code></b>" if code else ""
+            code = auth_service.codes.get(login_token, "Ожидание генерации...")
             text = f"""
 🔐 <b>Ожидание авторизации через код</b>
 
 Для завершения авторизации введите код в веб-клиенте:
 
-{code_text}
+<b>Код: <code>{code if code else 'Генерация...'}</code></b>
 
 ⏳ <b>Код действителен 5 минут</b>
 
 После ввода кода нажмите "Проверить статус".
 """
         else:
-            provider_name = "GitHub" if provider == "github" else "Яндекс ID" if provider == "yandex" else provider
+            provider_name = "GitHub" if provider == "github" else "Яндекс ID"
             text = f"""
 🔐 <b>Ожидание авторизации через {provider_name}</b>
 
@@ -501,13 +494,15 @@ async def cmd_help(message: Message):
 /status — статус системы
 
 <b>Авторизация:</b>
-/login — вход через код/GitHub/Яндекс
+/login — вход через GitHub/Яндекс/Code
 /logout — выход
 /logout_all — выход со всех устройств
+/test_auth — быстрая авторизация (для разработчиков)
 
 <b>Дисциплины и тесты:</b>
-/courses — список дисциплин
-/tests — список тестов с кнопками для начала
+/courses — список дисциплины
+/tests — список тестов
+/start_test — начать тест по ID
 
 <b>Профиль:</b>
 /profile — информация о пользователе
@@ -517,15 +512,12 @@ async def cmd_help(message: Message):
 /debug — отладочная информация
 /ping — проверка работы бота
 /echo — эхо-команда
-
-<b>Команды для тестирования:</b>
-/test_auth — быстрая авторизация (для тестирования)
 """
     await message.answer(help_text)
 
 
 # =========================
-# АВТОРИЗАЦИЯ - ОБНОВЛЕННАЯ ДЛЯ API
+# АВТОРИЗАЦИЯ - УЛУЧШЕННАЯ
 # =========================
 @dp.message(Command("login"))
 @rate_limit()
@@ -542,18 +534,156 @@ async def cmd_login(message: Message):
     text = """
 🔐 <b>Выберите способ авторизации:</b>
 
-1. <b>Тестовая авторизация (Студент)</b> — вход как студент для тестирования
-2. <b>Тестовая авторизация (Преподаватель)</b> — вход как преподаватель
+1. <b>GitHub</b> — вход через аккаунт GitHub
+2. <b>Яндекс ID</b> — вход через Яндекс
 3. <b>Code</b> — авторизация через код (веб-клиент)
 """
     kb = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="👨‍🎓 Студент (тест)", callback_data="login_student")],
-        [InlineKeyboardButton(text="👨‍🏫 Преподаватель (тест)", callback_data="login_teacher")],
+        [InlineKeyboardButton(text="🐙 GitHub", callback_data="login_github")],
+        [InlineKeyboardButton(text="🌐 Яндекс ID", callback_data="login_yandex")],
         [InlineKeyboardButton(text="🔢 Code", callback_data="login_code")],
+        [InlineKeyboardButton(text="🚀 Тестовая авторизация", callback_data="login_test")],
         [InlineKeyboardButton(text="❌ Отмена", callback_data="cancel_auth")]
     ])
 
     await message.answer(text, reply_markup=kb)
+
+
+@dp.callback_query(F.data == "login_github")
+async def callback_login_github(callback: CallbackQuery):
+    """Авторизация через GitHub (заглушка)"""
+    chat_id = callback.from_user.id
+    user = await get_user(chat_id)
+
+    if user and user.get("status") == UserStatus.AUTHORIZED:
+        await callback.answer("✅ Вы уже авторизованы")
+        return
+
+    login_token = secrets.token_urlsafe(32)
+    await set_user_anonymous(chat_id, login_token, "github")
+
+    auth_url = await auth_service.generate_login_url(login_token, "github")
+
+    text = f"""
+🔐 <b>Авторизация через GitHub</b>
+
+Для входа перейдите по ссылке:
+
+<a href="{auth_url}">{auth_url}</a>
+
+После авторизации нажмите "Проверить статус".
+
+⏳ <b>Ссылка действительна 5 минут</b>
+"""
+
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="🔗 Открыть ссылку", url=auth_url)],
+        [InlineKeyboardButton(text="🔄 Проверить статус", callback_data=f"check_auth_{login_token}")],
+        [InlineKeyboardButton(text="❌ Отмена", callback_data="cancel_auth")]
+    ])
+
+    await callback.message.edit_text(text, reply_markup=kb, parse_mode=ParseMode.HTML, disable_web_page_preview=True)
+    await callback.answer()
+
+
+@dp.callback_query(F.data == "login_yandex")
+async def callback_login_yandex(callback: CallbackQuery):
+    """Авторизация через Яндекс ID (заглушка)"""
+    chat_id = callback.from_user.id
+    user = await get_user(chat_id)
+
+    if user and user.get("status") == UserStatus.AUTHORIZED:
+        await callback.answer("✅ Вы уже авторизованы")
+        return
+
+    login_token = secrets.token_urlsafe(32)
+    await set_user_anonymous(chat_id, login_token, "yandex")
+
+    auth_url = await auth_service.generate_login_url(login_token, "yandex")
+
+    text = f"""
+🔐 <b>Авторизация через Яндекс ID</b>
+
+Для входа перейдите по ссылке:
+
+<a href="{auth_url}">{auth_url}</a>
+
+После авторизации нажмите "Проверить статус".
+
+⏳ <b>Ссылка действительна 5 минут</b>
+"""
+
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="🔗 Открыть ссылку", url=auth_url)],
+        [InlineKeyboardButton(text="🔄 Проверить статус", callback_data=f"check_auth_{login_token}")],
+        [InlineKeyboardButton(text="❌ Отмена", callback_data="cancel_auth")]
+    ])
+
+    await callback.message.edit_text(text, reply_markup=kb, parse_mode=ParseMode.HTML, disable_web_page_preview=True)
+    await callback.answer()
+
+
+@dp.callback_query(F.data == "login_code")
+async def callback_login_code(callback: CallbackQuery):
+    """Авторизация через код"""
+    chat_id = callback.from_user.id
+    user = await get_user(chat_id)
+
+    if user and user.get("status") == UserStatus.AUTHORIZED:
+        await callback.answer("✅ Вы уже авторизованы")
+        return
+
+    login_token = secrets.token_urlsafe(32)
+    await set_user_anonymous(chat_id, login_token, "code")
+
+    auth_url = await auth_service.generate_login_url(login_token, "code")
+    code = auth_service.codes.get(login_token, "Ожидание...")
+
+    text = f"""
+🔐 <b>Авторизация через код</b>
+
+Для входа в систему введите код в веб-клиенте:
+
+<b>Код: <code>{code}</code></b>
+
+⏳ <b>Код действителен 5 минут</b>
+
+После ввода кода нажмите "Проверить статус".
+"""
+
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="🔄 Проверить статус", callback_data=f"check_auth_{login_token}")],
+        [InlineKeyboardButton(text="🚀 Тест: Подтвердить авторизацию", callback_data=f"confirm_auth_{login_token}")],
+        [InlineKeyboardButton(text="❌ Отмена", callback_data="cancel_auth")]
+    ])
+
+    await callback.message.edit_text(text, reply_markup=kb, parse_mode=ParseMode.HTML)
+    await callback.answer()
+
+
+@dp.callback_query(F.data == "login_test")
+async def callback_login_test(callback: CallbackQuery):
+    """Тестовая авторизация для разработчиков"""
+    chat_id = callback.from_user.id
+    user = await get_user(chat_id)
+
+    if user and user.get("status") == UserStatus.AUTHORIZED:
+        await callback.answer("✅ Вы уже авторизованы")
+        return
+
+    text = """
+🚀 <b>Тестовая авторизация</b>
+
+Выберите роль для тестирования:
+"""
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="👨‍🎓 Студент (тест)", callback_data="login_student")],
+        [InlineKeyboardButton(text="👨‍🏫 Преподаватель (тест)", callback_data="login_teacher")],
+        [InlineKeyboardButton(text="⬅️ Назад", callback_data="login")]
+    ])
+
+    await callback.message.edit_text(text, reply_markup=kb)
+    await callback.answer()
 
 
 @dp.callback_query(F.data == "login_student")
@@ -566,9 +696,9 @@ async def callback_login_student(callback: CallbackQuery):
         await callback.answer("✅ Вы уже авторизованы")
         return
 
-    # Создаем фейковые данные для авторизации студента
-    user_id = 123  # Фиксированный ID студента
-    email = f"student_{chat_id}@example.com"
+    # Создаем тестовые данные для авторизации студента
+    user_id = 12345
+    email = f"student_{chat_id}@test.com"
 
     await set_user_authorized(chat_id, user_id, email, "student")
 
@@ -589,9 +719,9 @@ async def callback_login_teacher(callback: CallbackQuery):
         await callback.answer("✅ Вы уже авторизованы")
         return
 
-    # Создаем фейковые данные для авторизации преподавателя
-    user_id = 456  # Фиксированный ID преподавателя
-    email = f"teacher_{chat_id}@example.com"
+    # Создаем тестовые данные для авторизации преподавателя
+    user_id = 67890
+    email = f"teacher_{chat_id}@test.com"
 
     await set_user_authorized(chat_id, user_id, email, "teacher")
 
@@ -600,6 +730,34 @@ async def callback_login_teacher(callback: CallbackQuery):
         f"✅ <b>Авторизация преподавателя успешна!</b>\n\nДобро пожаловать, {email}\n\nВы можете управлять тестами.",
         reply_markup=None
     )
+
+
+# =========================
+# КОМАНДА ДЛЯ БЫСТРОЙ АВТОРИЗАЦИИ
+# =========================
+@dp.message(Command("test_auth"))
+@rate_limit()
+@safe_send_message
+async def cmd_test_auth(message: Message):
+    """Быстрая авторизация для разработчиков"""
+    chat_id = message.chat.id
+    user = await get_user(chat_id)
+
+    if user and user.get("status") == UserStatus.AUTHORIZED:
+        await message.answer(f"✅ <b>Вы уже авторизованы как {user.get('email')}</b>")
+        return
+
+    text = """
+🚀 <b>Тестовая авторизация (для разработчиков)</b>
+
+Выберите роль для тестирования:
+"""
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="👨‍🎓 Студент", callback_data="login_student")],
+        [InlineKeyboardButton(text="👨‍🏫 Преподаватель", callback_data="login_teacher")]
+    ])
+
+    await message.answer(text, reply_markup=kb)
 
 
 # =========================
@@ -627,49 +785,44 @@ async def cmd_tests(message: Message, user: Dict):
             await message.answer(text)
             return
 
-        # Активные тесты
-        active_tests = [t for t in tests if t.get("is_active", False) and not t.get("is_deleted", False)]
-        inactive_tests = [t for t in tests if not t.get("is_active", True) or t.get("is_deleted", False)]
-
-        # Формируем текст
+        # Формируем текст со списком тестов
         text = "📚 <b>Доступные тесты</b>\n\n"
 
-        if active_tests:
-            text += "🟢 <b>Активные тесты:</b>\n"
-            for test in active_tests:
-                test_name = test.get("name") or test.get("title", f"Тест {test.get('id', '?')}")
-                question_ids = test.get("question_ids", [])
-                text += f"  • <b>{test_name}</b> (ID: {test.get('id', '?')})\n"
-                text += f"    ❓ Вопросов: {len(question_ids)}\n\n"
+        for test in tests:
+            test_id = test.get("id", "?")
+            test_name = test.get("name") or test.get("title", f"Тест {test_id}")
+            is_active = test.get("is_active", False)
+            question_ids = test.get("question_ids", [])
 
-        if inactive_tests:
-            text += "🔴 <b>Неактивные тесты:</b>\n"
-            for test in inactive_tests:
-                test_name = test.get("name") or test.get("title", f"Тест {test.get('id', '?')}")
-                text += f"  • <b>{test_name}</b> (недоступен)\n"
+            status = "🟢" if is_active else "🔴"
+            status_text = "Активен" if is_active else "Неактивен"
+
+            text += f"{status} <b>{test_name}</b> (ID: {test_id})\n"
+            text += f"   📊 Статус: {status_text}\n"
+            text += f"   ❓ Вопросов: {len(question_ids)}\n\n"
 
         # Создаем кнопки для активных тестов
         buttons = []
-        for test in active_tests:
+        for test in tests:
             test_id = test.get("id")
-            if test_id:
+            is_active = test.get("is_active", False)
+
+            if test_id and is_active:
                 test_name = test.get("name") or test.get("title", f"Тест {test_id}")
                 buttons.append([
                     InlineKeyboardButton(
-                        text=f"▶️ Начать тест: {test_name}",
+                        text=f"▶️ Начать: {test_name}",
                         callback_data=f"start_test_{test_id}"
                     )
                 ])
 
         # Добавляем информационные кнопки
-        buttons.append([
-            InlineKeyboardButton(text="📊 Мои результаты", callback_data="my_test_results"),
-            InlineKeyboardButton(text="🔄 Обновить список", callback_data="refresh_tests")
-        ])
-
-        kb = InlineKeyboardMarkup(inline_keyboard=buttons)
-
-        if not active_tests:
+        if buttons:
+            buttons.append([
+                InlineKeyboardButton(text="🔄 Обновить список", callback_data="refresh_tests")
+            ])
+            kb = InlineKeyboardMarkup(inline_keyboard=buttons)
+        else:
             text += "\n😔 <b>В данный момент нет активных тестов для прохождения.</b>"
             kb = None
 
@@ -681,12 +834,222 @@ async def cmd_tests(message: Message, user: Dict):
 
 
 # =========================
-# НАЧАЛО ТЕСТА С API
+# КОМАНДА ДЛЯ ЗАПУСКА ТЕСТА
+# =========================
+@dp.message(Command("start_test"))
+@rate_limit()
+@require_auth()
+@safe_send_message
+async def cmd_start_test(message: Message, user: Dict):
+    """Запуск теста по ID"""
+    chat_id = message.chat.id
+    api_token = user.get("api_token", "")
+
+    # Извлекаем ID теста из команды
+    command_text = message.text or ""
+    parts = command_text.split()
+
+    if len(parts) < 2:
+        await message.answer(
+            "❌ <b>Использование:</b> <code>/start_test ID_теста</code>\n\nПример: <code>/start_test 1</code>")
+        return
+
+    try:
+        test_id = int(parts[1])
+    except ValueError:
+        await message.answer("❌ <b>Ошибка:</b> ID теста должен быть числом")
+        return
+
+    if not api_token:
+        await message.answer("❌ <b>Ошибка авторизации</b>\n\nТокен API не найден.")
+        return
+
+    try:
+        # Начинаем тест через API
+        result = await api_client.start_test(api_token, test_id)
+
+        attempt_id = result.get("attempt_id") or result.get("id")
+        if not attempt_id:
+            await message.answer("❌ <b>Ошибка:</b> Не удалось начать тест. Попробуйте позже.")
+            return
+
+        # Получаем вопросы теста
+        question_ids = [1, 2, 3]  # Примерные ID вопросов
+
+        # Сохраняем контекст теста
+        test_context = {
+            "test_id": test_id,
+            "attempt_id": attempt_id,
+            "question_ids": question_ids,
+            "current_question_index": 0,
+            "answers": {},
+            "started_at": datetime.now().isoformat(),
+            "api_token": api_token,
+            "user_id": user.get("user_id")
+        }
+
+        await redis_client.setex(
+            f"test_context:{chat_id}",
+            3600,
+            json.dumps(test_context)
+        )
+
+        # Получаем первый вопрос
+        if question_ids:
+            first_question_id = question_ids[0]
+            question_data = await api_client.get_question_details(api_token, first_question_id)
+
+            text = f"""
+🧪 <b>Начинаем тест #{test_id}</b>
+
+<b>ID попытки:</b> {attempt_id}
+<b>Всего вопросов:</b> {len(question_ids)}
+
+<b>Вопрос 1 из {len(question_ids)}:</b>
+{question_data.get('text', 'Текст вопроса')}
+"""
+
+            # Создаем кнопки для вариантов ответов
+            buttons = []
+            options = question_data.get("options", ["Вариант 1", "Вариант 2", "Вариант 3"])
+
+            for i, option in enumerate(options):
+                buttons.append([
+                    InlineKeyboardButton(
+                        text=f"{i + 1}. {option}",
+                        callback_data=f"answer_{attempt_id}_{first_question_id}_{i}"
+                    )
+                ])
+
+            kb = InlineKeyboardMarkup(inline_keyboard=buttons)
+            await message.answer(text, reply_markup=kb)
+        else:
+            await message.answer("❌ <b>Ошибка:</b> В тесте нет вопросов.")
+
+    except Exception as e:
+        logger.error(f"Error starting test: {e}")
+        await message.answer(f"❌ <b>Ошибка при начале теста:</b>\n\n{str(e)}")
+
+
+# =========================
+# ОБРАБОТКА ОТВЕТОВ ЧЕРЕЗ КНОПКИ
+# =========================
+@dp.callback_query(F.data.startswith("answer_"))
+async def handle_answer_callback(callback: CallbackQuery):
+    """Обработка ответов через кнопки"""
+    try:
+        # Разбираем callback_data: answer_attemptId_questionId_optionIndex
+        parts = callback.data.split("_")
+        if len(parts) < 4:
+            await callback.answer("❌ Ошибка формата")
+            return
+
+        attempt_id = int(parts[1])
+        question_id = int(parts[2])
+        option_index = int(parts[3])
+
+        chat_id = callback.from_user.id
+        user = await get_user(chat_id)
+
+        if not user:
+            await callback.answer("❌ Требуется авторизация")
+            return
+
+        api_token = user.get("api_token", "")
+
+        # Получаем контекст теста
+        context_data = await redis_client.get(f"test_context:{chat_id}")
+        if not context_data:
+            await callback.answer("❌ Нет активного теста")
+            return
+
+        context = json.loads(context_data)
+
+        # Проверяем, что attempt_id совпадает
+        if context.get("attempt_id") != attempt_id:
+            await callback.answer("❌ Неверная попытка теста")
+            return
+
+        # Отправляем ответ через API
+        try:
+            await api_client.submit_answer(api_token, attempt_id, question_id, option_index)
+            await callback.answer(f"✅ Ответ {option_index + 1} сохранен")
+        except Exception as e:
+            logger.error(f"Ошибка отправки ответа: {e}")
+            await callback.answer("❌ Ошибка отправки ответа")
+            return
+
+        # Обновляем контекст
+        current_index = context.get("current_question_index", 0)
+        context["answers"][current_index] = option_index
+        context["current_question_index"] = current_index + 1
+
+        # Проверяем, закончен ли тест
+        question_ids = context.get("question_ids", [])
+        if current_index + 1 >= len(question_ids):
+            # Тест завершен
+            await redis_client.delete(f"test_context:{chat_id}")
+
+            # Завершаем тест через API
+            try:
+                result = await api_client.finish_test(api_token, attempt_id)
+
+                text = f"""
+🎉 <b>Тест завершен!</b>
+
+<b>Результат:</b> {result}
+
+🏆 <b>Отличная работа!</b>
+
+Ваши ответы сохранены в системе.
+"""
+                await callback.message.answer(text)
+            except Exception as e:
+                logger.error(f"Ошибка завершения теста: {e}")
+                await callback.message.answer(f"🎉 <b>Тест завершен!</b>\n\nОшибка при получении результата: {str(e)}")
+        else:
+            # Показываем следующий вопрос
+            await redis_client.setex(
+                f"test_context:{chat_id}",
+                3600,
+                json.dumps(context)
+            )
+
+            # Получаем следующий вопрос
+            next_question_id = question_ids[current_index + 1]
+            question_data = await api_client.get_question_details(api_token, next_question_id)
+
+            text = f"""
+<b>Вопрос {current_index + 2} из {len(question_ids)}:</b>
+{question_data.get('text', 'Текст вопроса')}
+"""
+            # Создаем кнопки для вариантов ответов
+            buttons = []
+            options = question_data.get("options", ["Вариант 1", "Вариант 2", "Вариант 3"])
+
+            for i, option in enumerate(options):
+                buttons.append([
+                    InlineKeyboardButton(
+                        text=f"{i + 1}. {option}",
+                        callback_data=f"answer_{attempt_id}_{next_question_id}_{i}"
+                    )
+                ])
+
+            kb = InlineKeyboardMarkup(inline_keyboard=buttons)
+            await callback.message.answer(text, reply_markup=kb)
+
+    except Exception as e:
+        logger.error(f"Error processing answer callback: {e}")
+        await callback.answer("❌ Ошибка обработки ответа")
+
+
+# =========================
+# НАЧАЛО ТЕСТА ЧЕРЕЗ КНОПКУ
 # =========================
 @dp.callback_query(F.data.startswith("start_test_"))
 @require_auth()
 async def callback_start_test(callback: CallbackQuery, user: Dict):
-    """Обработчик начала теста с API"""
+    """Обработчик начала теста через кнопку"""
     try:
         test_id = int(callback.data[11:])
         api_token = user.get("api_token", "")
@@ -706,11 +1069,10 @@ async def callback_start_test(callback: CallbackQuery, user: Dict):
             await callback.message.answer("❌ <b>Ошибка:</b> Не удалось начать тест. Попробуйте позже.")
             return
 
-        # Получаем вопросы теста (заглушка, пока нет API для вопросов)
-        # В реальном API нужно получить список вопросов
+        # Получаем вопросы теста
         question_ids = [1, 2, 3]  # Примерные ID вопросов
 
-        # Сохраняем контекст теста в Redis
+        # Сохраняем контекст теста
         test_context = {
             "test_id": test_id,
             "attempt_id": attempt_id,
@@ -724,7 +1086,7 @@ async def callback_start_test(callback: CallbackQuery, user: Dict):
 
         await redis_client.setex(
             f"test_context:{callback.message.chat.id}",
-            3600,  # 1 час на прохождение
+            3600,
             json.dumps(test_context)
         )
 
@@ -741,15 +1103,22 @@ async def callback_start_test(callback: CallbackQuery, user: Dict):
 
 <b>Вопрос 1 из {len(question_ids)}:</b>
 {question_data.get('text', 'Текст вопроса')}
-
 """
-            # Добавляем варианты ответов
-            for i, option in enumerate(question_data.get("options", ["Вариант 1", "Вариант 2", "Вариант 3"])):
-                text += f"{i + 1}. {option}\n"
 
-            text += "\n<b>Отправьте номер правильного ответа (1-3).</b>"
+            # Создаем кнопки для вариантов ответов
+            buttons = []
+            options = question_data.get("options", ["Вариант 1", "Вариант 2", "Вариант 3"])
 
-            await callback.message.answer(text)
+            for i, option in enumerate(options):
+                buttons.append([
+                    InlineKeyboardButton(
+                        text=f"{i + 1}. {option}",
+                        callback_data=f"answer_{attempt_id}_{first_question_id}_{i}"
+                    )
+                ])
+
+            kb = InlineKeyboardMarkup(inline_keyboard=buttons)
+            await callback.message.answer(text, reply_markup=kb)
         else:
             await callback.message.answer("❌ <b>Ошибка:</b> В тесте нет вопросов.")
 
@@ -760,116 +1129,7 @@ async def callback_start_test(callback: CallbackQuery, user: Dict):
 
 
 # =========================
-# ОБРАБОТКА ОТВЕТОВ С API
-# =========================
-@dp.message(F.text & ~F.text.startswith('/'))
-@rate_limit()
-@safe_send_message
-async def handle_test_answers(message: Message):
-    """Обработка ответов на вопросы теста с API"""
-    chat_id = message.chat.id
-    text = message.text or ""
-
-    # Проверяем, есть ли активный тест
-    context_data = await redis_client.get(f"test_context:{chat_id}")
-    if not context_data:
-        # Если теста нет и это не команда, игнорируем
-        return
-
-    try:
-        context = json.loads(context_data)
-        current_index = context.get("current_question_index", 0)
-        question_ids = context.get("question_ids", [])
-        attempt_id = context.get("attempt_id")
-        api_token = context.get("api_token", "")
-
-        if not attempt_id or not api_token:
-            await message.answer("❌ <b>Ошибка контекста теста</b>")
-            await redis_client.delete(f"test_context:{chat_id}")
-            return
-
-        # Проверяем ответ
-        try:
-            answer = int(text.strip())
-            if answer < 1 or answer > 3:
-                raise ValueError
-        except:
-            await message.answer("❌ <b>Отправьте число от 1 до 3</b>")
-            return
-
-        # Получаем текущий вопрос ID
-        if current_index >= len(question_ids):
-            await message.answer("❌ <b>Ошибка:</b> Нет больше вопросов.")
-            return
-
-        question_id = question_ids[current_index]
-
-        # Отправляем ответ через API
-        try:
-            await api_client.submit_answer(api_token, attempt_id, question_id, answer - 1)
-        except Exception as e:
-            logger.error(f"Ошибка отправки ответа: {e}")
-            await message.answer("❌ <b>Ошибка отправки ответа:</b>\n\nОтвет не сохранен.")
-            return
-
-        # Сохраняем ответ локально
-        context["answers"][current_index] = answer - 1
-        context["current_question_index"] = current_index + 1
-
-        # Проверяем, закончен ли тест
-        if current_index + 1 >= len(question_ids):
-            # Тест завершен
-            await redis_client.delete(f"test_context:{chat_id}")
-
-            # Завершаем тест через API
-            try:
-                result = await api_client.finish_test(api_token, attempt_id)
-
-                text = f"""
-🎉 <b>Тест завершен!</b>
-
-<b>Результат:</b> {result}
-
-🏆 <b>Отличная работа!</b>
-
-Ваши ответы сохранены в системе.
-"""
-                await message.answer(text)
-            except Exception as e:
-                logger.error(f"Ошибка завершения теста: {e}")
-                await message.answer(f"🎉 <b>Тест завершен!</b>\n\nОшибка при получении результата: {str(e)}")
-        else:
-            # Показываем следующий вопрос
-            await redis_client.setex(
-                f"test_context:{chat_id}",
-                3600,
-                json.dumps(context)
-            )
-
-            # Получаем следующий вопрос
-            next_question_id = question_ids[current_index + 1]
-            question_data = await api_client.get_question_details(api_token, next_question_id)
-
-            text = f"""
-<b>Вопрос {current_index + 2} из {len(question_ids)}:</b>
-{question_data.get('text', 'Текст вопроса')}
-
-"""
-            # Добавляем варианты ответов
-            for i, option in enumerate(question_data.get("options", ["Вариант 1", "Вариант 2", "Вариант 3"])):
-                text += f"{i + 1}. {option}\n"
-
-            text += "\n<b>Отправьте номер правильного ответа (1-3).</b>"
-            await message.answer(text)
-
-    except Exception as e:
-        logger.error(f"Error processing test answer: {e}")
-        await message.answer("❌ <b>Ошибка при обработке ответа</b>")
-        await redis_client.delete(f"test_context:{chat_id}")
-
-
-# =========================
-# ОСТАЛЬНЫЕ КОМАНДЫ (С ИНТЕГРАЦИЕЙ API)
+# ОСТАЛЬНЫЕ КОМАНДЫ
 # =========================
 @dp.message(Command("profile"))
 @rate_limit()
@@ -937,13 +1197,7 @@ async def cmd_logout(message: Message):
         await message.answer("🚪 <b>Процесс авторизации прерван</b>")
         return
 
-    command_text = message.text or ""
-    logout_all = "all=true" in command_text.lower()
-
-    if logout_all:
-        await message.answer("✅ <b>Выход выполнен со всех устройств</b>")
-    else:
-        await message.answer("🚪 <b>Вы вышли из системы</b>")
+    await message.answer("🚪 <b>Вы вышли из системы</b>")
 
     stats.remove_active_user(chat_id)
     await delete_user(chat_id)
@@ -1133,7 +1387,7 @@ async def cmd_echo(message: Message):
 
 
 # =========================
-# ЗАГЛУШКИ ДЛЯ СОВМЕСТИМОСТИ
+# АВТОРИЗАЦИОННАЯ ЗАГЛУШКА
 # =========================
 class AuthServiceStub:
     def __init__(self):
@@ -1142,10 +1396,11 @@ class AuthServiceStub:
         self.confirmed_logins = set()
 
     async def generate_login_url(self, login_token: str, provider: str = "code") -> str:
+        """Генерация URL для авторизации"""
         code = secrets.randbelow(900000) + 100000
 
         if provider == "code":
-            self.codes[code] = login_token
+            self.codes[login_token] = code
 
         self.login_tokens[login_token] = {
             "status": "pending",
@@ -1156,9 +1411,16 @@ class AuthServiceStub:
             "confirmed": False
         }
 
-        return "https://t.me/cfutgbot"
+        # Генерация URL в зависимости от провайдера
+        if provider == "github":
+            return f"https://github.com/login/oauth/authorize?client_id=stub&state={login_token}&redirect_uri=https://my-app-logic.onrender.com/auth/github/callback"
+        elif provider == "yandex":
+            return f"https://oauth.yandex.ru/authorize?response_type=code&client_id=stub&state={login_token}"
+        else:
+            return "https://my-app-logic.onrender.com/auth/code"
 
     async def check_login_token(self, login_token: str) -> Optional[Dict]:
+        """Проверка статуса токена авторизации"""
         if login_token not in self.login_tokens:
             return None
 
@@ -1181,6 +1443,7 @@ class AuthServiceStub:
         return {"status": "pending"}
 
     async def confirm_login(self, login_token: str):
+        """Подтверждение авторизации (для тестирования)"""
         if login_token in self.login_tokens:
             self.login_tokens[login_token]["confirmed"] = True
             self.login_tokens[login_token]["status"] = "granted"
@@ -1192,49 +1455,12 @@ auth_service = AuthServiceStub()
 
 
 # =========================
-# CALLBACK HANDLERS ДЛЯ СОВМЕСТИМОСТИ
+# ОБРАБОТЧИКИ КНОПОК АВТОРИЗАЦИИ
 # =========================
 @dp.callback_query(F.data == "login")
 async def callback_login(callback: CallbackQuery):
     await callback.answer()
     await cmd_login(callback.message)
-
-
-@dp.callback_query(F.data == "login_code")
-async def callback_login_code(callback: CallbackQuery):
-    chat_id = callback.from_user.id
-    user = await get_user(chat_id)
-
-    if user and user.get("status") == UserStatus.AUTHORIZED:
-        await callback.answer("✅ Вы уже авторизованы")
-        return
-
-    login_token = secrets.token_urlsafe(32)
-    await set_user_anonymous(chat_id, login_token, "code")
-
-    auth_url = await auth_service.generate_login_url(login_token, "code")
-    code = auth_service.login_tokens[login_token]["code"]
-
-    text = f"""
-🔐 <b>Авторизация через код</b>
-
-Для входа в систему введите код в веб-клиенте:
-
-<b>Код: <code>{code}</code></b>
-
-⏳ <b>Код действителен 5 минут</b>
-
-После ввода кода нажмите "Проверить статус".
-"""
-
-    kb = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="🔄 Проверить статус", callback_data=f"check_auth_{login_token}")],
-        [InlineKeyboardButton(text="🚀 Быстрая авторизация (Студент)", callback_data="login_student")],
-        [InlineKeyboardButton(text="❌ Отмена", callback_data="cancel_auth")]
-    ])
-
-    await callback.message.edit_text(text, reply_markup=kb, parse_mode=ParseMode.HTML)
-    await callback.answer()
 
 
 @dp.callback_query(F.data.startswith("check_auth_"))
@@ -1245,7 +1471,7 @@ async def callback_check_auth(callback: CallbackQuery):
     if not result:
         await callback.answer("❌ Токен не найден или истек")
     elif result.get("status") == "pending":
-        await callback.answer("⏳ Ожидание подтверждения авторизации в веб-клиенте")
+        await callback.answer("⏳ Ожидание подтверждения авторизации")
 
         try:
             kb = InlineKeyboardMarkup(inline_keyboard=[
@@ -1274,6 +1500,7 @@ async def callback_check_auth(callback: CallbackQuery):
 
 @dp.callback_query(F.data.startswith("confirm_auth_"))
 async def callback_confirm_auth(callback: CallbackQuery):
+    """Подтверждение авторизации (для тестирования)"""
     login_token = callback.data[13:]
 
     success = await auth_service.confirm_login(login_token)
@@ -1307,11 +1534,17 @@ async def callback_cancel_auth(callback: CallbackQuery):
     await callback.message.edit_text("🚪 <b>Авторизация отменена</b>", reply_markup=None)
 
 
+@dp.callback_query(F.data == "refresh_tests")
+async def callback_refresh_tests(callback: CallbackQuery):
+    await callback.answer("🔄 Обновление списка тестов...")
+    await cmd_tests(callback.message)
+
+
 # =========================
-# BACKGROUND TASK - ТОЛЬКО ДЛЯ ОЧИСТКИ
+# BACKGROUND TASK
 # =========================
 async def check_anonymous_users_task():
-    """Циклическая проверка anonymous пользователей - только удаление просроченных"""
+    """Циклическая проверка anonymous пользователей"""
     while True:
         try:
             keys = await redis_client.keys("user:*")
