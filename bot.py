@@ -834,9 +834,20 @@ class APIClient:
         # Проверяем, есть ли уже активная попытка
         existing_attempt = None
         for attempt_id, attempt in data_storage.attempts.items():
-            if attempt["user_id"] == user_id and attempt["test_id"] == test_id and attempt["status"] == "in_progress":
-                existing_attempt = attempt
-                break
+            if attempt["user_id"] == user_id and attempt["test_id"] == test_id:
+                if attempt["status"] == "in_progress":
+                    # Проверяем, не устарела ли попытка (старше 24 часов)
+                    if "started_at" in attempt:
+                        try:
+                            started_at = datetime.fromisoformat(attempt["started_at"].replace('Z', '+00:00'))
+                            if (datetime.utcnow() - started_at).total_seconds() > 86400:  # 24 часа
+                                # Помечаем старую попытку как устаревшую
+                                attempt["status"] = "expired"
+                                continue
+                        except:
+                            pass
+                    existing_attempt = attempt
+                    break
 
         if existing_attempt:
             return {"success": True, "attempt_id": existing_attempt["id"], "message": "Активная попытка уже существует"}
@@ -849,6 +860,8 @@ class APIClient:
             "test_id": test_id,
             "status": "in_progress",
             "score": None,
+            "started_at": datetime.utcnow().isoformat(),
+            "finished_at": None,
             "answers": {}
         }
 
@@ -906,6 +919,7 @@ class APIClient:
         score = int((correct_count / total_questions * 100)) if total_questions > 0 else 0
         attempt["score"] = score
         attempt["status"] = "completed"
+        attempt["finished_at"] = datetime.utcnow().isoformat()
 
         return {"success": True, "score": score, "message": "Попытка завершена"}
 
@@ -1078,6 +1092,23 @@ def require_auth():
 
 def require_permission(permission: Permission):
     """Декоратор для проверки разрешений"""
+
+    def decorator(handler):
+        @wraps(handler)
+        async def wrapper(event, user: Dict, *args, **kwargs):
+            user_permissions = user.get("permissions", [])
+            if permission not in user_permissions:
+                try:
+                    if isinstance(event, Message):
+                        await event.answer(f"❌ <b>Недостаточно прав</b>\n\nТребуется разрешение: {permission}")
+                    elif isinstance(event, CallbackQuery):
+                        await event.answer(f"❌ Недостаточно прав: {permission}", show_alert=True)
+                except:
+                    pass
+                return
+            return await handler(event, user, *args, **kwargs)
+
+        return wrapper
 
     def decorator(handler):
         @wraps(handler)
@@ -3084,7 +3115,7 @@ async def cmd_my_attempts(message: Message, user: Dict):
 
 
 # =========================
-# КОМАНДА START_TEST (НАЧАТЬ ТЕСТ)
+# КОМАНДА START_TEST (НАЧАТЬ ТЕСТ) - ИСПРАВЛЕННАЯ ВЕРСИЯ
 # =========================
 @dp.message(Command("start_test"))
 @rate_limit()
@@ -3120,6 +3151,16 @@ async def cmd_start_test(message: Message, user: Dict):
             if (attempt["user_id"] == user_id and
                     attempt["test_id"] == test_id and
                     attempt["status"] == "in_progress"):
+                # Проверяем, не устарела ли попытка (старше 24 часов)
+                if "started_at" in attempt:
+                    try:
+                        started_at = datetime.fromisoformat(attempt["started_at"].replace('Z', '+00:00'))
+                        if (datetime.utcnow() - started_at).total_seconds() > 86400:  # 24 часа
+                            # Помечаем старую попытку как устаревшую
+                            attempt["status"] = "expired"
+                            continue
+                    except:
+                        pass
                 active_attempt = attempt
                 break
 
@@ -3137,23 +3178,241 @@ async def cmd_start_test(message: Message, user: Dict):
             attempt_id = result.get('attempt_id')
             test_name = test.get('name', f'Тест {test_id}')
 
+            # Получаем первый вопрос теста
+            question_ids = test.get('questions', [])
+            if not question_ids:
+                await message.answer(f"❌ <b>В тесте нет вопросов</b>\n\nТест {test_name} не содержит вопросов.")
+                return
+
+            first_question_id = question_ids[0]
+            question = data_storage.questions.get(first_question_id, {})
+            question_text = question.get('text', f'Вопрос {first_question_id}')
+            options = question.get('options', ['Вариант 1', 'Вариант 2', 'Вариант 3'])
+
+            # Создаем кнопки для ответов на первый вопрос
+            buttons = []
+            for i, option in enumerate(options):
+                buttons.append([
+                    InlineKeyboardButton(
+                        text=f"{i}. {option}",
+                        callback_data=f"answer_{attempt_id}_{first_question_id}_{i}"
+                    )
+                ])
+
+            # Добавляем кнопку для пропуска вопроса
+            buttons.append([
+                InlineKeyboardButton(text="⏭️ Пропустить", callback_data=f"skip_{attempt_id}_{first_question_id}")
+            ])
+
+            kb = InlineKeyboardMarkup(inline_keyboard=buttons)
+
             text = f"🚀 <b>Тест начат!</b>\n\n"
             text += f"🧪 Тест: {test_name}\n"
             text += f"🆔 ID попытки: {attempt_id}\n"
-            text += f"❓ Вопросов: {len(test.get('questions', []))}\n\n"
-            text += f"<b>Доступные команды:</b>\n"
-            text += f"/answer ID_попытки ID_вопроса Номер_ответа - ответить на вопрос\n"
-            text += f"/finish_test ID_попытки - завершить тест\n"
-            text += f"/my_attempts - мои попытки\n\n"
-            text += f"<b>Пример:</b>\n"
-            text += f"<code>/answer {attempt_id} 1 0</code> - ответить на вопрос 1 вариантом 0"
+            text += f"❓ Вопросов: {len(question_ids)}\n\n"
+            text += f"📝 <b>Вопрос 1 из {len(question_ids)}:</b>\n"
+            text += f"{question_text}\n\n"
+            text += f"<b>Выберите вариант ответа:</b>"
 
-            await message.answer(text)
+            await message.answer(text, reply_markup=kb)
     except ValueError:
         await message.answer("❌ <b>Неверный ID теста</b>\n\nID должен быть числом.")
     except Exception as e:
         logger.error(f"Ошибка при начале теста: {e}")
         await message.answer(f"❌ <b>Ошибка:</b>\n\n{str(e)[:200]}...")
+
+
+# =========================
+# ОБРАБОТЧИК ДЛЯ ОТВЕТОВ НА ВОПРОСЫ
+# =========================
+@dp.callback_query(F.data.startswith("answer_"))
+async def callback_answer(callback: CallbackQuery):
+    """Обработка ответа на вопрос"""
+    try:
+        # Парсим данные из callback_data: answer_attemptId_questionId_answerIndex
+        data_parts = callback.data.split("_")
+        if len(data_parts) != 4:
+            await callback.answer("❌ Неверный формат данных")
+            return
+
+        attempt_id = int(data_parts[1])
+        question_id = int(data_parts[2])
+        answer_index = int(data_parts[3])
+
+        # Получаем пользователя
+        chat_id = callback.from_user.id
+        user = await get_user(chat_id)
+
+        if not user or user.get("status") != UserStatus.AUTHORIZED:
+            await callback.answer("❌ Требуется авторизация", show_alert=True)
+            return
+
+        api_token = user.get("api_token", "")
+
+        # Сохраняем ответ
+        result = await api_client.update_attempt_answer(api_token, attempt_id, question_id, answer_index)
+
+        if 'error' in result:
+            await callback.answer(f"❌ Ошибка: {result['error']}", show_alert=True)
+            return
+
+        # Получаем информацию о попытке и тесте
+        attempt = data_storage.attempts.get(attempt_id)
+        if not attempt:
+            await callback.answer("❌ Попытка не найдена", show_alert=True)
+            return
+
+        test_id = attempt.get('test_id')
+        test = data_storage.tests.get(test_id)
+        if not test:
+            await callback.answer("❌ Тест не найден", show_alert=True)
+            return
+
+        question_ids = test.get('questions', [])
+        current_index = question_ids.index(question_id) if question_id in question_ids else -1
+
+        if current_index == -1 or current_index >= len(question_ids) - 1:
+            # Это был последний вопрос
+            await callback.message.edit_text(
+                f"✅ <b>Ответ сохранен!</b>\n\n"
+                f"Вы ответили на все вопросы теста.\n"
+                f"Используйте команду /finish_test {attempt_id} для завершения теста.",
+                reply_markup=None
+            )
+            await callback.answer("✅ Ответ сохранен")
+            return
+
+        # Получаем следующий вопрос
+        next_question_id = question_ids[current_index + 1]
+        next_question = data_storage.questions.get(next_question_id, {})
+        next_question_text = next_question.get('text', f'Вопрос {next_question_id}')
+        options = next_question.get('options', ['Вариант 1', 'Вариант 2', 'Вариант 3'])
+
+        # Создаем кнопки для следующего вопроса
+        buttons = []
+        for i, option in enumerate(options):
+            buttons.append([
+                InlineKeyboardButton(
+                    text=f"{i}. {option}",
+                    callback_data=f"answer_{attempt_id}_{next_question_id}_{i}"
+                )
+            ])
+
+        # Добавляем кнопку для пропуска вопроса
+        buttons.append([
+            InlineKeyboardButton(text="⏭️ Пропустить", callback_data=f"skip_{attempt_id}_{next_question_id}")
+        ])
+
+        kb = InlineKeyboardMarkup(inline_keyboard=buttons)
+
+        await callback.message.edit_text(
+            f"✅ <b>Ответ сохранен!</b>\n\n"
+            f"📝 <b>Вопрос {current_index + 2} из {len(question_ids)}:</b>\n"
+            f"{next_question_text}\n\n"
+            f"<b>Выберите вариант ответа:</b>",
+            reply_markup=kb
+        )
+        await callback.answer("✅ Ответ сохранен")
+
+    except Exception as e:
+        logger.error(f"Ошибка в callback_answer: {e}")
+        await callback.answer("❌ Ошибка при сохранении ответа", show_alert=True)
+
+
+# =========================
+# ОБРАБОТЧИК ДЛЯ ПРОПУСКА ВОПРОСА
+# =========================
+@dp.callback_query(F.data.startswith("skip_"))
+async def callback_skip(callback: CallbackQuery):
+    """Пропуск вопроса"""
+    try:
+        # Парсим данные из callback_data: skip_attemptId_questionId
+        data_parts = callback.data.split("_")
+        if len(data_parts) != 3:
+            await callback.answer("❌ Неверный формат данных")
+            return
+
+        attempt_id = int(data_parts[1])
+        question_id = int(data_parts[2])
+
+        # Получаем пользователя
+        chat_id = callback.from_user.id
+        user = await get_user(chat_id)
+
+        if not user or user.get("status") != UserStatus.AUTHORIZED:
+            await callback.answer("❌ Требуется авторизация", show_alert=True)
+            return
+
+        api_token = user.get("api_token", "")
+
+        # Сохраняем ответ как пропущенный (-1)
+        result = await api_client.update_attempt_answer(api_token, attempt_id, question_id, -1)
+
+        if 'error' in result:
+            await callback.answer(f"❌ Ошибка: {result['error']}", show_alert=True)
+            return
+
+        # Получаем информацию о попытке и тесте
+        attempt = data_storage.attempts.get(attempt_id)
+        if not attempt:
+            await callback.answer("❌ Попытка не найдена", show_alert=True)
+            return
+
+        test_id = attempt.get('test_id')
+        test = data_storage.tests.get(test_id)
+        if not test:
+            await callback.answer("❌ Тест не найден", show_alert=True)
+            return
+
+        question_ids = test.get('questions', [])
+        current_index = question_ids.index(question_id) if question_id in question_ids else -1
+
+        if current_index == -1 or current_index >= len(question_ids) - 1:
+            # Это был последний вопрос
+            await callback.message.edit_text(
+                f"⏭️ <b>Вопрос пропущен!</b>\n\n"
+                f"Вы ответили на все вопросы теста.\n"
+                f"Используйте команду /finish_test {attempt_id} для завершения теста.",
+                reply_markup=None
+            )
+            await callback.answer("⏭️ Вопрос пропущен")
+            return
+
+        # Получаем следующий вопрос
+        next_question_id = question_ids[current_index + 1]
+        next_question = data_storage.questions.get(next_question_id, {})
+        next_question_text = next_question.get('text', f'Вопрос {next_question_id}')
+        options = next_question.get('options', ['Вариант 1', 'Вариант 2', 'Вариант 3'])
+
+        # Создаем кнопки для следующего вопроса
+        buttons = []
+        for i, option in enumerate(options):
+            buttons.append([
+                InlineKeyboardButton(
+                    text=f"{i}. {option}",
+                    callback_data=f"answer_{attempt_id}_{next_question_id}_{i}"
+                )
+            ])
+
+        # Добавляем кнопку для пропуска вопроса
+        buttons.append([
+            InlineKeyboardButton(text="⏭️ Пропустить", callback_data=f"skip_{attempt_id}_{next_question_id}")
+        ])
+
+        kb = InlineKeyboardMarkup(inline_keyboard=buttons)
+
+        await callback.message.edit_text(
+            f"⏭️ <b>Вопрос пропущен!</b>\n\n"
+            f"📝 <b>Вопрос {current_index + 2} из {len(question_ids)}:</b>\n"
+            f"{next_question_text}\n\n"
+            f"<b>Выберите вариант ответа:</b>",
+            reply_markup=kb
+        )
+        await callback.answer("⏭️ Вопрос пропущен")
+
+    except Exception as e:
+        logger.error(f"Ошибка в callback_skip: {e}")
+        await callback.answer("❌ Ошибка при пропуске вопроса", show_alert=True)
 
 
 # =========================
@@ -3690,113 +3949,50 @@ async def cmd_profile(message: Message, user: Dict):
 
 
 # =========================
-# ОБНОВЛЕННАЯ КОМАНДА TESTS
+# ОБНОВЛЕННАЯ КОМАНДА TESTS (без кнопок)
 # =========================
 @dp.message(Command("tests"))
 @rate_limit()
 @require_auth()
 @safe_send_message
 async def cmd_tests(message: Message, user: Dict):
-    """Список доступных тестов с API и кнопками запуска"""
-    chat_id = message.chat.id
+    """Список доступных тестов (простой список, без кнопок)"""
     api_token = user.get("api_token", "")
-
-    if not api_token:
-        await message.answer("❌ <b>Ошибка авторизации</b>\n\nТокен API не найден.")
-        return
-
-    loading_msg = await message.answer("🔄 <b>Загрузка тестов...</b>")
 
     try:
         # Используем локальное хранилище для тестов
         tests = [test for test in data_storage.tests.values() if test["is_active"]]
 
         if not tests:
-            await loading_msg.delete()
-            text = "📚 <b>Нет доступных тестов</b>\n\nНа данный момент нет активных тестов для прохождения."
-            await message.answer(text)
+            await message.answer(
+                "📚 <b>Нет доступных тестов</b>\n\nНа данный момент нет активных тестов для прохождения.")
             return
 
-        text = "📚 <b>Доступные тесты</b>\n\n"
-        buttons = []
+        text = "📚 <b>Доступные тесты:</b>\n\n"
 
         for test in tests:
             test_id = test.get("id", "?")
             test_name = test.get("name", f"Тест {test_id}")
             question_ids = test.get("questions", [])
+            course_id = test.get("course_id", "?")
+            course = data_storage.courses.get(course_id, {})
+            course_name = course.get("name", f"Курс {course_id}")
 
             text += f"🧪 <b>{test_name}</b> (ID: {test_id})\n"
-            text += f"   📊 Статус: 🟢 Активен\n"
+            text += f"   📚 Курс: {course_name}\n"
             text += f"   ❓ Вопросов: {len(question_ids)}\n"
+            text += f"   🚀 Команда: /start_test {test_id}\n\n"
 
-            if question_ids:
-                text += f"   📋 ID вопросов: {', '.join(map(str, question_ids[:3]))}"
-                if len(question_ids) > 3:
-                    text += f" ... (ещё {len(question_ids) - 3})"
-                text += "\n"
-            text += "\n"
-
-            if len(question_ids) > 0:
-                buttons.append([
-                    InlineKeyboardButton(
-                        text=f"▶️ Начать тест: {test_name}",
-                        callback_data=f"start_test_{test_id}"
-                    )
-                ])
-
-        text += "\n<b>Используйте команду:</b>\n<code>/start_test ID_теста</code>\n\n"
+        text += "\n<b>Чтобы начать тест, используйте команду:</b>\n"
+        text += "<code>/start_test ID_теста</code>\n\n"
         text += "<b>Пример:</b>\n"
-        text += "<code>/start_test 1</code> - начать тест 1"
+        text += "<code>/start_test 1</code> - начать тест с ID 1"
 
-        kb = InlineKeyboardMarkup(inline_keyboard=buttons) if buttons else None
-        await loading_msg.delete()
-        await message.answer(text, reply_markup=kb, parse_mode=ParseMode.HTML)
+        await message.answer(text, parse_mode=ParseMode.HTML)
 
     except Exception as e:
-        try:
-            await loading_msg.delete()
-        except:
-            pass
-
         logger.error(f"Ошибка при получении тестов: {e}")
-        await message.answer(
-            f"❌ <b>Ошибка при загрузке тестов:</b>\n\n{str(e)[:200]}...")
-
-
-# =========================
-# ОБРАБОТЧИК ДЛЯ КНОПКИ START_TEST
-# =========================
-@dp.callback_query(F.data.startswith("start_test_"))
-async def callback_start_test(callback: CallbackQuery):
-    """Обработка кнопки Начать тест"""
-    try:
-        test_id = int(callback.data[10:])
-
-        # Создаем фейковое сообщение для обработки командой /start_test
-        # Используем безопасный метод создания сообщения
-        class FakeMessage:
-            def __init__(self, original_message, test_id):
-                self.message_id = original_message.message_id
-                self.chat = original_message.chat
-                self.date = original_message.date
-                self.text = f"/start_test {test_id}"
-                self.from_user = original_message.from_user
-
-        fake_message = FakeMessage(callback.message, test_id)
-
-        # Получаем пользователя
-        chat_id = callback.from_user.id
-        current_user = await get_user(chat_id)
-
-        if not current_user or current_user.get("status") != UserStatus.AUTHORIZED:
-            await callback.answer("❌ Требуется авторизация", show_alert=True)
-            return
-
-        await cmd_start_test(fake_message, current_user)
-        await callback.answer()
-    except Exception as e:
-        logger.error(f"Ошибка в callback_start_test: {e}")
-        await callback.answer("❌ Ошибка при запуске теста", show_alert=True)
+        await message.answer(f"❌ <b>Ошибка при загрузке тестов:</b>\n\n{str(e)[:200]}...")
 
 
 # =========================
