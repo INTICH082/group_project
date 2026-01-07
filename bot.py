@@ -60,7 +60,7 @@ def format_moscow_time(dt: datetime = None) -> str:
     """Форматировать время по Москве"""
     if dt is None:
         dt = get_moscow_time()
-    return dt.strftime("%Y-%m-d %H:%M:%S")
+    return dt.strftime("%Y-%m-%d %H:%M:%S")
 
 
 def format_moscow_time_short(dt: datetime = None) -> str:
@@ -1290,12 +1290,70 @@ async def cmd_start(message: Message):
 /tests — список тестов
 /profile — ваш профиль
 /logout — выход из системы
+/logout_all — выход на всех устройствах
 
 Используйте /help для полного списка команд.
 """
         kb = None
 
     await message.answer(text, reply_markup=kb)
+
+
+# =========================
+# ОБРАБОТЧИК ДЛЯ КНОПКИ LOGIN
+# =========================
+@dp.callback_query(F.data == "login")
+async def callback_login(callback: CallbackQuery):
+    """Обработка кнопки Войти в систему из стартового сообщения"""
+    # Создаем фейковое сообщение для обработки командой /login
+    fake_message = Message(
+        message_id=callback.message.message_id,
+        chat=callback.message.chat,
+        date=callback.message.date,
+        text="/login"
+    )
+    fake_message.from_user = callback.from_user
+
+    await cmd_login(fake_message)
+    await callback.answer()
+
+
+# =========================
+# ОБРАБОТЧИК ДЛЯ КНОПКИ HELP_MAIN
+# =========================
+@dp.callback_query(F.data == "help_main")
+async def callback_help_main(callback: CallbackQuery):
+    """Обработка кнопки Общая справка из стартового сообщения"""
+    # Создаем фейковое сообщение для обработки командой /help
+    fake_message = Message(
+        message_id=callback.message.message_id,
+        chat=callback.message.chat,
+        date=callback.message.date,
+        text="/help"
+    )
+    fake_message.from_user = callback.from_user
+
+    await cmd_help(fake_message)
+    await callback.answer()
+
+
+# =========================
+# ОБРАБОТЧИК ДЛЯ КНОПКИ STATUS_MAIN
+# =========================
+@dp.callback_query(F.data == "status_main")
+async def callback_status_main(callback: CallbackQuery):
+    """Обработка кнопки Статус из стартового сообщения"""
+    # Создаем фейковое сообщение для обработки командой /status
+    fake_message = Message(
+        message_id=callback.message.message_id,
+        chat=callback.message.chat,
+        date=callback.message.date,
+        text="/status"
+    )
+    fake_message.from_user = callback.from_user
+
+    await cmd_status(fake_message)
+    await callback.answer()
 
 
 # =========================
@@ -1408,32 +1466,53 @@ class AuthServiceStub:
             }
             self.code_to_token[code] = login_token
 
+            # Сохраняем login_token с временем устаревания (5 минут)
+            token_expires_at = datetime.utcnow() + timedelta(minutes=5)
+            self.login_tokens[login_token] = {
+                "status": "pending",
+                "provider": provider,
+                "code": code,
+                "expires_at": token_expires_at.isoformat(),
+                "created_at": datetime.utcnow().isoformat(),
+                "user_agent": "telegram-bot",
+                "confirmed": False,
+                "user_data": None,
+                "role": "student"  # По умолчанию студент
+            }
+
             return code
         elif provider == "github":
             # Заглушка для GitHub
+            token_expires_at = datetime.utcnow() + timedelta(minutes=5)
+            self.login_tokens[login_token] = {
+                "status": "pending",
+                "provider": provider,
+                "code": None,
+                "expires_at": token_expires_at.isoformat(),
+                "created_at": datetime.utcnow().isoformat(),
+                "user_agent": "telegram-bot",
+                "confirmed": False,
+                "user_data": None,
+                "role": "student"
+            }
             return f"https://github.com/login/oauth/authorize?client_id=test&state={login_token}&scope=user"
         elif provider == "yandex":
             # Заглушка для Яндекс ID
+            token_expires_at = datetime.utcnow() + timedelta(minutes=5)
+            self.login_tokens[login_token] = {
+                "status": "pending",
+                "provider": provider,
+                "code": None,
+                "expires_at": token_expires_at.isoformat(),
+                "created_at": datetime.utcnow().isoformat(),
+                "user_agent": "telegram-bot",
+                "confirmed": False,
+                "user_data": None,
+                "role": "student"
+            }
             return f"https://oauth.yandex.ru/authorize?response_type=code&client_id=test&state={login_token}"
         else:
             return ""
-
-        # Сохраняем login_token с временем устаревания (5 минут)
-        expires_at = datetime.utcnow() + timedelta(minutes=5)
-        self.login_tokens[login_token] = {
-            "status": "pending",
-            "provider": provider,
-            "code": code if provider == "code" else None,
-            "expires_at": expires_at.isoformat(),
-            "created_at": datetime.utcnow().isoformat(),
-            "user_agent": "telegram-bot",
-            "confirmed": False,
-            "user_data": None,
-            "role": "student"  # По умолчанию студент
-        }
-
-        # Возвращаем код или URL
-        return code if provider == "code" else f"https://auth.example.com/{provider}?token={login_token}"
 
     async def check_login_token(self, login_token: str) -> Optional[Dict]:
         """Проверка статуса токена авторизации"""
@@ -1867,6 +1946,26 @@ async def callback_check_auth(callback: CallbackQuery):
 
 
 # =========================
+# ОБРАБОТЧИК ОТМЕНЫ АВТОРИЗАЦИИ
+# =========================
+@dp.callback_query(F.data == "cancel_auth")
+async def callback_cancel_auth(callback: CallbackQuery):
+    """Отмена авторизации"""
+    chat_id = callback.from_user.id
+
+    # Удаляем пользователя из состояния анонимного
+    await delete_user(chat_id)
+
+    # Показываем стартовое сообщение
+    await callback.message.edit_text(
+        "❌ <b>Авторизация отменена</b>\n\n"
+        "Для начала работы используйте команду /start",
+        reply_markup=None
+    )
+    await callback.answer()
+
+
+# =========================
 # КОМАНДА ДЛЯ ИМИТАЦИИ ВЕБ-АВТОРИЗАЦИИ (ТОЛЬКО ДЛЯ CODE)
 # =========================
 @dp.message(Command("simulate_auth"))
@@ -1900,6 +1999,185 @@ async def cmd_simulate_auth(message: Message):
 
 
 # =========================
+# КОМАНДА LOGOUT
+# =========================
+@dp.message(Command("logout"))
+@rate_limit()
+@require_auth()
+@safe_send_message
+async def cmd_logout(message: Message, user: Dict):
+    """Выйти из системы на этом устройстве"""
+    chat_id = message.chat.id
+    await delete_user(chat_id)
+    stats.remove_active_user(chat_id)
+
+    await message.answer(
+        "✅ <b>Сеанс завершён</b>\n\n"
+        "Вы вышли из системы на этом устройстве.\n"
+        "Для входа используйте команду /login"
+    )
+
+
+# =========================
+# КОМАНДА LOGOUT ALL
+# =========================
+@dp.message(Command("logout_all"))
+@rate_limit()
+@require_auth()
+@safe_send_message
+async def cmd_logout_all(message: Message, user: Dict):
+    """Выйти из системы на всех устройствах"""
+    chat_id = message.chat.id
+    api_token = user.get("api_token", "")
+
+    # В реальной системе здесь был бы запрос к API авторизации
+    # для отзыва refresh token на всех устройствах
+    # try:
+    #     await api_client.request("POST", "/auth/logout", api_token, {"all": True})
+    # except Exception as e:
+    #     logger.error(f"Ошибка при выходе на всех устройствах: {e}")
+
+    await delete_user(chat_id)
+    stats.remove_active_user(chat_id)
+
+    await message.answer(
+        "✅ <b>Сеанс завершён на всех устройствах</b>\n\n"
+        "Вы вышли из системы на всех устройствах.\n"
+        "Для входа используйте команду /login"
+    )
+
+
+# =========================
+# КОМАНДА PING
+# =========================
+@dp.message(Command("ping"))
+@rate_limit()
+@safe_send_message
+async def cmd_ping(message: Message):
+    """Проверка работы бота"""
+    start_time = datetime.utcnow()
+
+    # Простой ответ
+    await message.answer("🏓 <b>Pong!</b>")
+
+    end_time = datetime.utcnow()
+    response_time = (end_time - start_time).total_seconds() * 1000
+
+    # Отправляем время ответа
+    await message.answer(f"⏱ <b>Время ответа:</b> {response_time:.0f} мс")
+
+
+# =========================
+# КОМАНДА DEBUG
+# =========================
+@dp.message(Command("debug"))
+@rate_limit()
+@safe_send_message
+async def cmd_debug(message: Message):
+    """Отладочная информация"""
+    chat_id = message.chat.id
+    user = await get_user(chat_id)
+
+    text = "🔧 <b>Отладочная информация</b>\n\n"
+
+    if user:
+        text += f"<b>Статус пользователя:</b> {user.get('status')}\n"
+        text += f"<b>ID пользователя:</b> {user.get('user_id')}\n"
+        text += f"<b>Email:</b> {user.get('email')}\n"
+        text += f"<b>Роль:</b> {user.get('role')}\n"
+        text += f"<b>Токен API:</b> {'Есть' if user.get('api_token') else 'Нет'}\n"
+    else:
+        text += "Пользователь не найден в кэше.\n"
+
+    text += f"\n<b>Активных пользователей:</b> {stats.get_active_users_count()}\n"
+    text += f"<b>Обработано команд:</b> {stats.commands_count}\n"
+    text += f"<b>Redis подключен:</b> {'Да' if redis_client.connected else 'Нет'}\n"
+
+    await message.answer(text)
+
+
+# =========================
+# КОМАНДА SERVICES
+# =========================
+@dp.message(Command("services"))
+@rate_limit()
+@safe_send_message
+async def cmd_services(message: Message):
+    """Информация о сервисах"""
+    text = "🛠 <b>Информация о сервисах</b>\n\n"
+
+    text += "📡 <b>API Сервис:</b>\n"
+    text += f"  • <b>URL:</b> {API_BASE_URL}\n"
+    text += f"  • <b>Статус:</b> {'🟢 Доступен' if api_client else '🔴 Недоступен'}\n\n"
+
+    text += "🗄 <b>Redis:</b>\n"
+    text += f"  • <b>URL:</b> {REDIS_URL}\n"
+    text += f"  • <b>Статус:</b> {'🟢 Доступен' if redis_client.connected else '🔴 Недоступен'}\n\n"
+
+    text += "🤖 <b>Telegram Bot:</b>\n"
+    text += f"  • <b>Статус:</b> 🟢 Работает\n"
+    text += f"  • <b>Активных пользователей:</b> {stats.get_active_users_count()}\n"
+    text += f"  • <b>Обработано команд:</b> {stats.commands_count}\n"
+
+    await message.answer(text)
+
+
+# =========================
+# КОМАНДА ECHO
+# =========================
+@dp.message(Command("echo"))
+@rate_limit()
+@safe_send_message
+async def cmd_echo(message: Message):
+    """Эхо-команда"""
+    args = message.text.split(maxsplit=1)
+    if len(args) < 2:
+        await message.answer("ℹ️ <b>Использование:</b> <code>/echo [текст]</code>")
+        return
+
+    text = args[1]
+    await message.answer(f"📢 <b>Эхо:</b> {text}")
+
+
+# =========================
+# КОМАНДА STATUS
+# =========================
+@dp.message(Command("status"))
+@rate_limit()
+@safe_send_message
+async def cmd_status(message: Message):
+    """Статус системы"""
+    chat_id = message.chat.id
+    user = await get_user(chat_id)
+
+    moscow_time = get_moscow_time()
+    moscow_time_str = format_moscow_time(moscow_time)
+
+    text = "📊 <b>Статус системы</b>\n\n"
+
+    text += f"🕐 <b>Текущее время (Москва):</b> {moscow_time_str}\n"
+    text += f"👥 <b>Активных пользователей:</b> {stats.get_active_users_count()}\n"
+    text += f"📈 <b>Обработано команд:</b> {stats.commands_count}\n"
+    text += f"🗄 <b>Redis:</b> {'🟢 Подключен' if redis_client.connected else '🔴 Отключен'}\n"
+    text += f"📡 <b>API:</b> {'🟢 Доступен' if api_client else '🔴 Недоступен'}\n"
+
+    if user:
+        text += f"\n👤 <b>Ваш статус:</b> {user.get('status')}\n"
+        if user.get('status') == UserStatus.AUTHORIZED:
+            text += f"📧 <b>Email:</b> {user.get('email')}\n"
+            text += f"🎭 <b>Роль:</b> {user.get('role')}\n"
+    else:
+        text += "\n👤 <b>Ваш статус:</b> Неизвестный (используйте /login для входа)"
+
+    text += "\n\n<b>Основные команды:</b>\n"
+    text += "/start - начало работы\n"
+    text += "/help - справка\n"
+    text += "/status - этот статус\n"
+
+    await message.answer(text)
+
+
+# =========================
 # ОБНОВЛЕННАЯ КОМАНДА HELP (ОБЩАЯ) - ДОСТУПНА ВСЕМ
 # =========================
 @dp.message(Command("help"))
@@ -1921,6 +2199,7 @@ async def cmd_help(message: Message):
 /status — статус системы
 /profile — ваш профиль
 /logout — выход из системы
+/logout_all — выход на всех устройствах
 
 <b>Специальные справки:</b>
 /help_teacher — подробная справка для преподавателей
@@ -1930,6 +2209,8 @@ async def cmd_help(message: Message):
 /tests — список тестов
 /debug — отладочная информация
 /services — информация о сервисах
+/ping — проверка работы бота
+/echo — эхо-команда
 """
         else:
             help_text = """
@@ -1941,6 +2222,7 @@ async def cmd_help(message: Message):
 /status — статус системы
 /profile — ваш профиль
 /logout — выход из системы
+/logout_all — выход на всех устройствах
 
 <b>Специальные справки:</b>
 /help_student — подробная справка для студентов
@@ -1950,6 +2232,8 @@ async def cmd_help(message: Message):
 /tests — список тестов
 /my_courses — мои курсы
 /my_grades — мои оценки
+/ping — проверка работы бота
+/echo — эхо-команда
 """
     else:
         help_text = """
@@ -1992,6 +2276,9 @@ async def cmd_help_student(message: Message, user: Dict):
 /tests — список доступных тестов
 /start_test ID_теста — начать тест
 /profile — ваш профиль
+/status — статус системы
+/logout — выход из системы
+/logout_all — выход на всех устройствах
 
 <b>Мои данные:</b>
 /my_courses — мои курсы
@@ -2011,9 +2298,10 @@ async def cmd_help_student(message: Message, user: Dict):
 4. По завершении увидите свой результат
 
 <b>Полезные команды:</b>
-/status — статус системы
-/logout — выход из системы
 /services — информация о сервисах
+/debug — отладочная информация
+/ping — проверка работы бота
+/echo — эхо-команда
 """
 
     await message.answer(help_text)
@@ -2031,11 +2319,14 @@ async def cmd_help_teacher(message: Message, user: Dict):
     help_text = """
 👨‍🏫 <b>Справка по командам для преподавателей</b>
 
-<b>Управление пользователями:</b>
+<b>Основные команды:</b>
 /users — список пользователей
 /user_info [ID] — информация о пользователе
 /update_fullname ID ФИО — изменить ФИО
 /block_user ID true/false — блокировка/разблокировка
+/status — статус системы
+/logout — выход из системы
+/logout_all — выход на всех устройствах
 
 <b>Управление курсами:</b>
 /all_courses — все курсы
@@ -2059,6 +2350,12 @@ async def cmd_help_teacher(message: Message, user: Dict):
 • Добавить тест: /add_test 1; Итоговый тест по математике
 • Просмотреть студентов: /course_students 1
 • Проверить результаты: /test_results 1
+
+<b>Технические команды:</b>
+/services — информация о сервисах
+/debug — отладочная информация
+/ping — проверка работы бота
+/echo — эхо-команда
 """
 
     await message.answer(help_text)
@@ -2090,6 +2387,7 @@ async def cmd_help_test(message: Message):
 /debug — отладочная информация
 /services — информация о сервисах
 /ping — проверка работы бота
+/echo — эхо-команда
 
 <b>Пример использования:</b>
 1. Используйте /auth_student для быстрой авторизации как студент
@@ -2323,10 +2621,6 @@ async def cmd_tests(message: Message, user: Dict):
             f"❌ <b>Ошибка при загрузке тестов:</b>\n\n{str(e)[:200]}...")
 
 
-# Продолжение кода с обработчиками тестов, командами выхода и другими функциями...
-# (Остальная часть кода остается без изменений, как в предыдущей версии)
-# ...
-
 # =========================
 # BACKGROUND TASK ДЛЯ ОЧИСТКИ УСТАРЕВШИХ АВТОРИЗАЦИЙ
 # =========================
@@ -2356,6 +2650,27 @@ async def check_anonymous_users_task():
             logger.error(f"Error in check_anonymous_users_task: {e}")
 
         await asyncio.sleep(30)
+
+
+# =========================
+# ОБРАБОТЧИК НЕИЗВЕСТНЫХ КОМАНД
+# =========================
+@dp.message()
+@rate_limit()
+async def unknown_command(message: Message):
+    """Обработка неизвестных команд"""
+    # Игнорируем служебные сообщения
+    if message.text is None:
+        return
+
+    # Если сообщение не начинается с /, то это не команда
+    if not message.text.startswith('/'):
+        return
+
+    await message.answer(
+        "❓ <b>Неизвестная команда</b>\n\n"
+        "Используйте /help для просмотра списка команд."
+    )
 
 
 # =========================
