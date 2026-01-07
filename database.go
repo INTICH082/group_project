@@ -58,10 +58,10 @@ type Question struct {
 
 func CreateQuestion(title string, text string, options []string, correct int, authorID int) (int, error) {
 	optionsJSON, _ := json.Marshal(options)
-
 	var id int
-	// Убираем ручной расчет nextID. Просто вставляем данные.
-	// SERIAL сам назначит ID, а RETURNING id вернет его нам.
+
+	// Убираем ручной расчет ID вообще.
+	// База сама подставит его, если колонка SERIAL или имеет DEFAULT.
 	query := `
 		INSERT INTO questions (version, title, text, options, correct_option, author_id, is_deleted) 
 		VALUES (1, $1, $2, $3, $4, $5, false) 
@@ -69,7 +69,7 @@ func CreateQuestion(title string, text string, options []string, correct int, au
 
 	err := db.QueryRow(query, title, text, optionsJSON, correct, authorID).Scan(&id)
 	if err != nil {
-		return 0, fmt.Errorf("db error: %v", err)
+		return 0, fmt.Errorf("ошибка вставки вопроса: %v", err)
 	}
 	return id, nil
 }
@@ -78,35 +78,34 @@ func UpdateQuestion(questionID int, text string, options []string, correct int) 
 	var title string
 	var authorID, currentVersion int
 
+	// Проверяем существование вопроса ПЕРЕД обновлением
 	err := db.QueryRow(`
-		SELECT title, author_id, MAX(version) 
+		SELECT title, author_id, version 
 		FROM questions 
-		WHERE id = $1 
-		GROUP BY title, author_id`,
+		WHERE id = $1 AND is_deleted = false 
+		ORDER BY version DESC LIMIT 1`,
 		questionID).Scan(&title, &authorID, &currentVersion)
 
 	if err != nil {
-		return fmt.Errorf("вопрос не найден: %v", err)
+		return fmt.Errorf("вопрос с ID %d не найден или удален", questionID)
 	}
 
 	optionsJSON, _ := json.Marshal(options)
-	tx, err := db.Begin()
-	if err != nil {
-		return err
-	}
+	tx, _ := db.Begin()
 
-	tx.Exec("UPDATE questions SET is_deleted = true WHERE id = $1", questionID)
+	// Старую версию помечаем как удаленную (или просто "архивную")
+	tx.Exec("UPDATE questions SET is_deleted = true WHERE id = $1 AND version = $2", questionID, currentVersion)
 
-	queryInsert := `
+	// Вставляем новую версию с тем же ID, но version+1
+	_, err = tx.Exec(`
 		INSERT INTO questions (id, version, title, text, options, correct_option, author_id, is_deleted) 
-		VALUES ($1, $2, $3, $4, $5, $6, $7, false)`
+		VALUES ($1, $2, $3, $4, $5, $6, $7, false)`,
+		questionID, currentVersion+1, title, text, optionsJSON, correct, authorID)
 
-	_, err = tx.Exec(queryInsert, questionID, currentVersion+1, title, text, optionsJSON, correct, authorID)
 	if err != nil {
 		tx.Rollback()
 		return err
 	}
-
 	return tx.Commit()
 }
 
@@ -196,45 +195,29 @@ func GetFullTest(testID int) (*FullTest, error) {
 // --- ЛОГИКА ПРОХОЖДЕНИЯ ---
 
 func StartAttempt(userID int, testID int) (int, error) {
-	var isActive bool
 	var qIds pq.Int64Array
-
-	err := db.QueryRow(`SELECT is_active, COALESCE(question_ids, '{}'::int[]) FROM tests WHERE id = $1 AND is_deleted = false`, testID).Scan(&isActive, &qIds)
-	if err != nil || !isActive || len(qIds) == 0 {
-		return 0, fmt.Errorf("тест недоступен")
+	err := db.QueryRow("SELECT question_ids FROM tests WHERE id = $1 AND is_active = true", testID).Scan(&qIds)
+	if err != nil {
+		return 0, fmt.Errorf("тест %d не найден или не активен", testID)
 	}
 
-	// Получаем актуальные версии вопросов
-	queryVersions := `
-		SELECT id, version FROM (
-			SELECT id, version, ROW_NUMBER() OVER (PARTITION BY id ORDER BY version DESC) as rn
-			FROM questions WHERE id = ANY($1) AND is_deleted = false
-		) t WHERE rn = 1`
-
-	rows, _ := db.Query(queryVersions, qIds)
-	defer rows.Close()
-
-	versionsMap := make(map[int]int)
-	var foundIDs []int
-	for rows.Next() {
-		var qid, v int
-		rows.Scan(&qid, &v)
-		versionsMap[qid] = v
-		foundIDs = append(foundIDs, qid)
-	}
-
-	versionsJSON, _ := json.Marshal(versionsMap)
 	tx, _ := db.Begin()
-
 	var attemptID int
-	err = tx.QueryRow(`INSERT INTO attempts (user_id, test_id, question_versions, is_finished) VALUES ($1, $2, $3, false) RETURNING id`, userID, testID, versionsJSON).Scan(&attemptID)
+
+	// Создаем попытку
+	err = tx.QueryRow(`INSERT INTO attempts (user_id, test_id, is_finished) VALUES ($1, $2, false) RETURNING id`, userID, testID).Scan(&attemptID)
 	if err != nil {
 		tx.Rollback()
 		return 0, err
 	}
 
-	for _, qid := range foundIDs {
-		tx.Exec("INSERT INTO student_answers (attempt_id, question_id, selected_option) VALUES ($1, $2, -1)", attemptID, qid)
+	// СРАЗУ создаем пустые записи для ответов по каждому вопросу из теста
+	for _, qid := range qIds {
+		_, err = tx.Exec("INSERT INTO student_answers (attempt_id, question_id, selected_option) VALUES ($1, $2, -1)", attemptID, qid)
+		if err != nil {
+			tx.Rollback()
+			return 0, err
+		}
 	}
 
 	return attemptID, tx.Commit()
