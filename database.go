@@ -439,9 +439,10 @@ func IsUserEnrolled(courseID int, userID int) (bool, error) {
 		courseID, userID).Scan(&exists)
 	return exists, err
 }
+
 func GetTestsByCourse(courseID int) ([]map[string]interface{}, error) {
-	// ЗАМЕНЕНО: title -> name
-	rows, err := db.Query("SELECT id, name, is_active FROM tests WHERE course_id = $1 AND is_deleted = false", courseID)
+	// ИСПРАВЛЕНО: Добавлен выбор колонки question_ids
+	rows, err := db.Query("SELECT id, name, is_active, COALESCE(question_ids, '{}'::int[]) FROM tests WHERE course_id = $1 AND is_deleted = false", courseID)
 	if err != nil {
 		return nil, err
 	}
@@ -450,13 +451,25 @@ func GetTestsByCourse(courseID int) ([]map[string]interface{}, error) {
 	var results []map[string]interface{}
 	for rows.Next() {
 		var id int
-		var name string // Поменял имя переменной для ясности
+		var name string
 		var active bool
-		if err := rows.Scan(&id, &name, &active); err != nil {
+		var qIds pq.Int64Array // Используем специальный тип для массивов Postgres
+
+		if err := rows.Scan(&id, &name, &active, &qIds); err != nil {
 			return nil, err
 		}
+
+		// Превращаем pq.Int64Array в обычный []int для JSON
+		ids := make([]int, len(qIds))
+		for i, v := range qIds {
+			ids[i] = int(v)
+		}
+
 		results = append(results, map[string]interface{}{
-			"id": id, "title": name, "is_active": active, // Оставляем ключ "title" для фронтенда/теста
+			"id":           id,
+			"name":         name,
+			"is_active":    active,
+			"question_ids": ids, // Теперь вопросы полетят в JSON!
 		})
 	}
 	return results, nil
