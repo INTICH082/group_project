@@ -57,26 +57,21 @@ type Question struct {
 // --- ЛОГИКА ВОПРОСОВ ---
 
 func CreateQuestion(title string, text string, options []string, correct int, authorID int) (int, error) {
-	optionsJSON, err := json.Marshal(options)
-	if err != nil {
-		return 0, fmt.Errorf("ошибка маршалинга options: %v", err)
-	}
-
-	var nextID int
-	queryID := "SELECT COALESCE(MAX(id), 0) + 1 FROM questions"
-	err = db.QueryRow(queryID).Scan(&nextID)
-	if err != nil {
-		return 0, err
-	}
-
-	query := `
-		INSERT INTO questions (id, version, title, text, options, correct_option, author_id, is_deleted) 
-		VALUES ($1, 1, $2, $3, $4, $5, $6, false) 
-		RETURNING id`
+	optionsJSON, _ := json.Marshal(options)
 
 	var id int
-	err = db.QueryRow(query, nextID, title, text, optionsJSON, correct, authorID).Scan(&id)
-	return id, err
+	// Убираем ручной расчет nextID. Просто вставляем данные.
+	// SERIAL сам назначит ID, а RETURNING id вернет его нам.
+	query := `
+		INSERT INTO questions (version, title, text, options, correct_option, author_id, is_deleted) 
+		VALUES (1, $1, $2, $3, $4, $5, false) 
+		RETURNING id`
+
+	err := db.QueryRow(query, title, text, optionsJSON, correct, authorID).Scan(&id)
+	if err != nil {
+		return 0, fmt.Errorf("db error: %v", err)
+	}
+	return id, nil
 }
 
 func UpdateQuestion(questionID int, text string, options []string, correct int) error {
@@ -378,9 +373,13 @@ func UpdateUserFullName(targetID int, fullName string) error {
 
 func CreateCourse(name, description string, teacherID int) (int, error) {
 	var id int
+	// ОБЯЗАТЕЛЬНО: RETURNING id в конце запроса
 	query := `INSERT INTO courses (name, description, teacher_id) VALUES ($1, $2, $3) RETURNING id`
 	err := db.QueryRow(query, name, description, teacherID).Scan(&id)
-	return id, err
+	if err != nil {
+		return 0, fmt.Errorf("ошибка создания курса: %v", err)
+	}
+	return id, nil
 }
 
 func DeleteCourse(courseID int) error {
