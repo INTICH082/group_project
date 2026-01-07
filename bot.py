@@ -152,7 +152,7 @@ class APIClient:
         if self.session:
             await self.session.close()
 
-    def generate_token(self, user_id: int, role: str = "student", permissions: List[str] = None) -> str:
+    def generate_token(self, user_id: int, role: str = "student", permissions: Optional[List[str]] = None) -> str:
         """Генерация JWT токена для API"""
         if permissions is None:
             permissions = ["course:read"]
@@ -167,7 +167,7 @@ class APIClient:
 
         return jwt.encode(payload, self.jwt_secret, algorithm="HS256")
 
-    async def request(self, method: str, endpoint: str, token: str = None, data: Dict = None) -> Dict:
+    async def request(self, method: str, endpoint: str, token: str = None, data: Optional[Dict] = None) -> Dict:
         """Выполнение HTTP запроса к API"""
         await self.ensure_session()
 
@@ -188,14 +188,15 @@ class APIClient:
                     raise Exception(f"API ошибка {response.status}: {response_text}")
 
                 if response_text:
-                    return json.loads(response_text)
+                    try:
+                        return json.loads(response_text)
+                    except json.JSONDecodeError:
+                        return {"text": response_text}
                 return {}
 
         except aiohttp.ClientError as e:
             logger.error(f"Ошибка соединения с API: {e}")
             raise Exception(f"Сервис временно недоступен: {e}")
-        except json.JSONDecodeError:
-            return {"text": response_text} if response_text else {}
 
     async def get_tests(self, token: str, course_id: int = DEFAULT_COURSE_ID) -> List[Dict]:
         """Получить список тестов курса"""
@@ -269,6 +270,7 @@ api_client = APIClient(API_BASE_URL, JWT_SECRET)
 # DECORATORS
 # =========================
 async def check_rate_limit(chat_id: int, seconds: int = 2) -> bool:
+    # TODO: Реализовать проверку лимита запросов
     return True
 
 
@@ -278,9 +280,7 @@ def rate_limit(seconds: int = 2):
         async def wrapper(message: Message, *args, **kwargs):
             stats.increment_commands()
             return await handler(message, *args, **kwargs)
-
         return wrapper
-
     return decorator
 
 
@@ -296,7 +296,6 @@ def safe_send_message(func):
                     await args[0].answer(f"❌ Ошибка: {str(e)}")
                 except:
                     pass
-
     return wrapper
 
 
@@ -326,9 +325,7 @@ def require_auth():
                     pass
                 return
             return await handler(event, user, *args, **kwargs)
-
         return wrapper
-
     return decorator
 
 
@@ -437,6 +434,7 @@ async def cmd_start(message: Message):
         provider = user.get("provider", "code")
 
         code = ""
+        # Используем заглушку auth_service
         if login_token in auth_service.login_tokens:
             token_data = auth_service.login_tokens[login_token]
             if token_data.get("code"):
