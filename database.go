@@ -453,3 +453,32 @@ func scanQuestions(rows *sql.Rows) ([]Question, error) {
 	}
 	return questions, nil
 }
+
+func GetQuestionByID(id int) (interface{}, error) {
+	var q struct {
+		ID      int      `json:"id"`
+		Version int      `json:"version"`
+		Title   string   `json:"title"`
+		Text    string   `json:"text"`
+		Options []string `json:"options"`
+		Correct int      `json:"correct_option"`
+	}
+
+	// Берем версию с максимальным номером, которая не удалена
+	query := `SELECT id, version, title, text, options, correct_option 
+			  FROM questions 
+			  WHERE id = $1 AND is_deleted = false 
+			  ORDER BY version DESC LIMIT 1`
+
+	// В базе options это JSONB, Scan в Go может потребовать доп. обработки,
+	// но если используешь нормальный драйвер, он поймет структуру.
+	var optionsRaw []byte
+	err := db.QueryRow(query, id).Scan(&q.ID, &q.Version, &q.Title, &q.Text, &optionsRaw, &q.Correct)
+	if err != nil {
+		return nil, err
+	}
+	// Десериализуем JSON из базы в слайс строк
+	json.Unmarshal(optionsRaw, &q.Options)
+
+	return q, nil
+}
