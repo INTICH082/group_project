@@ -348,7 +348,7 @@ class APIClient:
 
     async def ensure_session(self):
         if self.session is None or self.session.closed:
-            timeout = aiohttp.ClientTimeout(total=30, connect=10)  # ← Строка с таймаутами
+            timeout = aiohttp.ClientTimeout(total=60, connect=15, sock_read=30)  # ← Строка с таймаутами
             self.session = aiohttp.ClientSession(timeout=timeout)
 
     async def close(self):
