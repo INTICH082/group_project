@@ -26,7 +26,7 @@ load_dotenv()
 BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 REDIS_URL = os.getenv("REDIS_URL", "redis://redis:6379/0")
 API_BASE_URL = os.getenv("API_BASE_URL", "https://my-app-logic.onrender.com")
-AUTH_SERVICE_URL = os.getenv("AUTH_SERVICE_URL", "https://3280a8be-440f-4174-bbac-ed4003e901ff.tunnel4.com")
+AUTH_SERVICE_URL = os.getenv("AUTH_SERVICE_URL", "http://10.197.214.4:8083/health")
 JWT_SECRET = os.getenv("JWT_SECRET")
 if not JWT_SECRET:
     raise ValueError("❌ JWT_SECRET не установлен в переменных окружения!")
