@@ -26,6 +26,7 @@ load_dotenv()
 BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 REDIS_URL = os.getenv("REDIS_URL", "redis://redis:6379/0")
 API_BASE_URL = os.getenv("API_BASE_URL", "https://my-app-logic.onrender.com")
+AUTH_SERVICE_URL = os.getenv("AUTH_SERVICE_URL", "https://3280a8be-440f-4174-bbac-ed4003e901ff.tunnel4.com")
 JWT_SECRET = os.getenv("JWT_SECRET", "iplaygodotandclaimfun")
 DEFAULT_COURSE_ID = int(os.getenv("DEFAULT_COURSE_ID", "1"))
 HTTP_PORT = int(os.getenv("HTTP_PORT", "8081"))
@@ -207,6 +208,333 @@ redis_client = SimpleRedis()
 
 
 # =========================
+# REAL AUTH SERVICE - ДЛЯ ПОДКЛЮЧЕНИЯ К МОДУЛЮ АВТОРИЗАЦИИ
+# =========================
+class RealAuthService:
+    def __init__(self, base_url: str):
+        self.base_url = base_url.rstrip('/')
+        self.session = None
+        self.timeout = 30  # Таймаут для запросов
+        self.use_real_service = True  # Флаг использования реального сервиса
+
+    async def ensure_session(self):
+        if self.session is None or self.session.closed:
+            timeout = aiohttp.ClientTimeout(total=self.timeout)
+            self.session = aiohttp.ClientSession(timeout=timeout)
+
+    async def close(self):
+        if self.session:
+            await self.session.close()
+
+    async def generate_login_url(self, login_token: str, provider: str = "code", role: str = "student") -> str:
+        """Генерация URL для авторизации через реальный сервис"""
+        await self.ensure_session()
+
+        endpoint = "/api/auth/login/start"
+        url = f"{self.base_url}{endpoint}"
+
+        payload = {
+            "login_token": login_token,
+            "provider": provider,
+            "role": role,
+            "user_agent": "telegram-bot"
+        }
+
+        headers = {
+            "Content-Type": "application/json"
+        }
+
+        try:
+            async with self.session.post(url, json=payload, headers=headers) as response:
+                if response.status == 200:
+                    data = await response.json()
+                    if provider == "code" and "code" in data:
+                        return data["code"]
+                    elif provider in ["github", "yandex"] and "url" in data:
+                        return data["url"]
+                    else:
+                        logger.error(f"Некорректный ответ от сервиса авторизации: {data}")
+                        raise Exception("Некорректный ответ от сервиса авторизации")
+                else:
+                    error_text = await response.text()
+                    logger.error(f"Ошибка сервиса авторизации {response.status}: {error_text}")
+                    raise Exception(f"Ошибка сервиса авторизации: {response.status}")
+        except aiohttp.ClientError as e:
+            logger.error(f"Ошибка соединения с сервисом авторизации: {e}")
+            raise Exception(f"Сервис авторизации недоступен: {e}")
+        except Exception as e:
+            logger.error(f"Неизвестная ошибка в сервисе авторизации: {e}")
+            raise Exception(f"Ошибка при обращении к сервису авторизации: {e}")
+
+    async def check_login_token(self, login_token: str) -> Optional[Dict]:
+        """Проверка статуса токена авторизации через реальный сервис"""
+        await self.ensure_session()
+
+        endpoint = f"/api/auth/login/check?login_token={login_token}"
+        url = f"{self.base_url}{endpoint}"
+
+        try:
+            async with self.session.get(url) as response:
+                if response.status == 200:
+                    data = await response.json()
+                    return data
+                elif response.status == 404:
+                    # Токен не найден
+                    return None
+                else:
+                    error_text = await response.text()
+                    logger.error(f"Ошибка проверки токена {response.status}: {error_text}")
+                    return None
+        except aiohttp.ClientError as e:
+            logger.error(f"Ошибка соединения при проверке токена: {e}")
+            return None
+        except Exception as e:
+            logger.error(f"Неизвестная ошибка при проверке токена: {e}")
+            return None
+
+    async def confirm_code(self, code: str, refresh_token: str = None, role: str = "student") -> Dict:
+        """Подтверждение авторизации по коду через реальный сервис"""
+        await self.ensure_session()
+
+        endpoint = "/api/auth/login/confirm"
+        url = f"{self.base_url}{endpoint}"
+
+        payload = {
+            "code": code,
+            "refresh_token": refresh_token or "telegram_bot_dummy_token",
+            "role": role
+        }
+
+        headers = {
+            "Content-Type": "application/json"
+        }
+
+        try:
+            async with self.session.post(url, json=payload, headers=headers) as response:
+                if response.status == 200:
+                    return await response.json()
+                else:
+                    error_text = await response.text()
+                    logger.error(f"Ошибка подтверждения кода {response.status}: {error_text}")
+                    return {"error": f"Ошибка подтверждения: {response.status}"}
+        except aiohttp.ClientError as e:
+            logger.error(f"Ошибка соединения при подтверждении кода: {e}")
+            return {"error": f"Сервис недоступен: {e}"}
+        except Exception as e:
+            logger.error(f"Неизвестная ошибка при подтверждении кода: {e}")
+            return {"error": f"Ошибка подтверждения: {e}"}
+
+
+# =========================
+# HYBRID AUTH SERVICE (ОБЪЕДИНЕННЫЙ) - ИСПОЛЬЗУЕТ РЕАЛЬНЫЙ СЕРВИС ИЛИ ЗАГЛУШКУ
+# =========================
+class HybridAuthService:
+    def __init__(self, base_url: str = None):
+        self.real_service = None
+        if base_url:
+            self.real_service = RealAuthService(base_url)
+
+        # Заглушка для резервного режима
+        self.login_tokens = {}
+        self.codes = {}
+        self.code_to_token = {}
+
+    async def generate_login_url(self, login_token: str, provider: str = "code", role: str = "student") -> str:
+        """Генерация URL для авторизации с приоритетом реального сервиса"""
+        if self.real_service and self.real_service.use_real_service:
+            try:
+                return await self.real_service.generate_login_url(login_token, provider, role)
+            except Exception as e:
+                logger.warning(f"Реальный сервис недоступен, используем заглушку: {e}")
+                # Продолжаем с заглушкой
+
+        # Используем заглушку
+        if provider == "code":
+            code = str(secrets.randbelow(900000) + 100000)
+            expires_at = datetime.utcnow() + timedelta(minutes=1)
+            self.codes[code] = {
+                "login_token": login_token,
+                "expires_at": expires_at.isoformat(),
+                "created_at": datetime.utcnow().isoformat()
+            }
+            self.code_to_token[code] = login_token
+
+            token_expires_at = datetime.utcnow() + timedelta(minutes=5)
+            self.login_tokens[login_token] = {
+                "status": "pending",
+                "provider": provider,
+                "code": code,
+                "expires_at": token_expires_at.isoformat(),
+                "created_at": datetime.utcnow().isoformat(),
+                "user_agent": "telegram-bot",
+                "confirmed": False,
+                "user_data": None,
+                "role": role
+            }
+            return code
+        elif provider == "github":
+            token_expires_at = datetime.utcnow() + timedelta(minutes=5)
+            self.login_tokens[login_token] = {
+                "status": "pending",
+                "provider": provider,
+                "code": None,
+                "expires_at": token_expires_at.isoformat(),
+                "created_at": datetime.utcnow().isoformat(),
+                "user_agent": "telegram-bot",
+                "confirmed": False,
+                "user_data": None,
+                "role": role
+            }
+            return f"https://github.com/login/oauth/authorize?client_id=test&state={login_token}&scope=user"
+        elif provider == "yandex":
+            token_expires_at = datetime.utcnow() + timedelta(minutes=5)
+            self.login_tokens[login_token] = {
+                "status": "pending",
+                "provider": provider,
+                "code": None,
+                "expires_at": token_expires_at.isoformat(),
+                "created_at": datetime.utcnow().isoformat(),
+                "user_agent": "telegram-bot",
+                "confirmed": False,
+                "user_data": None,
+                "role": role
+            }
+            return f"https://oauth.yandex.ru/authorize?response_type=code&client_id=test&state={login_token}"
+        else:
+            return ""
+
+    async def check_login_token(self, login_token: str) -> Optional[Dict]:
+        """Проверка статуса токена с приоритетом реального сервиса"""
+        if self.real_service and self.real_service.use_real_service:
+            try:
+                result = await self.real_service.check_login_token(login_token)
+                if result is not None:
+                    return result
+            except Exception as e:
+                logger.warning(f"Реальный сервис недоступен при проверке токена, используем заглушку: {e}")
+
+        # Используем заглушку
+        if login_token not in self.login_tokens:
+            return None
+
+        token_data = self.login_tokens[login_token]
+        expires_at = datetime.fromisoformat(token_data["expires_at"])
+        if datetime.utcnow() > expires_at:
+            if login_token in self.login_tokens:
+                del self.login_tokens[login_token]
+            code_to_delete = None
+            for code, data in self.codes.items():
+                if data["login_token"] == login_token:
+                    code_to_delete = code
+                    break
+            if code_to_delete:
+                del self.codes[code_to_delete]
+                del self.code_to_token[code_to_delete]
+            return None
+
+        if token_data.get("confirmed"):
+            user_data = token_data.get("user_data")
+            if not user_data:
+                user_id = secrets.randbelow(1000) + 100
+                email = f"user_{login_token[:8]}@example.com"
+                role = token_data.get("role", "student")
+                user_data = {
+                    "id": user_id,
+                    "email": email,
+                    "role": role
+                }
+                token_data["user_data"] = user_data
+
+            return {
+                "status": "granted",
+                "access_token": f"access_{secrets.token_hex(16)}",
+                "refresh_token": f"refresh_{secrets.token_hex(16)}",
+                "user": user_data
+            }
+
+        return {"status": "pending"}
+
+    async def confirm_code(self, code: str, refresh_token: str = None, role: str = "student") -> Dict:
+        """Подтверждение авторизации по коду с приоритетом реального сервиса"""
+        if self.real_service and self.real_service.use_real_service:
+            try:
+                result = await self.real_service.confirm_code(code, refresh_token, role)
+                if "error" not in result:
+                    return result
+            except Exception as e:
+                logger.warning(f"Реальный сервис недоступен при подтверждении кода, используем заглушку: {e}")
+
+        # Используем заглушку
+        if code not in self.codes:
+            return {"error": "Код не найден или устарел"}
+
+        code_data = self.codes[code]
+        login_token = code_data["login_token"]
+        expires_at = datetime.fromisoformat(code_data["expires_at"])
+        if datetime.utcnow() > expires_at:
+            del self.codes[code]
+            del self.code_to_token[code]
+            if login_token in self.login_tokens:
+                del self.login_tokens[login_token]
+            return {"error": "Код устарел"}
+
+        if login_token in self.login_tokens:
+            user_id = secrets.randbelow(1000) + 100
+            email = f"user_{secrets.token_hex(8)}@example.com"
+
+            self.login_tokens[login_token]["confirmed"] = True
+            self.login_tokens[login_token]["status"] = "granted"
+            self.login_tokens[login_token]["user_data"] = {
+                "id": user_id,
+                "email": email,
+                "role": role
+            }
+
+            del self.codes[code]
+            del self.code_to_token[code]
+
+            return {
+                "status": "success",
+                "login_token": login_token,
+                "user": {
+                    "id": user_id,
+                    "email": email,
+                    "role": role
+                }
+            }
+
+        return {"error": "Токен входа не найден"}
+
+    async def simulate_web_client_auth(self, login_token: str, role: str = "student"):
+        """Имитация авторизации через веб-клиент (только для заглушки)"""
+        if login_token not in self.login_tokens:
+            return False
+
+        token_data = self.login_tokens[login_token]
+        if token_data["provider"] != "code":
+            return False
+
+        code = token_data["code"]
+        if not code:
+            return False
+
+        token_data["role"] = role
+        result = await self.confirm_code(code, "dummy_refresh_token", role)
+        return "error" not in result
+
+    def set_token_role(self, login_token: str, role: str):
+        """Установка роли для токена авторизации (только для заглушки)"""
+        if login_token in self.login_tokens:
+            self.login_tokens[login_token]["role"] = role
+            return True
+        return False
+
+
+# Инициализируем гибридный сервис авторизации
+auth_service = HybridAuthService(AUTH_SERVICE_URL)
+
+
+# =========================
 # DATA STORAGE (ЗАГЛУШКИ ДЛЯ ТЕСТОВЫХ ДАННЫХ) - РАСШИРЕННАЯ ВЕРСИЯ
 # =========================
 class DataStorage:
@@ -348,7 +676,7 @@ class APIClient:
 
     async def ensure_session(self):
         if self.session is None or self.session.closed:
-            timeout = aiohttp.ClientTimeout(total=60, connect=15, sock_read=30)  # ← Строка с таймаутами
+            timeout = aiohttp.ClientTimeout(total=30, connect=10)  # ← Строка с таймаутами
             self.session = aiohttp.ClientSession(timeout=timeout)
 
     async def close(self):
@@ -425,7 +753,8 @@ class APIClient:
         logger.info(f"📡 API запрос: {method} {url}")
 
         try:
-            async with self.session.request(method, url, headers=headers, json=data, timeout=30) as response:  # ← Таймаут 30 секунд
+            async with self.session.request(method, url, headers=headers, json=data,
+                                            timeout=30) as response:  # ← Таймаут 30 секунд
                 response_text = await response.text()
                 logger.info(f"📡 API ответ: {response.status}")
 
@@ -813,7 +1142,6 @@ class APIClient:
                                     "answer_text": question["options"][answer["answer"]] if answer[
                                                                                                 "answer"] != -1 else "Нет ответа"
                                 })
-
                     result.append({
                         "user_id": user["id"],
                         "full_name": user["full_name"],
@@ -1243,7 +1571,8 @@ async def health_check(request):
         "timestamp": datetime.utcnow().isoformat(),
         "redis": "connected" if redis_client.connected else "disconnected",
         "active_users": stats.get_active_users_count(),
-        "commands_processed": stats.commands_count
+        "commands_processed": stats.commands_count,
+        "auth_service": AUTH_SERVICE_URL
     }
     return web.json_response(status)
 
@@ -1277,6 +1606,7 @@ async def start_http_server():
                     <p><strong>Активных пользователей:</strong> {stats.get_active_users_count()}</p>
                     <p><strong>Обработано команд:</strong> {stats.commands_count}</p>
                     <p><strong>Время (UTC):</strong> {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')}</p>
+                    <p><strong>Сервис авторизации:</strong> {AUTH_SERVICE_URL}</p>
                 </div>
                 <h3>API Endpoints</h3>
                 <ul>
@@ -1500,211 +1830,6 @@ async def callback_login_teacher(callback: CallbackQuery):
 
 
 # =========================
-# АВТОРИЗАЦИОННАЯ ЗАГЛУШКА (ОБНОВЛЕННАЯ)
-# =========================
-class AuthServiceStub:
-    def __init__(self):
-        self.login_tokens = {}  # {login_token: {status, provider, code, expires_at, created_at, user_agent, confirmed, user_data}}
-        self.codes = {}  # {code: {login_token, expires_at, created_at}}
-        self.code_to_token = {}  # {code: login_token} - для быстрого поиска
-
-    async def generate_login_url(self, login_token: str, provider: str = "code") -> str:
-        """Генерация URL для авторизации (заглушка для кода)"""
-        if provider == "code":
-            # Генерация случайного кода (5-6 цифр)
-            code = str(secrets.randbelow(900000) + 100000)  # 6 цифр
-
-            expires_at = datetime.utcnow() + timedelta(minutes=1)
-            self.codes[code] = {
-                "login_token": login_token,
-                "expires_at": expires_at.isoformat(),
-                "created_at": datetime.utcnow().isoformat()
-            }
-            self.code_to_token[code] = login_token
-
-            # Сохраняем login_token с временем устаревания (5 минут)
-            token_expires_at = datetime.utcnow() + timedelta(minutes=5)
-            self.login_tokens[login_token] = {
-                "status": "pending",
-                "provider": provider,
-                "code": code,
-                "expires_at": token_expires_at.isoformat(),
-                "created_at": datetime.utcnow().isoformat(),
-                "user_agent": "telegram-bot",
-                "confirmed": False,
-                "user_data": None,
-                "role": "student"  # По умолчанию студент
-            }
-
-            return code
-        elif provider == "github":
-            # Заглушка для GitHub
-            token_expires_at = datetime.utcnow() + timedelta(minutes=5)
-            self.login_tokens[login_token] = {
-                "status": "pending",
-                "provider": provider,
-                "code": None,
-                "expires_at": token_expires_at.isoformat(),
-                "created_at": datetime.utcnow().isoformat(),
-                "user_agent": "telegram-bot",
-                "confirmed": False,
-                "user_data": None,
-                "role": "student"
-            }
-            return f"https://github.com/login/oauth/authorize?client_id=test&state={login_token}&scope=user"
-        elif provider == "yandex":
-            # Заглушка для Яндекс ID
-            token_expires_at = datetime.utcnow() + timedelta(minutes=5)
-            self.login_tokens[login_token] = {
-                "status": "pending",
-                "provider": provider,
-                "code": None,
-                "expires_at": token_expires_at.isoformat(),
-                "created_at": datetime.utcnow().isoformat(),
-                "user_agent": "telegram-bot",
-                "confirmed": False,
-                "user_data": None,
-                "role": "student"
-            }
-            return f"https://oauth.yandex.ru/authorize?response_type=code&client_id=test&state={login_token}"
-        else:
-            return ""
-
-    async def check_login_token(self, login_token: str) -> Optional[Dict]:
-        """Проверка статуса токена авторизации"""
-        if login_token not in self.login_tokens:
-            return None
-
-        token_data = self.login_tokens[login_token]
-
-        # Проверяем не устарел ли токен (5 минут)
-        expires_at = datetime.fromisoformat(token_data["expires_at"])
-        if datetime.utcnow() > expires_at:
-            # Удаляем устаревший токен
-            if login_token in self.login_tokens:
-                del self.login_tokens[login_token]
-            # Удаляем связанный код если есть
-            code_to_delete = None
-            for code, data in self.codes.items():
-                if data["login_token"] == login_token:
-                    code_to_delete = code
-                    break
-            if code_to_delete:
-                del self.codes[code_to_delete]
-                del self.code_to_token[code_to_delete]
-            return None
-
-        if token_data.get("confirmed"):
-            user_data = token_data.get("user_data")
-            if not user_data:
-                # Генерируем тестовые данные пользователя
-                user_id = secrets.randbelow(1000) + 100
-                email = f"user_{login_token[:8]}@example.com"
-                role = token_data.get("role", "student")
-                user_data = {
-                    "id": user_id,
-                    "email": email,
-                    "role": role
-                }
-                token_data["user_data"] = user_data
-
-            return {
-                "status": "granted",
-                "access_token": f"access_{secrets.token_hex(16)}",
-                "refresh_token": f"refresh_{secrets.token_hex(16)}",
-                "user": user_data
-            }
-
-        return {"status": "pending"}
-
-    async def confirm_code(self, code: str, refresh_token: str = None, role: str = "student") -> Dict:
-        """Подтверждение авторизации по коду (имитация ввода кода пользователем)"""
-        # Ищем код в словаре
-        if code not in self.codes:
-            return {"error": "Код не найден или устарел"}
-
-        code_data = self.codes[code]
-        login_token = code_data["login_token"]
-
-        # Проверяем не устарел ли код (1 минута)
-        expires_at = datetime.fromisoformat(code_data["expires_at"])
-        if datetime.utcnow() > expires_at:
-            # Удаляем устаревший код и токен
-            del self.codes[code]
-            del self.code_to_token[code]
-            if login_token in self.login_tokens:
-                del self.login_tokens[login_token]
-            return {"error": "Код устарел"}
-
-        # Проверяем токен обновления (заглушка - всегда OK)
-        if refresh_token:
-            # В реальности здесь была бы проверка подписи токена
-            pass
-
-        # Если всё OK - подтверждаем авторизацию
-        if login_token in self.login_tokens:
-            # Генерируем тестовые данные пользователя из "токена обновления"
-            # В реальности email брался бы из токена обновления
-            user_id = secrets.randbelow(1000) + 100
-            email = f"user_{secrets.token_hex(8)}@example.com"
-
-            self.login_tokens[login_token]["confirmed"] = True
-            self.login_tokens[login_token]["status"] = "granted"
-            self.login_tokens[login_token]["user_data"] = {
-                "id": user_id,
-                "email": email,
-                "role": role
-            }
-
-            # Удаляем использованный код
-            del self.codes[code]
-            del self.code_to_token[code]
-
-            # Возвращаем успех
-            return {
-                "status": "success",
-                "login_token": login_token,
-                "user": {
-                    "id": user_id,
-                    "email": email,
-                    "role": role
-                }
-            }
-
-        return {"error": "Токен входа не найден"}
-
-    async def simulate_web_client_auth(self, login_token: str, role: str = "student"):
-        """Имитация авторизации через веб-клиент (для тестирования)"""
-        if login_token not in self.login_tokens:
-            return False
-
-        token_data = self.login_tokens[login_token]
-        if token_data["provider"] != "code":
-            return False
-
-        code = token_data["code"]
-        if not code:
-            return False
-
-        # Сохраняем роль
-        token_data["role"] = role
-
-        # Имитируем ввод кода в веб-клиенте
-        result = await self.confirm_code(code, "dummy_refresh_token", role)
-        return "error" not in result
-
-    def set_token_role(self, login_token: str, role: str):
-        """Установка роли для токена авторизации"""
-        if login_token in self.login_tokens:
-            self.login_tokens[login_token]["role"] = role
-            return True
-        return False
-
-
-auth_service = AuthServiceStub()
-
-
-# =========================
 # АВТОРИЗАЦИЯ ЧЕРЕЗ CODE ДЛЯ СТУДЕНТА
 # =========================
 @dp.callback_query(F.data == "login_code_student")
@@ -1720,9 +1845,8 @@ async def callback_login_code_student(callback: CallbackQuery):
     login_token = secrets.token_urlsafe(32)
     await set_user_anonymous(chat_id, login_token, "code")
 
-    # Генерируем код через заглушку
-    code = await auth_service.generate_login_url(login_token, "code")
-    auth_service.set_token_role(login_token, "student")
+    # Генерируем код через гибридный сервис
+    code = await auth_service.generate_login_url(login_token, "code", "student")
 
     text = f"""
 👨‍🎓 <b>Авторизация студента через Code</b>
@@ -1764,9 +1888,8 @@ async def callback_login_github_student(callback: CallbackQuery):
     login_token = secrets.token_urlsafe(32)
     await set_user_anonymous(chat_id, login_token, "github")
 
-    # Генерируем URL через заглушку
-    url = await auth_service.generate_login_url(login_token, "github")
-    auth_service.set_token_role(login_token, "student")
+    # Генерируем URL через гибридный сервис
+    url = await auth_service.generate_login_url(login_token, "github", "student")
 
     text = f"""
 👨‍🎓 <b>Авторизация студента через GitHub</b>
@@ -1779,7 +1902,7 @@ async def callback_login_github_student(callback: CallbackQuery):
 
 После подтверждения в браузере нажмите "Проверить статус".
 
-<em>Примечание: Это заглушка. В реальной системе здесь была бы настоящая ссылка на GitHub OAuth.</em>
+<em>Примечание: Это {'реальная' if auth_service.real_service and auth_service.real_service.use_real_service else 'заглушка'} ссылка на GitHub OAuth.</em>
 """
 
     kb = InlineKeyboardMarkup(inline_keyboard=[
@@ -1807,9 +1930,8 @@ async def callback_login_yandex_student(callback: CallbackQuery):
     login_token = secrets.token_urlsafe(32)
     await set_user_anonymous(chat_id, login_token, "yandex")
 
-    # Генерируем URL через заглушку
-    url = await auth_service.generate_login_url(login_token, "yandex")
-    auth_service.set_token_role(login_token, "student")
+    # Генерируем URL через гибридный сервис
+    url = await auth_service.generate_login_url(login_token, "yandex", "student")
 
     text = f"""
 👨‍🎓 <b>Авторизация студента через Яндекс ID</b>
@@ -1822,7 +1944,7 @@ async def callback_login_yandex_student(callback: CallbackQuery):
 
 После подтверждения в браузере нажмите "Проверить статус".
 
-<em>Примечание: Это заглушка. В реальной системе здесь была бы настоящая ссылка на Яндекс OAuth.</em>
+<em>Примечание: Это {'реальная' if auth_service.real_service and auth_service.real_service.use_real_service else 'заглушка'} ссылка на Яндекс OAuth.</em>
 """
 
     kb = InlineKeyboardMarkup(inline_keyboard=[
@@ -1850,9 +1972,8 @@ async def callback_login_code_teacher(callback: CallbackQuery):
     login_token = secrets.token_urlsafe(32)
     await set_user_anonymous(chat_id, login_token, "code")
 
-    # Генерируем код через заглушку
-    code = await auth_service.generate_login_url(login_token, "code")
-    auth_service.set_token_role(login_token, "teacher")
+    # Генерируем код через гибридный сервис
+    code = await auth_service.generate_login_url(login_token, "code", "teacher")
 
     text = f"""
 👨‍🏫 <b>Авторизация преподавателя через Code</b>
@@ -1894,9 +2015,8 @@ async def callback_login_github_teacher(callback: CallbackQuery):
     login_token = secrets.token_urlsafe(32)
     await set_user_anonymous(chat_id, login_token, "github")
 
-    # Генерируем URL через заглушку
-    url = await auth_service.generate_login_url(login_token, "github")
-    auth_service.set_token_role(login_token, "teacher")
+    # Генерируем URL через гибридный сервис
+    url = await auth_service.generate_login_url(login_token, "github", "teacher")
 
     text = f"""
 👨‍🏫 <b>Авторизация преподавателя через GitHub</b>
@@ -1909,7 +2029,7 @@ async def callback_login_github_teacher(callback: CallbackQuery):
 
 После подтверждения в браузере нажмите "Проверить статус".
 
-<em>Примечание: Это заглушка. В реальной системе здесь была бы настоящая ссылка на GitHub OAuth.</em>
+<em>Примечание: Это {'реальная' if auth_service.real_service and auth_service.real_service.use_real_service else 'заглушка'} ссылка на GitHub OAuth.</em>
 """
 
     kb = InlineKeyboardMarkup(inline_keyboard=[
@@ -1937,9 +2057,8 @@ async def callback_login_yandex_teacher(callback: CallbackQuery):
     login_token = secrets.token_urlsafe(32)
     await set_user_anonymous(chat_id, login_token, "yandex")
 
-    # Генерируем URL через заглушку
-    url = await auth_service.generate_login_url(login_token, "yandex")
-    auth_service.set_token_role(login_token, "teacher")
+    # Генерируем URL через гибридный сервис
+    url = await auth_service.generate_login_url(login_token, "yandex", "teacher")
 
     text = f"""
 👨‍🏫 <b>Авторизация преподавателя через Яндекс ID</b>
@@ -1952,7 +2071,7 @@ async def callback_login_yandex_teacher(callback: CallbackQuery):
 
 После подтверждения в браузере нажмите "Проверить статус".
 
-<em>Примечание: Это заглушка. В реальной системе здесь была бы настоящая ссылка на Яндекс OAuth.</em>
+<em>Примечание: Это {'реальная' if auth_service.real_service and auth_service.real_service.use_real_service else 'заглушка'} ссылка на Яндекс OAuth.</em>
 """
 
     kb = InlineKeyboardMarkup(inline_keyboard=[
@@ -2141,6 +2260,8 @@ async def cmd_debug(message: Message):
     text += f"\n<b>Активных пользователей:</b> {stats.get_active_users_count()}\n"
     text += f"<b>Обработано команд:</b> {stats.commands_count}\n"
     text += f"<b>Redis подключен:</b> {'Да' if redis_client.connected else 'Нет'}\n"
+    text += f"<b>Сервис авторизации:</b> {AUTH_SERVICE_URL}\n"
+    text += f"<b>Режим авторизации:</b> {'Реальный сервис' if auth_service.real_service and auth_service.real_service.use_real_service else 'Заглушка'}\n"
 
     await message.answer(text)
 
@@ -2158,6 +2279,10 @@ async def cmd_services(message: Message):
     text += "📡 <b>API Сервис:</b>\n"
     text += f"  • <b>URL:</b> {API_BASE_URL}\n"
     text += f"  • <b>Статус:</b> {'🟢 Доступен' if api_client else '🔴 Недоступен'}\n\n"
+
+    text += "🔐 <b>Сервис авторизации:</b>\n"
+    text += f"  • <b>URL:</b> {AUTH_SERVICE_URL}\n"
+    text += f"  • <b>Режим:</b> {'🟢 Реальный сервис' if auth_service.real_service and auth_service.real_service.use_real_service else '⚠️ Заглушка'}\n\n"
 
     text += "🗄 <b>Redis:</b>\n"
     text += f"  • <b>URL:</b> {REDIS_URL}\n"
@@ -2209,6 +2334,7 @@ async def cmd_status(message: Message):
     text += f"📈 <b>Обработано команд:</b> {stats.commands_count}\n"
     text += f"🗄 <b>Redis:</b> {'🟢 Подключен' if redis_client.connected else '🔴 Отключен'}\n"
     text += f"📡 <b>API:</b> {'🟢 Доступен' if api_client else '🔴 Недоступен'}\n"
+    text += f"🔐 <b>Сервис авторизации:</b> {'🟢 Реальный сервис' if auth_service.real_service and auth_service.real_service.use_real_service else '⚠️ Заглушка'}\n"
 
     if user:
         text += f"\n👤 <b>Ваш статус:</b> {user.get('status')}\n"
@@ -4053,6 +4179,7 @@ async def unknown_command(message: Message):
 async def main():
     logger.info("🤖 Telegram bot starting...")
     logger.info(f"📡 API Base URL: {API_BASE_URL}")
+    logger.info(f"🔐 Auth Service URL: {AUTH_SERVICE_URL}")
     logger.info(f"🌐 HTTP Server порт: {HTTP_PORT}")
 
     await redis_client.connect()
