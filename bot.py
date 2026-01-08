@@ -28,7 +28,7 @@ REDIS_URL = os.getenv("REDIS_URL", "redis://redis:6379/0")
 API_BASE_URL = os.getenv("API_BASE_URL", "https://my-app-logic.onrender.com")
 JWT_SECRET = os.getenv("JWT_SECRET", "iplaygodotandclaimfun")
 DEFAULT_COURSE_ID = int(os.getenv("DEFAULT_COURSE_ID", "1"))
-HTTP_PORT = int(os.getenv("HTTP_PORT", "8081"))
+HTTP_PORT = int(os.getenv("HTTP_PORT", "8080"))
 
 # =========================
 # LOGGING

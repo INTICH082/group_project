@@ -5,7 +5,7 @@ services:
     image: redis:7-alpine
     container_name: redis
     ports:
-      - "8081:8081"
+      - "6379:6379"
     volumes:
       - redis_data:/data
     command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
@@ -31,7 +31,7 @@ services:
     command: >
       sh -c "sleep 5 && python bot.py"
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8081/health || exit 1"]
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/health || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
