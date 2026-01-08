@@ -1,0 +1,606 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Веб-клиент для API (улучшенный интерфейс)</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        section { margin-bottom: 30px; border: 1px solid #ccc; padding: 15px; border-radius: 5px; }
+        h2 { margin-top: 0; }
+        input, select, button { margin: 5px 0; padding: 5px; display: block; width: 100%; box-sizing: border-box; }
+        .dynamic-list { margin: 10px 0; }
+        .item { display: flex; align-items: center; margin-bottom: 5px; }
+        .item input { flex: 1; margin-right: 5px; }
+        .item button { width: auto; background: #ffdddd; border: none; cursor: pointer; }
+        pre { background: #f4f4f4; padding: 10px; border-radius: 5px; overflow: auto; }
+        .response { color: green; }
+        .error { color: red; }
+        #auth-section { background: #f0f8ff; }
+        #token-input { width: 100%; }
+    </style>
+</head>
+<body>
+    <h1>Веб-клиент для API[](https://my-app-logic.onrender.com)</h1>
+    <p>Улучшенный интерфейс: Теперь массивы (опции, IDs) вводятся через динамические поля — добавляйте/удаляйте элементы кнопками. Нет нужды в JSON!</p>
+    
+    <section id="auth-section">
+        <h2>Авторизация</h2>
+        <button onclick="generateToken()">Сгенерировать токен</button>
+        <br><br>
+        <label for="token-input">Токен (можно редактировать вручную):</label><br>
+        <input type="text" id="token-input" placeholder="Bearer eyJ...">
+        <button onclick="saveToken()">Сохранить токен</button>
+        <p class="response" id="auth-response"></p>
+    </section>
+
+    <section id="users-section">
+        <h2>Пользователи (Admin/Пользователь)</h2>
+        
+        <div>
+            <h3>Блокировка пользователя (/admin/user/block)</h3>
+            <input type="number" id="block-user-id" placeholder="User ID">
+            <select id="block-status">
+                <option value="true">Заблокировать</option>
+                <option value="false">Разблокировать</option>
+            </select>
+            <button onclick="blockUser()">Отправить</button>
+            <p class="response" id="block-response"></p>
+        </div>
+        
+        <div>
+            <h3>Обновить имя пользователя (/user/update-name)</h3>
+            <input type="number" id="name-user-id" placeholder="User ID (ваш)">
+            <input type="text" id="new-name" placeholder="Новое имя">
+            <button onclick="updateName()">Отправить</button>
+            <p class="response" id="name-response"></p>
+        </div>
+    </section>
+
+    <section id="courses-section">
+        <h2>Курсы</h2>
+        
+        <div>
+            <h3>Список курсов (/courses)</h3>
+            <button onclick="listCourses()">Получить список</button>
+            <pre id="courses-list"></pre>
+        </div>
+        
+        <div>
+            <h3>Создать курс (/teacher/course/create)</h3>
+            <input type="text" id="course-name" placeholder="Название">
+            <input type="text" id="course-desc" placeholder="Описание">
+            <input type="number" id="course-teacher-id" placeholder="Teacher ID">
+            <button onclick="createCourse()">Создать</button>
+            <p class="response" id="create-course-response"></p>
+        </div>
+        
+        <div>
+            <h3>Зачислить пользователя на курс (/teacher/course/enroll)</h3>
+            <input type="number" id="enroll-course-id" placeholder="Course ID">
+            <input type="number" id="enroll-user-id" placeholder="User ID">
+            <button onclick="enrollUser()">Зачислить</button>
+            <p class="response" id="enroll-response"></p>
+        </div>
+        
+        <div>
+            <h3>Удалить курс (/teacher/course/delete)</h3>
+            <input type="number" id="delete-course-id" placeholder="Course ID">
+            <button onclick="deleteCourse()">Удалить</button>
+            <p class="response" id="delete-course-response"></p>
+        </div>
+    </section>
+
+    <section id="questions-section">
+        <h2>Вопросы</h2>
+        
+        <div>
+            <h3>Создать вопрос (/teacher/question/create)</h3>
+            <input type="text" id="q-title" placeholder="Заголовок">
+            <input type="text" id="q-text" placeholder="Текст">
+            <div class="dynamic-list" id="q-options-list">
+                <h4>Опции:</h4>
+            </div>
+            <button onclick="addOption('q-options-list')">Добавить опцию</button>
+            <input type="number" id="q-correct" placeholder="Правильный индекс (0-based)">
+            <button onclick="createQuestion()">Создать</button>
+            <p class="response" id="create-q-response"></p>
+        </div>
+        
+        <div>
+            <h3>Обновить вопрос (/teacher/question/update)</h3>
+            <input type="number" id="update-q-id" placeholder="Question ID">
+            <input type="text" id="update-q-text" placeholder="Новый текст">
+            <div class="dynamic-list" id="update-q-options-list">
+                <h4>Новые опции:</h4>
+            </div>
+            <button onclick="addOption('update-q-options-list')">Добавить опцию</button>
+            <input type="number" id="update-q-correct" placeholder="Новый правильный индекс">
+            <button onclick="updateQuestion()">Обновить</button>
+            <p class="response" id="update-q-response"></p>
+        </div>
+        
+        <div>
+            <h3>Удалить вопрос (/teacher/question/delete)</h3>
+            <input type="number" id="delete-q-id" placeholder="Question ID">
+            <button onclick="deleteQuestion()">Удалить</button>
+            <p class="response" id="delete-q-response"></p>
+        </div>
+        
+        <div>
+            <h3>Список всех вопросов (/teacher/question/list)</h3>
+            <button onclick="listAllQuestions()">Получить</button>
+            <pre id="all-questions-list"></pre>
+        </div>
+        
+        <div>
+            <h3>Список вопросов курса (/teacher/course/questions)</h3>
+            <input type="number" id="course-q-id" placeholder="Course ID">
+            <button onclick="listCourseQuestions()">Получить</button>
+            <pre id="course-questions-list"></pre>
+        </div>
+    </section>
+
+    <section id="tests-section">
+        <h2>Тесты</h2>
+        
+        <div>
+            <h3>Создать тест (/teacher/test/create)</h3>
+            <input type="number" id="test-course-id" placeholder="Course ID">
+            <input type="text" id="test-name" placeholder="Название">
+            <div class="dynamic-list" id="test-q-ids-list">
+                <h4>Question IDs:</h4>
+            </div>
+            <button onclick="addId('test-q-ids-list')">Добавить ID</button>
+            <button onclick="createTest()">Создать</button>
+            <p class="response" id="create-test-response"></p>
+        </div>
+        
+        <div>
+            <h3>Обновить статус теста (/teacher/test/status)</h3>
+            <input type="number" id="status-test-id" placeholder="Test ID">
+            <select id="test-active">
+                <option value="true">Активен</option>
+                <option value="false">Неактивен</option>
+            </select>
+            <button onclick="updateTestStatus()">Обновить</button>
+            <p class="response" id="status-test-response"></p>
+        </div>
+        
+        <div>
+            <h3>Получить полный тест (/test/get)</h3>
+            <input type="number" id="get-test-id" placeholder="Test ID">
+            <button onclick="getFullTest()">Получить</button>
+            <pre id="full-test"></pre>
+        </div>
+        
+        <div>
+            <h3>Старт теста (/test/start)</h3>
+            <input type="number" id="start-test-id" placeholder="Test ID">
+            <button onclick="startTest()">Старт</button>
+            <p class="response" id="start-test-response"></p>
+        </div>
+        
+        <div>
+            <h3>Отправить ответ (/test/answer)</h3>
+            <input type="number" id="answer-attempt-id" placeholder="Attempt ID">
+            <input type="number" id="answer-q-id" placeholder="Question ID">
+            <input type="number" id="answer-option" placeholder="Selected Option (index)">
+            <button onclick="submitAnswer()">Отправить</button>
+            <p class="response" id="answer-response"></p>
+        </div>
+        
+        <div>
+            <h3>Завершить тест (/test/finish)</h3>
+            <input type="number" id="finish-attempt-id" placeholder="Attempt ID">
+            <button onclick="finishTest()">Завершить</button>
+            <p class="response" id="finish-response"></p>
+        </div>
+        
+        <div>
+            <h3>Переупорядочить вопросы (/teacher/test/questions/reorder)</h3>
+            <input type="number" id="reorder-test-id" placeholder="Test ID">
+            <div class="dynamic-list" id="reorder-ids-list">
+                <h4>New IDs order:</h4>
+            </div>
+            <button onclick="addId('reorder-ids-list')">Добавить ID</button>
+            <button onclick="reorderQuestions()">Обновить</button>
+            <p class="response" id="reorder-response"></p>
+        </div>
+        
+        <div>
+            <h3>Результаты теста (/teacher/test/results)</h3>
+            <input type="number" id="results-test-id" placeholder="Test ID">
+            <button onclick="listTestResults()">Получить</button>
+            <pre id="test-results"></pre>
+        </div>
+        
+        <div>
+            <h3>Список тестов курса (/course/tests)</h3>
+            <input type="number" id="tests-course-id" placeholder="Course ID">
+            <button onclick="listCourseTests()">Получить</button>
+            <pre id="course-tests-list"></pre>
+        </div>
+    </section>
+
+    <section id="service-section">
+        <h2>Сервис</h2>
+        <div>
+            <h3>Health Check (/health)</h3>
+            <button onclick="healthCheck()">Проверить</button>
+            <pre id="health-response"></pre>
+        </div>
+    </section>
+
+    <script>
+        const BASE_URL = 'https://my-app-logic.onrender.com';
+        const SECRET = 'iplaygodotandclaimfun';
+        let token = '';
+
+        function generateToken() {
+            const header = { alg: 'HS256', typ: 'JWT' };
+            const now = Math.floor(Date.now() / 1000);
+            const exp = now + 7200;
+
+            const payload = {
+                user_id: 1,
+                exp: exp,
+                perms: [
+                    "user:block:write", "user:fullName:write", "course:add", "course:user:add", "course:del",
+                    "quest:create", "quest:update", "quest:del", "quest:read", "course:test:add",
+                    "course:test:write", "course:read", "test:quest:update", "test:answer:read", "course:test:view"
+                ],
+                permissions: [
+                    "user:block:write", "user:fullName:write", "course:add", "course:user:add", "course:del",
+                    "quest:create", "quest:update", "quest:del", "quest:read", "course:test:add",
+                    "course:test:write", "course:read", "test:quest:update", "test:answer:read", "course:test:view"
+                ]
+            };
+
+            const encodedHeader = btoa(JSON.stringify(header)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+            const encodedPayload = btoa(JSON.stringify(payload)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+            const unsignedToken = `${encodedHeader}.${encodedPayload}`;
+            const signature = CryptoJS.HmacSHA256(unsignedToken, SECRET).toString(CryptoJS.enc.Base64).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+            token = `Bearer ${unsignedToken}.${signature}`;
+
+            document.getElementById('token-input').value = token;
+            document.getElementById('auth-response').innerText = 'Токен сгенерирован и вставлен!';
+            document.getElementById('auth-response').classList.add('response');
+        }
+
+        function saveToken() {
+            token = document.getElementById('token-input').value;
+            document.getElementById('auth-response').innerText = 'Токен сохранён!';
+        }
+
+        async function apiCall(endpoint, method = 'GET', body = null, query = {}) {
+            const url = new URL(`${BASE_URL}${endpoint}`);
+            Object.keys(query).forEach(key => url.searchParams.append(key, query[key]));
+
+            const headers = { 'Content-Type': 'application/json' };
+            if (token) headers['Authorization'] = token;
+
+            const options = { method, headers };
+            if (body) options.body = JSON.stringify(body);
+
+            try {
+                const res = await fetch(url, options);
+                if (!res.ok) {
+                    const errText = await res.text();
+                    throw new Error(`Error ${res.status}: ${errText}`);
+                }
+                return await res.text(); // Возвращаем текст
+            } catch (err) {
+                throw err;
+            }
+        }
+
+        function displayResponse(elemId, data) {
+            const elem = document.getElementById(elemId);
+            try {
+                const parsed = JSON.parse(data);
+                elem.innerText = JSON.stringify(parsed, null, 2);
+            } catch {
+                elem.innerText = data;
+            }
+        }
+
+        // Динамические списки
+        function addOption(listId) {
+            const list = document.getElementById(listId);
+            const item = document.createElement('div');
+            item.className = 'item';
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.placeholder = 'Опция';
+            const removeBtn = document.createElement('button');
+            removeBtn.innerText = 'Удалить';
+            removeBtn.onclick = () => item.remove();
+            item.appendChild(input);
+            item.appendChild(removeBtn);
+            list.appendChild(item);
+        }
+
+        function addId(listId) {
+            const list = document.getElementById(listId);
+            const item = document.createElement('div');
+            item.className = 'item';
+            const input = document.createElement('input');
+            input.type = 'number';
+            input.placeholder = 'ID';
+            const removeBtn = document.createElement('button');
+            removeBtn.innerText = 'Удалить';
+            removeBtn.onclick = () => item.remove();
+            item.appendChild(input);
+            item.appendChild(removeBtn);
+            list.appendChild(item);
+        }
+
+        function getDynamicListValues(listId) {
+            const list = document.getElementById(listId);
+            return Array.from(list.querySelectorAll('input')).map(input => input.value.trim()).filter(value => value !== '');
+        }
+
+        function getDynamicListNumbers(listId) {
+            const list = document.getElementById(listId);
+            return Array.from(list.querySelectorAll('input')).map(input => parseInt(input.value)).filter(value => !isNaN(value));
+        }
+
+        // Users
+        async function blockUser() {
+            const id = document.getElementById('block-user-id').value;
+            const block = document.getElementById('block-status').value;
+            try {
+                const data = await apiCall('/admin/user/block', 'GET', null, { id, block });
+                displayResponse('block-response', data);
+            } catch (err) {
+                document.getElementById('block-response').innerText = err.message;
+                document.getElementById('block-response').classList.add('error');
+            }
+        }
+
+        async function updateName() {
+            const id = document.getElementById('name-user-id').value;
+            const name = document.getElementById('new-name').value;
+            try {
+                const data = await apiCall('/user/update-name', 'GET', null, { id, name });
+                displayResponse('name-response', data);
+            } catch (err) {
+                document.getElementById('name-response').innerText = err.message;
+                document.getElementById('name-response').classList.add('error');
+            }
+        }
+
+        // Courses
+        async function listCourses() {
+            try {
+                const data = await apiCall('/courses');
+                displayResponse('courses-list', data);
+            } catch (err) {
+                document.getElementById('courses-list').innerText = err.message;
+            }
+        }
+
+        async function createCourse() {
+            const body = {
+                Name: document.getElementById('course-name').value,
+                Desc: document.getElementById('course-desc').value,
+                TeacherID: parseInt(document.getElementById('course-teacher-id').value)
+            };
+            try {
+                const data = await apiCall('/teacher/course/create', 'POST', body);
+                displayResponse('create-course-response', data);
+            } catch (err) {
+                document.getElementById('create-course-response').innerText = err.message;
+                document.getElementById('create-course-response').classList.add('error');
+            }
+        }
+
+        async function enrollUser() {
+            const course_id = document.getElementById('enroll-course-id').value;
+            const user_id = document.getElementById('enroll-user-id').value;
+            try {
+                const data = await apiCall('/teacher/course/enroll', 'GET', null, { course_id, user_id });
+                displayResponse('enroll-response', data);
+            } catch (err) {
+                document.getElementById('enroll-response').innerText = err.message;
+                document.getElementById('enroll-response').classList.add('error');
+            }
+        }
+
+        async function deleteCourse() {
+            const id = document.getElementById('delete-course-id').value;
+            try {
+                const data = await apiCall('/teacher/course/delete', 'GET', null, { id });
+                displayResponse('delete-course-response', data);
+            } catch (err) {
+                document.getElementById('delete-course-response').innerText = err.message;
+                document.getElementById('delete-course-response').classList.add('error');
+            }
+        }
+
+        // Questions
+        async function createQuestion() {
+            const body = {
+                title: document.getElementById('q-title').value,
+                text: document.getElementById('q-text').value,
+                options: getDynamicListValues('q-options-list'),
+                correct_option: parseInt(document.getElementById('q-correct').value)
+            };
+            try {
+                const data = await apiCall('/teacher/question/create', 'POST', body);
+                displayResponse('create-q-response', data);
+            } catch (err) {
+                document.getElementById('create-q-response').innerText = err.message;
+                document.getElementById('create-q-response').classList.add('error');
+            }
+        }
+
+        async function updateQuestion() {
+            const body = {
+                id: parseInt(document.getElementById('update-q-id').value),
+                text: document.getElementById('update-q-text').value,
+                options: getDynamicListValues('update-q-options-list'),
+                correct_option: parseInt(document.getElementById('update-q-correct').value)
+            };
+            try {
+                const data = await apiCall('/teacher/question/update', 'POST', body);
+                displayResponse('update-q-response', data);
+            } catch (err) {
+                document.getElementById('update-q-response').innerText = err.message;
+                document.getElementById('update-q-response').classList.add('error');
+            }
+        }
+
+        async function deleteQuestion() {
+            const id = document.getElementById('delete-q-id').value;
+            try {
+                const data = await apiCall('/teacher/question/delete', 'GET', null, { id });
+                displayResponse('delete-q-response', data);
+            } catch (err) {
+                document.getElementById('delete-q-response').innerText = err.message;
+                document.getElementById('delete-q-response').classList.add('error');
+            }
+        }
+
+        async function listAllQuestions() {
+            try {
+                const data = await apiCall('/teacher/question/list');
+                displayResponse('all-questions-list', data);
+            } catch (err) {
+                document.getElementById('all-questions-list').innerText = err.message;
+            }
+        }
+
+        async function listCourseQuestions() {
+            const course_id = document.getElementById('course-q-id').value;
+            try {
+                const data = await apiCall('/teacher/course/questions', 'GET', null, { course_id });
+                displayResponse('course-questions-list', data);
+            } catch (err) {
+                document.getElementById('course-questions-list').innerText = err.message;
+            }
+        }
+
+        // Tests
+        async function createTest() {
+            const body = {
+                course_id: parseInt(document.getElementById('test-course-id').value),
+                name: document.getElementById('test-name').value,
+                question_ids: getDynamicListNumbers('test-q-ids-list')
+            };
+            try {
+                const data = await apiCall('/teacher/test/create', 'POST', body);
+                displayResponse('create-test-response', data);
+            } catch (err) {
+                document.getElementById('create-test-response').innerText = err.message;
+                document.getElementById('create-test-response').classList.add('error');
+            }
+        }
+
+        async function updateTestStatus() {
+            const id = document.getElementById('status-test-id').value;
+            const active = document.getElementById('test-active').value;
+            try {
+                const data = await apiCall('/teacher/test/status', 'GET', null, { id, active });
+                displayResponse('status-test-response', data);
+            } catch (err) {
+                document.getElementById('status-test-response').innerText = err.message;
+                document.getElementById('status-test-response').classList.add('error');
+            }
+        }
+
+        async function getFullTest() {
+            const id = document.getElementById('get-test-id').value;
+            try {
+                const data = await apiCall('/test/get', 'GET', null, { id });
+                displayResponse('full-test', data);
+            } catch (err) {
+                document.getElementById('full-test').innerText = err.message;
+            }
+        }
+
+        async function startTest() {
+            const test_id = document.getElementById('start-test-id').value;
+            try {
+                const data = await apiCall('/test/start', 'GET', null, { test_id });
+                displayResponse('start-test-response', data);
+            } catch (err) {
+                document.getElementById('start-test-response').innerText = err.message;
+                document.getElementById('start-test-response').classList.add('error');
+            }
+        }
+
+        async function submitAnswer() {
+            const body = {
+                attempt_id: parseInt(document.getElementById('answer-attempt-id').value),
+                question_id: parseInt(document.getElementById('answer-q-id').value),
+                selected_option: parseInt(document.getElementById('answer-option').value)
+            };
+            try {
+                const data = await apiCall('/test/answer', 'POST', body);
+                displayResponse('answer-response', data);
+            } catch (err) {
+                document.getElementById('answer-response').innerText = err.message;
+                document.getElementById('answer-response').classList.add('error');
+            }
+        }
+
+        async function finishTest() {
+            const attempt_id = document.getElementById('finish-attempt-id').value;
+            try {
+                const data = await apiCall('/test/finish', 'GET', null, { attempt_id });
+                displayResponse('finish-response', data);
+            } catch (err) {
+                document.getElementById('finish-response').innerText = err.message;
+                document.getElementById('finish-response').classList.add('error');
+            }
+        }
+
+        async function reorderQuestions() {
+            const body = {
+                test_id: parseInt(document.getElementById('reorder-test-id').value),
+                question_ids: getDynamicListNumbers('reorder-ids-list')
+            };
+            try {
+                const data = await apiCall('/teacher/test/questions/reorder', 'POST', body);
+                displayResponse('reorder-response', data);
+            } catch (err) {
+                document.getElementById('reorder-response').innerText = err.message;
+                document.getElementById('reorder-response').classList.add('error');
+            }
+        }
+
+        async function listTestResults() {
+            const test_id = document.getElementById('results-test-id').value;
+            try {
+                const data = await apiCall('/teacher/test/results', 'GET', null, { test_id });
+                displayResponse('test-results', data);
+            } catch (err) {
+                document.getElementById('test-results').innerText = err.message;
+            }
+        }
+
+        async function listCourseTests() {
+            const course_id = document.getElementById('tests-course-id').value;
+            try {
+                const data = await apiCall('/course/tests', 'GET', null, { course_id });
+                displayResponse('course-tests-list', data);
+            } catch (err) {
+                document.getElementById('course-tests-list').innerText = err.message;
+            }
+        }
+
+        // Service
+        async function healthCheck() {
+            try {
+                const data = await apiCall('/health');
+                displayResponse('health-response', data);
+            } catch (err) {
+                document.getElementById('health-response').innerText = err.message;
+            }
+        }
+    </script>
+</body>
+</html>
