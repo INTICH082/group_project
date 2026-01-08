@@ -16,11 +16,11 @@
 
 | Модуль | Технологии | Ответственный | Статус                          | Прогресс                                                                                     |
 |---|---|---|---------------------------------|----------------------------------------------------------------------------------------------|
-| **Инфраструктура и БД** | Docker, Git, CI/CD, MySQL, PostgreSQL | Кандауров М., Липко О. | 🔄 **В разработке**             | ![](https://geps.dev/progress/100?dangerColor=800000&warningColor=ff9900&successColor=006600) |
-| **Тестирование** | Go, Тесты | Кандауров М. | ⚙️ **Тестирование и доработка** | ![](https://geps.dev/progress/100?dangerColor=800000&warningColor=ff9900&successColor=006600) |
-| **Веб-клиент** | React, JavaScript | Первых Д. | ⚙️ **Тестирование и доработка** | ![](https://geps.dev/progress/100?dangerColor=800000&warningColor=ff9900&successColor=006600) |
-| **Telegram бот** | Python, aiogram | Князев Р. | ⚙️ **Тестирование и доработка** | ![](https://geps.dev/progress/100?dangerColor=800000&warningColor=ff9900&successColor=006600) |
-| **Авторизация** | C++, OAuth, JWT | Липко О. | ⚙️ **Тестирование и доработка** | ![](https://geps.dev/progress/100?dangerColor=800000&warningColor=ff9900&successColor=006600) |
+| **Инфраструктура и БД** | Docker, Git, CI/CD, MySQL, PostgreSQL | Кандауров М., Липко О. | ✅ **Завершено** | ![](https://geps.dev/progress/100?dangerColor=800000&warningColor=ff9900&successColor=006600) |
+| **Тестирование** | Go, Тесты | Кандауров М. | ✅ **Завершено** | ![](https://geps.dev/progress/100?dangerColor=800000&warningColor=ff9900&successColor=006600) |
+| **Веб-клиент** | React, JavaScript | Первых Д. | ✅ **Завершено** | ![](https://geps.dev/progress/100?dangerColor=800000&warningColor=ff9900&successColor=006600) |
+| **Telegram бот** | Python, aiogram | Князев Р. | ✅ **Завершено** | ![](https://geps.dev/progress/100?dangerColor=800000&warningColor=ff9900&successColor=006600) |
+| **Авторизация** | C++, OAuth, JWT | Липко О. | ✅ **Завершено** | ![](https://geps.dev/progress/100?dangerColor=800000&warningColor=ff9900&successColor=006600) |
 
 
 [Все задачи →](https://github.com/INTICH082/group_project/issues)
