@@ -1,0 +1,29 @@
+version: '3.8'
+
+services:
+  redis:
+    image: redis:6.2-alpine
+    container_name: telegram-bot-redis
+    ports:
+      - "6379:6379"
+    restart: unless-stopped
+
+  telegram-bot:
+    build:
+      context: .
+      dockerfile: Dockerfile.telegram
+    container_name: telegram-bot
+    env_file:
+      - .env.docker
+    environment:
+      - PYTHONUNBUFFERED=1
+      - REDIS_URL=redis://telegram-bot-redis:6379/0
+      - HTTP_PORT=8083
+    ports:
+      - "8083:8083"
+    restart: unless-stopped
+    depends_on:
+      - redis
+
+volumes:
+  redis-data:
