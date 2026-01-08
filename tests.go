@@ -135,3 +135,33 @@ func ListAllAttemptsHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(results)
 }
+func ListTestsHandler(w http.ResponseWriter, r *http.Request) {
+	// 1. Берем ID курса из параметров запроса
+	courseID, _ := strconv.Atoi(r.URL.Query().Get("course_id"))
+
+	// 2. Запрос к БД (примерный SQL)
+	query := `SELECT id, course_id, name FROM tests WHERE course_id = $1`
+	rows, err := db.Query(query, courseID)
+	if err != nil {
+		http.Error(w, err.Error(), 500)
+		return
+	}
+	defer rows.Close()
+
+	// 3. Собираем список тестов
+	var tests []map[string]interface{}
+	for rows.Next() {
+		var id, cID int
+		var name string
+		rows.Scan(&id, &cID, &name)
+		tests = append(tests, map[string]interface{}{
+			"id":        id,
+			"course_id": cID,
+			"name":      name,
+		})
+	}
+
+	// 4. Отправляем JSON
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(tests)
+}

@@ -44,6 +44,7 @@ func main() {
 	mux.HandleFunc("/test/finish", withLog(AuthMiddleware("", FinishTestHandler)))
 	mux.HandleFunc("/teacher/test/questions/reorder", withLog(AuthMiddleware("test:quest:update", UpdateTestQuestionsOrderHandler)))
 	mux.HandleFunc("/teacher/test/results", withLog(AuthMiddleware("test:answer:read", ListAllAttemptsHandler)))
+	mux.HandleFunc("/course/tests", withLog(AuthMiddleware("course:test:view", ListCourseTestsHandler)))
 	// Сервис
 	mux.HandleFunc("/health", withLog(HealthCheckHandler))
 
