@@ -239,6 +239,29 @@ func HealthCheckHandler(w http.ResponseWriter, r *http.Request) {
 		"service": "api-logic",
 	})
 }
+func ListAllQuestionsHandler(w http.ResponseWriter, r *http.Request) {
+	questions, err := GetAllQuestions()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	json.NewEncoder(w).Encode(questions)
+}
+
+func ListCourseQuestionsHandler(w http.ResponseWriter, r *http.Request) {
+	courseID, _ := strconv.Atoi(r.URL.Query().Get("course_id"))
+	if courseID == 0 {
+		http.Error(w, "course_id is required", http.StatusBadRequest)
+		return
+	}
+
+	questions, err := GetQuestionsByCourse(courseID)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	json.NewEncoder(w).Encode(questions)
+}
 
 // --- MAIN С ЛОГИКОЙ МАРШРУТИЗАЦИИ ---
 
@@ -283,7 +306,9 @@ func main() {
 	mux.HandleFunc("/test/start", withLog(AuthMiddleware("", StartTestHandler)))
 	mux.HandleFunc("/test/answer", withLog(AuthMiddleware("", SubmitAnswerHandler)))
 	mux.HandleFunc("/test/finish", withLog(AuthMiddleware("", FinishTestHandler)))
-
+	// В секцию "Вопросы (Questions)"
+	mux.HandleFunc("/teacher/question/list", withLog(AuthMiddleware("quest:read", ListAllQuestionsHandler)))
+	mux.HandleFunc("/teacher/course/questions", withLog(AuthMiddleware("quest:read", ListCourseQuestionsHandler)))
 	// Курсы и Студенты
 	mux.HandleFunc("/teacher/course/enroll", withLog(AuthMiddleware("course:user:add", EnrollHandler)))
 

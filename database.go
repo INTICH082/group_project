@@ -403,3 +403,53 @@ func GetAllCourses() ([]map[string]interface{}, error) {
 	}
 	return courses, nil
 }
+
+// --- НОВЫЕ ФУНКЦИИ ЛОГИКИ ВОПРОСОВ ---
+
+// GetAllQuestions возвращает вообще все активные вопросы в системе
+func GetAllQuestions() ([]Question, error) {
+	rows, err := db.Query(`
+		SELECT id, title, text, options, correct_option 
+		FROM questions 
+		WHERE is_deleted = false 
+		ORDER BY id DESC`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	return scanQuestions(rows)
+}
+
+// GetQuestionsByCourse возвращает вопросы, которые используются в тестах конкретного курса
+func GetQuestionsByCourse(courseID int) ([]Question, error) {
+	query := `
+		SELECT DISTINCT q.id, q.title, q.text, q.options, q.correct_option 
+		FROM questions q
+		JOIN tests t ON q.id = ANY(t.question_ids)
+		WHERE t.course_id = $1 AND q.is_deleted = false AND t.is_deleted = false
+		ORDER BY q.id DESC`
+
+	rows, err := db.Query(query, courseID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	return scanQuestions(rows)
+}
+
+// Вспомогательная функция для сканирования строк (DRY)
+func scanQuestions(rows *sql.Rows) ([]Question, error) {
+	var questions []Question
+	for rows.Next() {
+		var q Question
+		var opts []byte
+		if err := rows.Scan(&q.ID, &q.Title, &q.Text, &opts, &q.Correct); err != nil {
+			return nil, err
+		}
+		json.Unmarshal(opts, &q.Options)
+		questions = append(questions, q)
+	}
+	return questions, nil
+}
