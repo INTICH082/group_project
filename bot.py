@@ -28,7 +28,7 @@ REDIS_URL = os.getenv("REDIS_URL", "redis://redis:6379/0")
 API_BASE_URL = os.getenv("API_BASE_URL", "https://my-app-logic.onrender.com")
 JWT_SECRET = os.getenv("JWT_SECRET", "iplaygodotandclaimfun")
 DEFAULT_COURSE_ID = int(os.getenv("DEFAULT_COURSE_ID", "1"))
-HTTP_PORT = int(os.getenv("HTTP_PORT", "8080"))
+HTTP_PORT = int(os.getenv("HTTP_PORT", "8081"))
 
 # =========================
 # LOGGING
@@ -348,7 +348,7 @@ class APIClient:
 
     async def ensure_session(self):
         if self.session is None or self.session.closed:
-            timeout = aiohttp.ClientTimeout(total=30, connect=10)
+            timeout = aiohttp.ClientTimeout(total=30, connect=10)  # ← Строка с таймаутами
             self.session = aiohttp.ClientSession(timeout=timeout)
 
     async def close(self):
@@ -425,7 +425,7 @@ class APIClient:
         logger.info(f"📡 API запрос: {method} {url}")
 
         try:
-            async with self.session.request(method, url, headers=headers, json=data, timeout=30) as response:
+            async with self.session.request(method, url, headers=headers, json=data, timeout=30) as response:  # ← Таймаут 30 секунд
                 response_text = await response.text()
                 logger.info(f"📡 API ответ: {response.status}")
 
