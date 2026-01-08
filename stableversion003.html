@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Учебная платформа — Админ-панель</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-hover: #4f46e5;
+            --bg: #f9fafb;
+            --card: #ffffff;
+            --text: #1f2937;
+            --border: #e5e7eb;
+            --success: #10b981;
+            --error: #ef4444;
+            --gray: #6b7280;
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        header {
+            text-align: center;
+            margin-bottom: 40px;
+            padding: 60px 20px;
+            background: linear-gradient(135deg, #6366f1, #8b5cf6);
+            color: white;
+            border-radius: 0 0 24px 24px;
+        }
+        header h1 { font-size: 3rem; margin: 0; }
+        header p { opacity: 0.9; font-size: 1.2rem; }
+
+        .card {
+            background: var(--card);
+            border-radius: 16px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            padding: 32px;
+            margin-bottom: 32px;
+            border: 1px solid var(--border);
+        }
+        h2 {
+            font-size: 1.8rem;
+            margin-top: 0;
+            color: var(--primary);
+            border-bottom: 3px solid var(--primary);
+            padding-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        h2::before {
+            content: "";
+            width: 8px;
+            height: 32px;
+            background: var(--primary);
+            border-radius: 4px;
+        }
+        h3 {
+            font-size: 1.4rem;
+            margin: 24px 0 16px;
+            color: var(--text);
+        }
+
+        button {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+        button:hover { background: var(--primary-hover); transform: translateY(-1px); }
+        button.secondary { background: var(--gray); }
+        button.secondary:hover { background: #4b5563; }
+
+        input, select {
+            width: 100%;
+            padding: 12px;
+            margin: 8px 0;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            font-size: 1rem;
+            box-sizing: border-box;
+        }
+
+        .dynamic-list {
+            margin: 16px 0;
+            background: #f1f5f9;
+            padding: 16px;
+            border-radius: 12px;
+        }
+        .item {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 12px;
+            align-items: center;
+        }
+        .item input { flex: 1; }
+        .item button {
+            background: var(--error);
+            padding: 12px 16px;
+            min-width: 50px;
+        }
+
+        .data-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+        .data-card {
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 20px;
+            transition: all 0.3s;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        .data-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+        }
+        .data-card h4 {
+            margin: 0 0 12px;
+            font-size: 1.3rem;
+            color: var(--primary);
+        }
+        .data-card p {
+            margin: 8px 0;
+            color: var(--gray);
+            font-size: 0.95rem;
+        }
+        .data-card .id {
+            font-family: monospace;
+            background: #e0e7ff;
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 0.9rem;
+        }
+
+        .response {
+            margin-top: 16px;
+            padding: 16px;
+            border-radius: 12px;
+            font-weight: 500;
+        }
+        .success { background: #d1fae5; color: var(--success); }
+        .error { background: #fee2e2; color: var(--error); }
+
+        #login-modal {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+        .modal-content {
+            background: white;
+            padding: 40px;
+            border-radius: 20px;
+            width: 420px;
+            max-width: 90%;
+            text-align: center;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Модальное окно авторизации -->
+    <div id="login-modal">
+        <div class="modal-content">
+            <h2>Добро пожаловать!</h2>
+            <p>Войдите в систему или пропустите для тестирования</p>
+            <input type="text" id="username" placeholder="Логин">
+            <input type="password" id="password" placeholder="Пароль">
+            <button onclick="login()">Войти</button>
+            <button class="secondary" onclick="skipLogin()">Пропустить (тест)</button>
+            <p class="response" id="login-response"></p>
+        </div>
+    </div>
+
+    <header>
+        <h1>Учебная платформа</h1>
+        <p>Админ-панель управления курсами, вопросами и тестами</p>
+    </header>
+
+    <div class="container">
+
+        <div class="card">
+            <h2>Токен авторизации</h2>
+            <button onclick="generateToken()">Сгенерировать тестовый токен (все права)</button>
+            <input type="text" id="token-input" placeholder="Bearer eyJ...">
+            <button onclick="saveToken()">Сохранить токен</button>
+            <p class="response" id="auth-response"></p>
+        </div>
+
+        <div class="card">
+            <h2>Курсы</h2>
+
+            <button onclick="listCourses()">Обновить список курсов</button>
+            <div id="courses-list" class="data-grid"></div>
+
+            <h3>Создать новый курс</h3>
+            <input type="text" id="course-name" placeholder="Название курса">
+            <input type="text" id="course-desc" placeholder="Описание курса">
+            <input type="number" id="course-teacher-id" placeholder="ID преподавателя">
+            <button onclick="createCourse()">Создать курс</button>
+            <p class="response" id="create-course-response"></p>
+
+            <h3>Удалить курс (архивация)</h3>
+            <input type="number" id="delete-course-id" placeholder="ID курса">
+            <button onclick="deleteCourse()">Удалить</button>
+            <p class="response" id="delete-course-response"></p>
+        </div>
+
+        <div class="card">
+            <h2>Вопросы</h2>
+
+            <h3>Создать вопрос</h3>
+            <input type="text" id="q-title" placeholder="Заголовок вопроса">
+            <input type="text" id="q-text" placeholder="Текст вопроса">
+            <div class="dynamic-list" id="q-options-list">
+                <strong>Варианты ответа:</strong><br>
+            </div>
+            <button onclick="addOption('q-options-list')">+ Добавить вариант</button>
+            <input type="number" id="q-correct" placeholder="Номер правильного ответа (начиная с 0)">
+            <button onclick="createQuestion()">Создать вопрос</button>
+            <p class="response" id="create-q-response"></p>
+
+            <h3>Все вопросы</h3>
+            <button onclick="listAllQuestions()">Обновить список</button>
+            <div id="all-questions-list" class="data-grid"></div>
+        </div>
+
+        <div class="card">
+            <h2>Тесты</h2>
+
+            <h3>Создать тест</h3>
+            <input type="number" id="test-course-id" placeholder="ID курса">
+            <input type="text" id="test-name" placeholder="Название теста">
+            <div class="dynamic-list" id="test-q-ids-list">
+                <strong>Вопросы в тесте:</strong><br>
+            </div>
+            <button onclick="addId('test-q-ids-list')">+ Добавить вопрос (ID)</button>
+            <button onclick="createTest()">Создать тест</button>
+            <p class="response" id="create-test-response"></p>
+
+            <h3>Список тестов курса</h3>
+            <input type="number" id="tests-course-id" placeholder="ID курса">
+            <button onclick="listCourseTests()">Показать тесты</button>
+            <div id="course-tests-list" class="data-grid"></div>
+
+            <h3>Результаты прохождения теста</h3>
+            <input type="number" id="results-test-id" placeholder="ID теста">
+            <button onclick="listTestResults()">Показать результаты</button>
+            <div id="test-results" class="data-grid"></div>
+        </div>
+
+    </div>
+
+    <script>
+        const BASE_URL = 'https://my-app-logic.onrender.com';
+        const SECRET = 'iplaygodotandclaimfun';
+        let token = '';
+
+        window.onload = function() {
+            addOption('q-options-list');
+            addOption('q-options-list');
+            addId('test-q-ids-list');
+        };
+
+        function hideModal() {
+            const modal = document.getElementById('login-modal');
+            modal.style.display = 'none';
+        }
+
+        function skipLogin() {
+            generateToken();
+            hideModal(); // Теперь точно скрывает
+        }
+
+        function login() {
+            generateToken();
+            hideModal(); // Теперь точно скрывает
+        }
+
+        function generateToken() {
+            const header = { alg: 'HS256', typ: 'JWT' };
+            const now = Math.floor(Date.now() / 1000);
+            const exp = now + 7200;
+
+            const payload = {
+                user_id: 1,
+                exp: exp,
+                perms: ["user:block:write","user:fullName:write","course:add","course:user:add","course:del",
+                        "quest:create","quest:update","quest:del","quest:read","course:test:add",
+                        "course:test:write","course:read","test:quest:update","test:answer:read","course:test:view"],
+                permissions: ["user:block:write","user:fullName:write","course:add","course:user:add","course:del",
+                              "quest:create","quest:update","quest:del","quest:read","course:test:add",
+                              "course:test:write","course:read","test:quest:update","test:answer:read","course:test:view"]
+            };
+
+            const encodedHeader = btoa(JSON.stringify(header)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+            const encodedPayload = btoa(JSON.stringify(payload)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+            const unsignedToken = `${encodedHeader}.${encodedPayload}`;
+            const signature = CryptoJS.HmacSHA256(unsignedToken, SECRET).toString(CryptoJS.enc.Base64)
+                .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+
+            token = `Bearer ${unsignedToken}.${signature}`;
+            document.getElementById('token-input').value = token;
+            document.getElementById('auth-response').innerText = 'Тестовый токен сгенерирован!';
+            document.getElementById('auth-response').classList.add('success');
+        }
+
+        function saveToken() {
+            token = document.getElementById('token-input').value.trim();
+            document.getElementById('auth-response').innerText = 'Токен сохранён!';
+            document.getElementById('auth-response').classList.add('success');
+        }
+
+        async function apiCall(endpoint, method = 'GET', body = null, query = {}) {
+            const url = new URL(`${BASE_URL}${endpoint}`);
+            Object.keys(query).forEach(key => url.searchParams.append(key, query[key]));
+
+            const headers = { 'Content-Type': 'application/json' };
+            if (token) headers['Authorization'] = token;
+
+            const options = { method, headers };
+            if (body) options.body = JSON.stringify(body);
+
+            const res = await fetch(url, options);
+            if (!res.ok) {
+                const errText = await res.text();
+                throw new Error(`Ошибка ${res.status}: ${errText}`);
+            }
+            return await res.text();
+        }
+
+        function displayResponse(elemId, data) {
+            const elem = document.getElementById(elemId);
+            try {
+                const parsed = JSON.parse(data);
+                elem.innerHTML = `<pre>${JSON.stringify(parsed, null, 2)}</pre>`;
+            } catch {
+                elem.innerHTML = `<span class="success">${data}</span>`;
+            }
+        }
+
+        function renderDataGrid(containerId, items, type) {
+            const container = document.getElementById(containerId);
+            container.innerHTML = '';
+
+            if (!items || items.length === 0) {
+                container.innerHTML = '<p style="grid-column: 1/-1; text-align: center; color: var(--gray);">Нет данных</p>';
+                return;
+            }
+
+            items.forEach(item => {
+                const card = document.createElement('div');
+                card.className = 'data-card';
+
+                if (type === 'course') {
+                    card.innerHTML = `
+                        <h4>${item.name || 'Без названия'}</h4>
+                        <p>${item.description || 'Нет описания'}</p>
+                        <p>Преподаватель ID: <span class="id">${item.teacher_id}</span></p>
+                        <p>ID курса: <span class="id">${item.id}</span></p>
+                    `;
+                } else if (type === 'question') {
+                    card.innerHTML = `
+                        <h4>${item.title || 'Без заголовка'}</h4>
+                        <p>${item.text || 'Нет текста'}</p>
+                        <p>Правильный: <strong>${item.correct + 1}</strong></p>
+                        <p>ID: <span class="id">${item.id}</span></p>
+                    `;
+                } else if (type === 'test') {
+                    card.innerHTML = `
+                        <h4>${item.name || 'Без названия'}</h4>
+                        <p>Курс ID: <span class="id">${item.course_id}</span></p>
+                        <p>Вопросов: ${item.question_ids ? item.question_ids.length : 0}</p>
+                        <p>ID теста: <span class="id">${item.id}</span></p>
+                    `;
+                } else if (type === 'result') {
+                    card.innerHTML = `
+                        <h4>Попытка пользователя ${item.user_id}</h4>
+                        <p>Оценка: <strong>${item.score.toFixed(1)}%</strong></p>
+                        <p>Завершено: ${item.is_finished ? 'Да' : 'Нет'}</p>
+                        <p>Дата: ${item.finished_at || '—'}</p>
+                    `;
+                }
+
+                container.appendChild(card);
+            });
+        }
+
+        async function listCourses() {
+            try {
+                const data = await apiCall('/courses');
+                const parsed = JSON.parse(data);
+                renderDataGrid('courses-list', parsed, 'course');
+            } catch (err) {
+                document.getElementById('courses-list').innerHTML = `<p class="error">${err.message}</p>`;
+            }
+        }
+
+        async function createCourse() {
+            const body = {
+                Name: document.getElementById('course-name').value,
+                Desc: document.getElementById('course-desc').value,
+                TeacherID: parseInt(document.getElementById('course-teacher-id').value)
+            };
+            try {
+                const data = await apiCall('/teacher/course/create', 'POST', body);
+                displayResponse('create-course-response', data);
+                listCourses();
+            } catch (err) {
+                document.getElementById('create-course-response').innerHTML = `<span class="error">${err.message}</span>`;
+            }
+        }
+
+        async function deleteCourse() {
+            const id = document.getElementById('delete-course-id').value;
+            try {
+                const data = await apiCall('/teacher/course/delete', 'GET', null, { id });
+                displayResponse('delete-course-response', data); // "Course archived" покажется зелёным
+                listCourses();
+            } catch (err) {
+                document.getElementById('delete-course-response').innerHTML = `<span class="error">${err.message}</span>`;
+            }
+        }
+
+        async function createQuestion() {
+            const body = {
+                title: document.getElementById('q-title').value,
+                text: document.getElementById('q-text').value,
+                options: getDynamicListValues('q-options-list'),
+                correct_option: parseInt(document.getElementById('q-correct').value)
+            };
+            try {
+                const data = await apiCall('/teacher/question/create', 'POST', body);
+                displayResponse('create-q-response', data);
+                listAllQuestions();
+            } catch (err) {
+                document.getElementById('create-q-response').innerHTML = `<span class="error">${err.message}</span>`;
+            }
+        }
+
+        async function listAllQuestions() {
+            try {
+                const data = await apiCall('/teacher/question/list');
+                const parsed = JSON.parse(data);
+                renderDataGrid('all-questions-list', parsed, 'question');
+            } catch (err) {
+                document.getElementById('all-questions-list').innerHTML = `<p class="error">${err.message}</p>`;
+            }
+        }
+
+        async function createTest() {
+            const body = {
+                course_id: parseInt(document.getElementById('test-course-id').value),
+                name: document.getElementById('test-name').value,
+                question_ids: getDynamicListNumbers('test-q-ids-list')
+            };
+            try {
+                const data = await apiCall('/teacher/test/create', 'POST', body);
+                displayResponse('create-test-response', data);
+            } catch (err) {
+                document.getElementById('create-test-response').innerHTML = `<span class="error">${err.message}</span>`;
+            }
+        }
+
+        async function listCourseTests() {
+            const course_id = document.getElementById('tests-course-id').value;
+            try {
+                const data = await apiCall('/course/tests', 'GET', null, { course_id });
+                const parsed = JSON.parse(data);
+                renderDataGrid('course-tests-list', parsed, 'test');
+            } catch (err) {
+                document.getElementById('course-tests-list').innerHTML = `<p class="error">${err.message}</p>`;
+            }
+        }
+
+        async function listTestResults() {
+            const test_id = document.getElementById('results-test-id').value;
+            try {
+                const data = await apiCall('/teacher/test/results', 'GET', null, { test_id });
+                const parsed = JSON.parse(data);
+                renderDataGrid('test-results', parsed, 'result');
+            } catch (err) {
+                document.getElementById('test-results').innerHTML = `<p class="error">${err.message}</p>`;
+            }
+        }
+
+        function addOption(listId) {
+            const list = document.getElementById(listId);
+            const item = document.createElement('div');
+            item.className = 'item';
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.placeholder = 'Вариант ответа';
+            const removeBtn = document.createElement('button');
+            removeBtn.innerText = '✕';
+            removeBtn.onclick = () => item.remove();
+            item.appendChild(input);
+            item.appendChild(removeBtn);
+            list.appendChild(item);
+        }
+
+        function addId(listId) {
+            const list = document.getElementById(listId);
+            const item = document.createElement('div');
+            item.className = 'item';
+            const input = document.createElement('input');
+            input.type = 'number';
+            input.placeholder = 'ID';
+            const removeBtn = document.createElement('button');
+            removeBtn.innerText = '✕';
+            removeBtn.onclick = () => item.remove();
+            item.appendChild(input);
+            item.appendChild(removeBtn);
+            list.appendChild(item);
+        }
+
+        function getDynamicListValues(listId) {
+            return Array.from(document.querySelectorAll(`#${listId} input[type="text"]`))
+                .map(i => i.value.trim()).filter(v => v);
+        }
+
+        function getDynamicListNumbers(listId) {
+            return Array.from(document.querySelectorAll(`#${listId} input[type="number"]`))
+                .map(i => parseInt(i.value)).filter(v => !isNaN(v));
+        }
+    </script>
+</body>
+</html>
