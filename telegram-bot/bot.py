@@ -214,6 +214,9 @@ redis_client = SimpleRedis()
 # =========================
 class RealAuthService:
     def __init__(self, base_url: str):
+        # Если base_url заканчивается на /health, уберите это
+        if base_url.endswith('/health'):
+            base_url = base_url[:-7]
         self.base_url = base_url.rstrip('/')
         self.session = None
         self.timeout = 30  # Таймаут для запросов
@@ -4165,8 +4168,18 @@ async def main():
     logger.info("🤖 Telegram bot starting...")
     logger.info(f"📡 API Base URL: {API_BASE_URL}")
     logger.info(f"🔐 Auth Service URL: {AUTH_SERVICE_URL}")
-    logger.info(f"🌐 HTTP Server порт: {HTTP_PORT}")
+    logger.info(f"🌐 HTTP Server port: {HTTP_PORT}")
 
+    # Проверка сервиса авторизации
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(f"{AUTH_SERVICE_URL}/health", timeout=5) as resp:
+                if resp.status == 200:
+                    logger.info("✅ Auth service доступен")
+                else:
+                    logger.warning(f"⚠️ Auth service ответил с кодом {resp.status}")
+    except Exception as e:
+        logger.warning(f"⚠️ Не удалось подключиться к auth service: {e}")
     await redis_client.connect()
 
     # Запуск HTTP сервера для health-check
