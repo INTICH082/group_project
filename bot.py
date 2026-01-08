@@ -1440,23 +1440,6 @@ def require_permission(permission: Permission):
 
         return wrapper
 
-    def decorator(handler):
-        @wraps(handler)
-        async def wrapper(event, user: Dict, *args, **kwargs):
-            user_permissions = user.get("permissions", [])
-            if permission not in user_permissions:
-                try:
-                    if isinstance(event, Message):
-                        await event.answer(f"❌ <b>Недостаточно прав</b>\n\nТребуется разрешение: {permission}")
-                    elif isinstance(event, CallbackQuery):
-                        await event.answer(f"❌ Недостаточно прав: {permission}", show_alert=True)
-                except:
-                    pass
-                return
-            return await handler(event, user, *args, **kwargs)
-
-        return wrapper
-
     return decorator
 
 
