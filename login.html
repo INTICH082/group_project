@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Вход в систему</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        
+        .login-container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.2);
+            width: 100%;
+            max-width: 450px;
+            padding: 40px;
+            animation: fadeIn 0.5s ease;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .logo {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .logo h1 {
+            color: #4f46e5;
+            font-size: 28px;
+            margin-bottom: 5px;
+        }
+        
+        .logo p {
+            color: #666;
+            font-size: 14px;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: 500;
+            font-size: 14px;
+        }
+        
+        input {
+            width: 100%;
+            padding: 14px;
+            border: 2px solid #e5e7eb;
+            border-radius: 10px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+        
+        input:focus {
+            outline: none;
+            border-color: #4f46e5;
+            box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.2);
+        }
+        
+        .role-selection {
+            margin: 25px 0;
+        }
+        
+        .role-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        
+        .role-btn {
+            flex: 1;
+            padding: 15px;
+            border: 2px solid #e5e7eb;
+            background: white;
+            border-radius: 10px;
+            cursor: pointer;
+            text-align: center;
+            transition: all 0.3s;
+            font-weight: 500;
+        }
+        
+        .role-btn:hover {
+            border-color: #4f46e5;
+            transform: translateY(-2px);
+        }
+        
+        .role-btn.active {
+            background: #4f46e5;
+            color: white;
+            border-color: #4f46e5;
+        }
+        
+        .role-btn i {
+            display: block;
+            font-size: 24px;
+            margin-bottom: 8px;
+        }
+        
+        .login-btn {
+            width: 100%;
+            padding: 16px;
+            background: #4f46e5;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-top: 10px;
+        }
+        
+        .login-btn:hover {
+            background: #4338ca;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(79, 70, 229, 0.3);
+        }
+        
+        .login-btn:active {
+            transform: translateY(0);
+        }
+        
+        .divider {
+            text-align: center;
+            margin: 25px 0;
+            position: relative;
+            color: #999;
+            font-size: 14px;
+        }
+        
+        .divider::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: #e5e7eb;
+            z-index: 1;
+        }
+        
+        .divider span {
+            background: white;
+            padding: 0 15px;
+            position: relative;
+            z-index: 2;
+        }
+        
+        .demo-credentials {
+            background: #f3f4f6;
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 25px;
+            font-size: 14px;
+            color: #666;
+        }
+        
+        .demo-credentials h3 {
+            margin-bottom: 10px;
+            color: #333;
+            font-size: 14px;
+        }
+        
+        .credential {
+            margin-bottom: 5px;
+            display: flex;
+            justify-content: space-between;
+        }
+        
+        .footer {
+            text-align: center;
+            margin-top: 25px;
+            color: #999;
+            font-size: 13px;
+        }
+        
+        .error-message {
+            color: #ef4444;
+            font-size: 14px;
+            margin-top: 10px;
+            text-align: center;
+            min-height: 20px;
+        }
+        
+        .success-message {
+            color: #10b981;
+            font-size: 14px;
+            margin-top: 10px;
+            text-align: center;
+            min-height: 20px;
+        }
+        
+        @media (max-width: 480px) {
+            .login-container {
+                padding: 30px 20px;
+            }
+            
+            .role-buttons {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <div class="logo">
+            <h1>📚 EduPlatform</h1>
+            <p>Образовательная платформа</p>
+        </div>
+        
+        <form id="loginForm">
+            <div class="form-group">
+                <label for="username">Логин / Email</label>
+                <input type="text" id="username" placeholder="Введите ваш логин" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="password">Пароль</label>
+                <input type="password" id="password" placeholder="Введите ваш пароль" required>
+            </div>
+            
+            <div class="role-selection">
+                <label>Выберите роль:</label>
+                <div class="role-buttons">
+                    <button type="button" class="role-btn" data-role="teacher">
+                        <div>👨‍🏫</div>
+                        Преподаватель
+                    </button>
+                    <button type="button" class="role-btn" data-role="student">
+                        <div>👨‍🎓</div>
+                        Студент
+                    </button>
+                </div>
+            </div>
+            
+            <div class="success-message" id="successMessage"></div>
+            <div class="error-message" id="errorMessage"></div>
+            
+            <button type="submit" class="login-btn">Войти в систему</button>
+        </form>
+        
+        <div class="divider"><span>Подсказка</span></div>
+        
+        <div class="demo-credentials">
+            <h3>Можете ввести любые данные:</h3>
+            <div class="credential">
+                <span>Логин:</span>
+                <span>любые буквы/цифры</span>
+            </div>
+            <div class="credential">
+                <span>Пароль:</span>
+                <span>любые буквы/цифры</span>
+            </div>
+            <div style="margin-top: 10px; font-size: 13px; color: #888;">
+                Просто выберите роль и нажмите "Войти"
+            </div>
+        </div>
+        
+        <div class="footer">
+            <p>© 2024 EduPlatform. Демо-версия</p>
+        </div>
+    </div>
+
+    <script>
+        // Выбор роли
+        const roleButtons = document.querySelectorAll('.role-btn');
+        let selectedRole = 'teacher'; // По умолчанию преподаватель
+        
+        roleButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                // Убираем активный класс у всех кнопок
+                roleButtons.forEach(btn => btn.classList.remove('active'));
+                // Добавляем активный класс нажатой кнопке
+                button.classList.add('active');
+                // Сохраняем выбранную роль
+                selectedRole = button.getAttribute('data-role');
+            });
+        });
+        
+        // Делаем первую кнопку активной по умолчанию
+        roleButtons[0].classList.add('active');
+        
+        // Обработка формы входа
+        document.getElementById('loginForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const username = document.getElementById('username').value.trim();
+            const password = document.getElementById('password').value.trim();
+            const errorElement = document.getElementById('errorMessage');
+            const successElement = document.getElementById('successMessage');
+            
+            // Очищаем предыдущие сообщения
+            errorElement.textContent = '';
+            successElement.textContent = '';
+            
+            // Простая валидация - только проверяем, что поля не пустые
+            if (!username || !password) {
+                errorElement.textContent = 'Пожалуйста, заполните все поля';
+                return;
+            }
+            
+            // ВСЕГДА успешный вход - никаких проверок пароля!
+            loginSuccess(selectedRole, username);
+        });
+        
+        function loginSuccess(role, username) {
+            // Показываем сообщение об успешном входе
+            const successElement = document.getElementById('successMessage');
+            const roleName = role === 'teacher' ? 'преподавателя' : 'студента';
+            successElement.textContent = `✓ Добро пожаловать, ${username}! (Роль: ${roleName})`;
+            
+            // Сохраняем информацию о пользователе
+            const userData = {
+                username: username,
+                role: role,
+                roleName: role === 'teacher' ? 'Преподаватель' : 'Студент',
+                timestamp: new Date().toISOString()
+            };
+            
+            localStorage.setItem('user', JSON.stringify(userData));
+            
+            // Через 1.5 секунды переходим на главную страницу
+            setTimeout(() => {
+                // Перенаправляем на главную страницу
+                window.location.href = 'index.html';
+            }, 1500);
+        }
+        
+        // Автозаполнение для удобства тестирования (можно удалить)
+        document.addEventListener('DOMContentLoaded', () => {
+            // Автоматически заполняем поля для удобства
+            document.getElementById('username').value = 'demo_user';
+            document.getElementById('password').value = 'demo123';
+            
+            // Можно раскомментировать для других вариантов:
+            // document.getElementById('username').value = 'иванов_студент';
+            // document.getElementById('password').value = 'пароль123';
+        });
+    </script>
+</body>
+</html>
